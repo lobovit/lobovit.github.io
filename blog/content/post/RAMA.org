@@ -1,7 +1,7 @@
 +++
 title = "Rama"
 date = 2026-05-23
-draft = false
+draft = true
 +++
 * Next-level Backends with Rama: Storing and Traversing Graphs in 60 LOC
 
@@ -153,4 +153,4 @@ A arquitetura baseada em eventos do Rama proporciona:
 - Capacidade de recomputar PStates (útil em caso de bugs que corrompam dados)
 - Tolerância a falhas superior a abordagens alternativas
 
-O Rama é gratuito para clusters de produção com até dois nós e pode ser baixado no site da Red Planet Labs. 
+O Rama é gratuito para clusters de produção com até dois nós e pode ser baixado no site da Red Planet Labs.

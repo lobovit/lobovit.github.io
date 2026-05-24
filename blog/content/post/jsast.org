@@ -1,7 +1,7 @@
 +++
 title = "Jsast"
 date = 2026-05-23
-draft = false
+draft = true
 +++
 ** Desvendando ASTs com JavaScript, TypeScript e Esprima: Um Guia Amigável 🤖
 
@@ -37,7 +37,7 @@ draft = false
 
 Olá pessoal! 👋
 
-Neste artigo, vou desmistificar um pouco como navegar através de uma AST usando o Esprima em Javascript/Typescript. Desta maneira você pode manipular código evitando ao máximo usar expressões regulares (que em muitos casos são um pesadelo). Mas vamos começar pelo começo, o que é uma AST? Uma AST é uma representação abstrata da estrutura sintática de um programa. Ela é uma árvore de nós que representa a hierarquia e a relação entre as partes do código. 
+Neste artigo, vou desmistificar um pouco como navegar através de uma AST usando o Esprima em Javascript/Typescript. Desta maneira você pode manipular código evitando ao máximo usar expressões regulares (que em muitos casos são um pesadelo). Mas vamos começar pelo começo, o que é uma AST? Uma AST é uma representação abstrata da estrutura sintática de um programa. Ela é uma árvore de nós que representa a hierarquia e a relação entre as partes do código.
 
 Isto é muito útil para uma diversidade de aplicações como:
 
