@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:,">
-  <title> — scovl</title>
+  <title>Rama — scovl</title>
   <link rel="stylesheet" href="/css/main.css?v=2">
   <link rel="stylesheet" href="/vendor/fonts/fonts.css">
   <link rel="stylesheet" href="/vendor/prism/prism-tomorrow.min.css">
@@ -25,13 +25,23 @@
       
 <article>
   <header>
-    <h1></h1>
-    <p class="meta"><time>0001-01-01</time></p>
+    <h1>Rama</h1>
+    <p class="meta"><time>2026-05-23</time></p>
   </header>
   <div class="content">
-    <h1 id="next-level-backends-with-rama-storing-and-traversing-graphs-in-60-loc">Next-level Backends with Rama: Storing and Traversing Graphs in 60 LOC</h1>
-<h2 id="introdução-ao-rama">Introdução ao Rama</h2>
-<p>Rama é uma plataforma que permite a criação de backends escaláveis com uma quantidade mínima de código. Sistemas que normalmente exigiriam milhares de linhas de código podem ser implementados em algumas dezenas de linhas, oferecendo:</p>
+    
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+Next-level Backends with Rama: Storing and Traversing Graphs in 60 LOC
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
+<div id="outline-container-headline-2" class="outline-3">
+<h3 id="headline-2">
+Introdução ao Rama
+</h3>
+<div id="outline-text-headline-2" class="outline-text-3">
+<p>
+Rama é uma plataforma que permite a criação de backends escaláveis com uma quantidade mínima de código. Sistemas que normalmente exigiriam milhares de linhas de código podem ser implementados em algumas dezenas de linhas, oferecendo:</p>
 <ul>
 <li>Escalabilidade para milhões de leituras/escritas por segundo</li>
 <li>Conformidade ACID</li>
@@ -40,90 +50,133 @@
 <li>Implantação, atualização e escalonamento via simples comandos CLI</li>
 <li>Monitoramento abrangente integrado</li>
 </ul>
-<h2 id="exemplo-armazenamento-e-travessia-de-grafos">Exemplo: Armazenamento e Travessia de Grafos</h2>
-<p>Para demonstrar a potência do Rama, vamos analisar a implementação de um backend para armazenamento de grafos e execução de consultas rápidas de travessia. O exemplo específico é uma árvore genealógica, onde cada nó (pessoa) tem dois pais e qualquer número de filhos.</p>
-<h3 id="definindo-o-modelo-de-dados">Definindo o Modelo de Dados</h3>
-<p>No Rama, os datastores indexados são chamados de <a href="https://docs.redplanetlabs.com/concepts/pstates.html">PStates</a> (&ldquo;partitioned state&rdquo;). Ao contrário de bancos de dados tradicionais com modelos fixos, os PStates permitem infinitos modelos de dados através da composição de estruturas simples:</p>
-
-
-  <pre><code class="language-clojure">(declare-pstate
-  topology
-  $$family-tree
-  {UUID (fixed-keys-schema
-          {:parent1 UUID
-           :parent2 UUID
-           :name String
-           :children #{UUID}})})</code></pre>
- <p>Na versão Java:</p>
-
-
-  <pre><code class="language-java">topology.pstate(
-  &#34;$$family-tree&#34;,
-  PState.mapSchema(UUID.class,
-                   PState.fixedKeysSchema(
-                     &#34;parent1&#34;, UUID.class,
-                     &#34;parent2&#34;, UUID.class,
-                     &#34;name&#34;, String.class,
-                     &#34;children&#34;, PState.setSchema(UUID.class)
-                     )));</code></pre>
- <p>Este <a href="https://docs.redplanetlabs.com/concepts/pstates.html">PState</a> representa uma árvore genealógica onde cada pessoa é identificada por um UUID e possui campos para seus pais, nome e filhos.</p>
-<h3 id="conceitos-do-rama">Conceitos do Rama</h3>
-<p>Um aplicativo Rama é chamado de &ldquo;módulo&rdquo; e segue uma arquitetura baseada em eventos:</p>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-3">
+<h3 id="headline-3">
+Exemplo: Armazenamento e Travessia de Grafos
+</h3>
+<div id="outline-text-headline-3" class="outline-text-3">
+<p>
+Para demonstrar a potência do Rama, vamos analisar a implementação de um backend para armazenamento de grafos e execução de consultas rápidas de travessia. O exemplo específico é uma árvore genealógica, onde cada nó (pessoa) tem dois pais e qualquer número de filhos.</p>
+<div id="outline-container-headline-4" class="outline-4">
+<h4 id="headline-4">
+Definindo o Modelo de Dados
+</h4>
+<div id="outline-text-headline-4" class="outline-text-4">
+<p>
+No Rama, os datastores indexados são chamados de <a href="https://docs.redplanetlabs.com/concepts/pstates.html">PStates</a> (&#34;partitioned state&#34;). Ao contrário de bancos de dados tradicionais com modelos fixos, os PStates permitem infinitos modelos de dados através da composição de estruturas simples:</p>
+<div class="src src-clojure">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-clojure" data-lang="clojure"><span style="display:flex;"><span>(<span style="color:#a6e22e">declare-pstate</span>
+</span></span><span style="display:flex;"><span>  topology
+</span></span><span style="display:flex;"><span>  $$family-tree
+</span></span><span style="display:flex;"><span>  {UUID (<span style="color:#a6e22e">fixed-keys-schema</span>
+</span></span><span style="display:flex;"><span>          {<span style="color:#e6db74">:parent1</span> UUID
+</span></span><span style="display:flex;"><span>           <span style="color:#e6db74">:parent2</span> UUID
+</span></span><span style="display:flex;"><span>           <span style="color:#e6db74">:name</span> String
+</span></span><span style="display:flex;"><span>           <span style="color:#e6db74">:children</span> <span style="color:#f92672">#</span>{UUID}})})</span></span></code></pre></div>
+</div>
+<p>
+Na versão Java:</p>
+<div class="src src-java">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-java" data-lang="java"><span style="display:flex;"><span>topology.<span style="color:#a6e22e">pstate</span>(
+</span></span><span style="display:flex;"><span>  <span style="color:#e6db74">&#34;$$family-tree&#34;</span>,
+</span></span><span style="display:flex;"><span>  PState.<span style="color:#a6e22e">mapSchema</span>(UUID.<span style="color:#a6e22e">class</span>,
+</span></span><span style="display:flex;"><span>                   PState.<span style="color:#a6e22e">fixedKeysSchema</span>(
+</span></span><span style="display:flex;"><span>                     <span style="color:#e6db74">&#34;parent1&#34;</span>, UUID.<span style="color:#a6e22e">class</span>,
+</span></span><span style="display:flex;"><span>                     <span style="color:#e6db74">&#34;parent2&#34;</span>, UUID.<span style="color:#a6e22e">class</span>,
+</span></span><span style="display:flex;"><span>                     <span style="color:#e6db74">&#34;name&#34;</span>, String.<span style="color:#a6e22e">class</span>,
+</span></span><span style="display:flex;"><span>                     <span style="color:#e6db74">&#34;children&#34;</span>, PState.<span style="color:#a6e22e">setSchema</span>(UUID.<span style="color:#a6e22e">class</span>)
+</span></span><span style="display:flex;"><span>                     )));</span></span></code></pre></div>
+</div>
+<p>
+Este <a href="https://docs.redplanetlabs.com/concepts/pstates.html">PState</a> representa uma árvore genealógica onde cada pessoa é identificada por um UUID e possui campos para seus pais, nome e filhos.</p>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-4">
+<h4 id="headline-5">
+Conceitos do Rama
+</h4>
+<div id="outline-text-headline-5" class="outline-text-4">
+<p>
+Um aplicativo Rama é chamado de &#34;módulo&#34; e segue uma arquitetura baseada em eventos:</p>
 <ol>
-<li>Todos os dados entram através de um log distribuído chamado &ldquo;depot&rdquo;</li>
+<li>Todos os dados entram através de um log distribuído chamado &#34;depot&#34;</li>
 <li>Topologias ETL consomem dados desses depots para materializar PStates</li>
 <li>Clientes interagem com o módulo anexando novos dados ao depot ou consultando PStates</li>
 </ol>
-<p>Um módulo é dividido em &ldquo;tarefas&rdquo; que rodam em vários processos e nós, permitindo escalonamento horizontal.</p>
-<h3 id="materializando-o-pstate">Materializando o PState</h3>
-<p>Primeiro, definimos o depot que receberá as informações de novas pessoas:</p>
-
-
-  <pre><code class="language-clojure">(declare-depot setup *people-depot (hash-by :id))</code></pre>
- <p>Em seguida, implementamos a topologia para consumir dados do depot e materializar o PState:</p>
-
-
-  <pre><code class="language-clojure">(&lt;&lt;sources topology
-  (source&gt; *people-depot :&gt; {:keys [*id *parent1 *parent2] :as *person})
-  (local-transform&gt;
-    [(keypath *id) (termval (dissoc *person :id))]
-    $$family-tree)
-  (ops/explode [*parent1 *parent2] :&gt; *parent)
-  (|hash *parent)
-  (local-transform&gt;
-    [(keypath *parent) :children NONE-ELEM (termval *id)]
-    $$family-tree))</code></pre>
- <p>Este código:</p>
+<p>Um módulo é dividido em &#34;tarefas&#34; que rodam em vários processos e nós, permitindo escalonamento horizontal.</p>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-4">
+<h4 id="headline-6">
+Materializando o PState
+</h4>
+<div id="outline-text-headline-6" class="outline-text-4">
+<p>
+Primeiro, definimos o depot que receberá as informações de novas pessoas:</p>
+<div class="src src-clojure">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-clojure" data-lang="clojure"><span style="display:flex;"><span>(<span style="color:#a6e22e">declare-depot</span> setup *people-depot (<span style="color:#a6e22e">hash-by</span> <span style="color:#e6db74">:id</span>))</span></span></code></pre></div>
+</div>
+<p>
+Em seguida, implementamos a topologia para consumir dados do depot e materializar o PState:</p>
+<div class="src src-clojure">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-clojure" data-lang="clojure"><span style="display:flex;"><span>(<span style="color:#a6e22e">&lt;&lt;sources</span> topology
+</span></span><span style="display:flex;"><span>  (<span style="color:#a6e22e">source&gt;</span> *people-depot <span style="color:#e6db74">:&gt;</span> {<span style="color:#e6db74">:keys</span> [*id *parent1 *parent2] <span style="color:#e6db74">:as</span> *person})
+</span></span><span style="display:flex;"><span>  (<span style="color:#a6e22e">local-transform&gt;</span>
+</span></span><span style="display:flex;"><span>    [(<span style="color:#a6e22e">keypath</span> *id) (<span style="color:#a6e22e">termval</span> (dissoc *person <span style="color:#e6db74">:id</span>))]
+</span></span><span style="display:flex;"><span>    $$family-tree)
+</span></span><span style="display:flex;"><span>  (<span style="color:#a6e22e">ops/explode</span> [*parent1 *parent2] <span style="color:#e6db74">:&gt;</span> *parent)
+</span></span><span style="display:flex;"><span>  (<span style="color:#960050;background-color:#1e0010">|</span>hash *parent)
+</span></span><span style="display:flex;"><span>  (<span style="color:#a6e22e">local-transform&gt;</span>
+</span></span><span style="display:flex;"><span>    [(<span style="color:#a6e22e">keypath</span> *parent) <span style="color:#e6db74">:children</span> NONE-ELEM (<span style="color:#a6e22e">termval</span> *id)]
+</span></span><span style="display:flex;"><span>    $$family-tree))</span></span></code></pre></div>
+</div>
+<p>
+Este código:</p>
 <ol>
 <li>Cria um novo nó para a pessoa com seus atributos</li>
 <li>Atualiza cada pai para listar a nova pessoa como filho</li>
 <li>Utiliza particionamento para garantir eficiência e paralelismo</li>
 </ol>
-<h3 id="implementando-consultas-de-travessia-de-grafo">Implementando Consultas de Travessia de Grafo</h3>
-<p>As duas consultas implementadas são:</p>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-4">
+<h4 id="headline-7">
+Implementando Consultas de Travessia de Grafo
+</h4>
+<div id="outline-text-headline-7" class="outline-text-4">
+<p>
+As duas consultas implementadas são:</p>
 <ol>
 <li>Encontrar todos os ancestrais de uma pessoa dentro de N gerações</li>
 <li>Contar quantos descendentes diretos uma pessoa tem em cada geração sucessiva</li>
 </ol>
-<h4 id="consulta-de-ancestrais">Consulta de Ancestrais</h4>
-<p>A implementação usa um loop que examina iterativamente os pais de um nó:</p>
-
-
-  <pre><code class="language-clojure">(&lt;&lt;query-topology topologies &#34;ancestors&#34;
-  [*start-id *num-generations :&gt; *ancestors]
-  (loop&lt;- [*id *start-id
-           *generation 0
-           :&gt; *ancestor]
-    (filter&gt; (&lt;= *generation *num-generations))
-    (|hash *id)
-    (local-select&gt; [(keypath *id) (multi-path :parent1 :parent2) some?]
-      $$family-tree
-      :&gt; *parent)
-    (:&gt; *parent)
-    (continue&gt; *parent (inc *generation)))
-  (|origin)
-  (aggs/&#43;set-agg *ancestor :&gt; *ancestors))</code></pre>
- <p>Esta implementação:</p>
+<div id="outline-container-headline-8" class="outline-5">
+<h5 id="headline-8">
+Consulta de Ancestrais
+</h5>
+<div id="outline-text-headline-8" class="outline-text-5">
+<p>
+A implementação usa um loop que examina iterativamente os pais de um nó:</p>
+<div class="src src-clojure">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-clojure" data-lang="clojure"><span style="display:flex;"><span>(<span style="color:#a6e22e">&lt;&lt;query-topology</span> topologies <span style="color:#e6db74">&#34;ancestors&#34;</span>
+</span></span><span style="display:flex;"><span>  [*start-id *num-generations <span style="color:#e6db74">:&gt;</span> *ancestors]
+</span></span><span style="display:flex;"><span>  (<span style="color:#a6e22e">loop&lt;-</span> [*id *start-id
+</span></span><span style="display:flex;"><span>           *generation <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>           <span style="color:#e6db74">:&gt;</span> *ancestor]
+</span></span><span style="display:flex;"><span>    (<span style="color:#a6e22e">filter&gt;</span> (&lt;= *generation *num-generations))
+</span></span><span style="display:flex;"><span>    (<span style="color:#960050;background-color:#1e0010">|</span>hash *id)
+</span></span><span style="display:flex;"><span>    (<span style="color:#a6e22e">local-select&gt;</span> [(<span style="color:#a6e22e">keypath</span> *id) (<span style="color:#a6e22e">multi-path</span> <span style="color:#e6db74">:parent1</span> <span style="color:#e6db74">:parent2</span>) some?]
+</span></span><span style="display:flex;"><span>      $$family-tree
+</span></span><span style="display:flex;"><span>      <span style="color:#e6db74">:&gt;</span> *parent)
+</span></span><span style="display:flex;"><span>    (<span style="color:#e6db74">:&gt;</span> *parent)
+</span></span><span style="display:flex;"><span>    (<span style="color:#a6e22e">continue&gt;</span> *parent (inc *generation)))
+</span></span><span style="display:flex;"><span>  (<span style="color:#960050;background-color:#1e0010">|</span>origin)
+</span></span><span style="display:flex;"><span>  (<span style="color:#a6e22e">aggs/+set-agg</span> *ancestor <span style="color:#e6db74">:&gt;</span> *ancestors))</span></span></code></pre></div>
+</div>
+<p>
+Esta implementação:</p>
 <ol>
 <li>Inicia com o ID fornecido e geração 0</li>
 <li>Verifica se ainda está dentro do limite de gerações</li>
@@ -131,32 +184,56 @@
 <li>Continua a travessia com cada pai, incrementando a contagem de gerações</li>
 <li>Agrega todos os ancestrais encontrados em um conjunto</li>
 </ol>
-<h4 id="consulta-de-contagem-de-descendentes">Consulta de Contagem de Descendentes</h4>
-<p>Similar à consulta anterior, mas percorre os filhos e conta por geração:</p>
-
-
-  <pre><code class="language-clojure">(&lt;&lt;query-topology topologies &#34;descendants-count&#34;
-  [*start-id *num-generations :&gt; *result]
-  (loop&lt;- [*id *start-id
-           *generation 0 :&gt; *gen *count]
-    (filter&gt; (&lt; *generation *num-generations))
-    (|hash *id)
-    (local-select&gt; [(keypath *id) :children] $$family-tree :&gt; *children)
-    (:&gt; *generation (count *children))
-    (ops/explode *children :&gt; *c)
-    (continue&gt; *c (inc *generation)))
-  (|origin)
-  (&#43;compound {*gen (aggs/&#43;sum *count)} :&gt; *result))</code></pre>
- <p>O resultado é um mapa de números de geração para contagens de descendentes.</p>
-<h2 id="conclusão">Conclusão</h2>
-<p>Com Rama, é possível construir o equivalente a um banco de dados de grafos personalizado em apenas 60 linhas de código. Não há trabalho adicional necessário para implantação, atualização e escalonamento, pois tudo está integrado.</p>
-<p>A arquitetura baseada em eventos do Rama proporciona:</p>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-5">
+<h5 id="headline-9">
+Consulta de Contagem de Descendentes
+</h5>
+<div id="outline-text-headline-9" class="outline-text-5">
+<p>
+Similar à consulta anterior, mas percorre os filhos e conta por geração:</p>
+<div class="src src-clojure">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-clojure" data-lang="clojure"><span style="display:flex;"><span>(<span style="color:#a6e22e">&lt;&lt;query-topology</span> topologies <span style="color:#e6db74">&#34;descendants-count&#34;</span>
+</span></span><span style="display:flex;"><span>  [*start-id *num-generations <span style="color:#e6db74">:&gt;</span> *result]
+</span></span><span style="display:flex;"><span>  (<span style="color:#a6e22e">loop&lt;-</span> [*id *start-id
+</span></span><span style="display:flex;"><span>           *generation <span style="color:#ae81ff">0</span> <span style="color:#e6db74">:&gt;</span> *gen *count]
+</span></span><span style="display:flex;"><span>    (<span style="color:#a6e22e">filter&gt;</span> (&lt; *generation *num-generations))
+</span></span><span style="display:flex;"><span>    (<span style="color:#960050;background-color:#1e0010">|</span>hash *id)
+</span></span><span style="display:flex;"><span>    (<span style="color:#a6e22e">local-select&gt;</span> [(<span style="color:#a6e22e">keypath</span> *id) <span style="color:#e6db74">:children</span>] $$family-tree <span style="color:#e6db74">:&gt;</span> *children)
+</span></span><span style="display:flex;"><span>    (<span style="color:#e6db74">:&gt;</span> *generation (count *children))
+</span></span><span style="display:flex;"><span>    (<span style="color:#a6e22e">ops/explode</span> *children <span style="color:#e6db74">:&gt;</span> *c)
+</span></span><span style="display:flex;"><span>    (<span style="color:#a6e22e">continue&gt;</span> *c (inc *generation)))
+</span></span><span style="display:flex;"><span>  (<span style="color:#960050;background-color:#1e0010">|</span>origin)
+</span></span><span style="display:flex;"><span>  (<span style="color:#a6e22e">+compound</span> {*gen (<span style="color:#a6e22e">aggs/+sum</span> *count)} <span style="color:#e6db74">:&gt;</span> *result))</span></span></code></pre></div>
+</div>
+<p>
+O resultado é um mapa de números de geração para contagens de descendentes.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-10" class="outline-3">
+<h3 id="headline-10">
+Conclusão
+</h3>
+<div id="outline-text-headline-10" class="outline-text-3">
+<p>
+Com Rama, é possível construir o equivalente a um banco de dados de grafos personalizado em apenas 60 linhas de código. Não há trabalho adicional necessário para implantação, atualização e escalonamento, pois tudo está integrado.</p>
+<p>
+A arquitetura baseada em eventos do Rama proporciona:</p>
 <ul>
 <li>Log de auditoria de todas as mudanças</li>
 <li>Capacidade de recomputar PStates (útil em caso de bugs que corrompam dados)</li>
 <li>Tolerância a falhas superior a abordagens alternativas</li>
 </ul>
-<p>O Rama é gratuito para clusters de produção com até dois nós e pode ser baixado no site da Red Planet Labs.</p>
+<p>O Rama é gratuito para clusters de produção com até dois nós e pode ser baixado no site da Red Planet Labs. </p>
+</div>
+</div>
+</div>
+</div>
 
   </div>
 </article>

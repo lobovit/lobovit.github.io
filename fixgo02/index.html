@@ -29,141 +29,194 @@
     <p class="meta"><time>2026-05-08</time> · <span class="tag">Go</span><span class="tag">tree-sitter</span><span class="tag">static-analysis</span><span class="tag">ollanta</span><span class="tag">CGo</span></p>
   </header>
   <div class="content">
-    <p>O <a href="https://tree-sitter.github.io/tree-sitter/">Tree-sitter</a> é uma biblioteca que produz árvores sintáticas concretas para dezenas de linguagens. Diferente de um parser tradicional que produz AST, tree-sitter foi projetado para editores de código e ele é incremental, tolerante a erros e capaz de reanalisar um arquivo em milissegundos após uma edição. O <a href="https://neovim.io/">Neovim</a>, <a href="https://atom.io/">Atom</a> (RIP), <a href="https://zed.dev/">Zed</a> e o próprio <a href="https://github.blog/engineering/user-experience/remodeling-the-github-code-editor/">GitHub</a> usam tree-sitter para syntax highlighting, folding e code navigation.</p>
-<p>O <a href="https://github.com/scovl/ollanta">Ollanta</a> usa tree-sitter de uma forma diferente: para <strong>análise estática</strong>. Em vez de realçar sintaxe, ele usa S-expressions para detectar padrões problemáticos no código-fonte:</p>
-
-
-  <pre><code class="language-scheme">;; Encontra chamadas a eval() em JavaScript
-(call_expression
-  function: (identifier) @eval
-  (#eq? @eval &#34;eval&#34;)
-) @expr</code></pre>
- <p>Essa query diz: &ldquo;encontre toda <code>call_expression</code> cuja função seja um identificador de nome <code>eval</code>&rdquo;. O <code>(#eq? @eval &quot;eval&quot;)</code> é um <strong>predicado</strong>. Isto é, uma condição extra que filtra matches estruturais pelo texto do nó capturado. Sem ele, qualquer chamada de função (de <code>console.log</code> a <code>fetch</code>) seria um match.</p>
+    
+<p>
+O <a href="https://tree-sitter.github.io/tree-sitter/">Tree-sitter</a> é uma biblioteca que produz árvores sintáticas concretas para dezenas de linguagens. Diferente de um parser tradicional que produz AST, tree-sitter foi projetado para editores de código e ele é incremental, tolerante a erros e capaz de reanalisar um arquivo em milissegundos após uma edição. O <a href="https://neovim.io/">Neovim</a>, <a href="https://atom.io/">Atom</a> (RIP), <a href="https://zed.dev/">Zed</a> e o próprio <a href="https://github.blog/engineering/user-experience/remodeling-the-github-code-editor/">GitHub</a> usam tree-sitter para syntax highlighting, folding e code navigation.</p>
+<p>
+O <a href="https://github.com/scovl/ollanta">Ollanta</a> usa tree-sitter de uma forma diferente: para <em>análise estática</em>. Em vez de realçar sintaxe, ele usa S-expressions para detectar padrões problemáticos no código-fonte:</p>
+<div class="src src-scheme">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-scheme" data-lang="scheme"><span style="display:flex;"><span><span style="color:#75715e">;; Encontra chamadas a eval() em JavaScript</span>
+</span></span><span style="display:flex;"><span>(<span style="color:#a6e22e">call_expression</span>
+</span></span><span style="display:flex;"><span>  function: (<span style="color:#a6e22e">identifier</span>) @eval
+</span></span><span style="display:flex;"><span>  (<span style="color:#f92672">#</span>eq? @eval <span style="color:#e6db74">&#34;eval&#34;</span>)
+</span></span><span style="display:flex;"><span>) @expr</span></span></code></pre></div>
+</div>
+<p>
+Essa query diz: &#34;encontre toda <code>call_expression</code> cuja função seja um identificador de nome <code>eval</code>&#34;. O <code>(#eq? @eval &#34;eval&#34;)</code> é um <em>predicado</em>. Isto é, uma condição extra que filtra matches estruturais pelo texto do nó capturado. Sem ele, qualquer chamada de função (de <code>console.log</code> a <code>fetch</code>) seria um match.</p>
 <blockquote>
-<p><strong>Importante:</strong> em computação e lógica matemática, <strong>predicado</strong> é a tradução oficial e consagrada para <em>predicate</em>. Refere-se especificamente a uma expressão, condição ou função que é avaliada e retorna um valor booleano (verdadeiro ou falso). Na programação funcional, por exemplo, é padrão falarmos em &ldquo;passar uma função predicado para o <code>filter</code>&rdquo;.</p>
+<p><em>Importante:</em> em computação e lógica matemática, <em>predicado</em> é a tradução oficial e consagrada para <span style="text-decoration: underline;">predicate</span>. Refere-se especificamente a uma expressão, condição ou função que é avaliada e retorna um valor booleano (verdadeiro ou falso). Na programação funcional, por exemplo, é padrão falarmos em &#34;passar uma função predicado para o <code>filter</code>&#34;.</p>
 </blockquote>
-<p>O termo aparece nas S-expressions do tree-sitter com a sintaxe <code>(#eq? ...)</code>, <code>(#match? ...)</code>, etc.. são predicados que o motor de queries avalia para decidir se um match estrutural deve ser mantido ou descartado.</p>
-<p>E foi exatamente isso que aconteceu. O Ollanta estava reportando <code>eval()</code> em cada linha de código JavaScript que continha uma chamada de função. Centenas delas. O <code>configureProjectFlowFeature({ render })</code>, <code>bootBrowserApp()</code>, <code>renderView()</code>, tudo era &ldquo;eval&rdquo; para o scanner. Este artigo conta a história de como uma única linha de código ausente transformou 20 regras tree-sitter em geradores de ruído e falsos positivos.</p>
-<img src="https://tree-sitter.github.io/tree-sitter/assets/images/tree-sitter-small.png" alt="ollanta" width="250" style="display: block; margin: 1em auto; opacity: 1; transition: opacity 0.3s;">
+<p>
+O termo aparece nas S-expressions do tree-sitter com a sintaxe <code>(#eq? ...)</code>, <code>(#match? ...)</code>, etc.. são predicados que o motor de queries avalia para decidir se um match estrutural deve ser mantido ou descartado.</p>
+<p>
+E foi exatamente isso que aconteceu. O Ollanta estava reportando <code>eval()</code> em cada linha de código JavaScript que continha uma chamada de função. Centenas delas. O <code>configureProjectFlowFeature({ render })</code>, <code>bootBrowserApp()</code>, <code>renderView()</code>, tudo era &#34;eval&#34; para o scanner. Este artigo conta a história de como uma única linha de código ausente transformou 20 regras tree-sitter em geradores de ruído e falsos positivos.</p>
+<p>
+&lt;img src=&#34;<img src="https://tree-sitter.github.io/tree-sitter/assets/images/tree-sitter-small.png" alt="https://tree-sitter.github.io/tree-sitter/assets/images/tree-sitter-small.png" title="https://tree-sitter.github.io/tree-sitter/assets/images/tree-sitter-small.png" />&#34; alt=&#34;ollanta&#34; width=&#34;250&#34; style=&#34;display: block; margin: 1em auto; opacity: 1; transition: opacity 0.3s;&#34;&gt;</p>
 <blockquote>
-<p><strong>Saiba mais:</strong> tree-sitter foi criado por <a href="https://github.com/maxbrunsfeld">Max Brunsfeld</a> enquanto trabalhava no <a href="https://atom.io/">Atom Editor</a>. A ideia era substituir o sistema de syntax highlighting baseado em regex do TextMate por um parser real que entendesse a estrutura do código. O resultado foi tão bom que o GitHub adotou para o syntax highlighting do próprio site. A versão em Go que o Ollanta usa é o <a href="https://github.com/smacker/go-tree-sitter">go-tree-sitter</a>, um binding CGo que expõe a API em C da tree-sitter para Go.</p>
+<p><em>Saiba mais:</em> tree-sitter foi criado por <a href="https://github.com/maxbrunsfeld">Max Brunsfeld</a> enquanto trabalhava no <a href="https://atom.io/">Atom Editor</a>. A ideia era substituir o sistema de syntax highlighting baseado em regex do TextMate por um parser real que entendesse a estrutura do código. O resultado foi tão bom que o GitHub adotou para o syntax highlighting do próprio site. A versão em Go que o Ollanta usa é o <a href="https://github.com/smacker/go-tree-sitter">go-tree-sitter</a>, um binding CGo que expõe a API em C da tree-sitter para Go.</p>
 </blockquote>
-<h2 id="a-descoberta">A descoberta</h2>
-<p>Tudo começou com um usuário (eu mesmo, escaneando o próprio frontend do Ollanta) reportando um número absurdo de issues do tipo <code>js:detect-eval</code>:</p>
-
-
-  <pre><code class="language-bash">critical  Vulnerability
-eval() executes arbitrary code and must not be used with untrusted input
-app/main.js:L13     js:detect-eval
-app/main.js:L14     js:detect-eval
-app/main.js:L15     js:detect-eval
-...mais 150 linhas...</code></pre>
- <p>Toda chamada de função em cada arquivo <code>.js</code> aparecia como <code>eval()</code>. A primeira reação foi verificar o código: será que o frontend realmente tem 150 chamadas a <code>eval()</code> escondidas?</p>
-
-
-  <pre><code class="language-javascript">// app/main.js
-configureProjectFlowFeature({ render });
-configureActivityFeature({ render });
-configureCodeFeature({ render });</code></pre>
- <p>Zero <code>eval()</code> em 682 linhas de código. Falso positivo. Mas o scanner sempre retornando os mesmos resultados. A regra <code>js:detect-eval</code> usa a seguinte query tree-sitter:</p>
-
-
-  <pre><code class="language-go">// detect_eval_javascript.go
-query := `(call_expression
-  function: (identifier) @eval
-  (#eq? @eval &#34;eval&#34;)
-) @expr`
-matches, err := ctx.Query.Run(ctx.ParsedFile, query, ctx.Grammar)</code></pre>
- <p>O predicado <code>(#eq? @eval &quot;eval&quot;)</code> deveria garantir que só matches com texto literal <code>&quot;eval&quot;</code> fossem retornados. Mas o scanner retornava <strong>todas</strong> as <code>call_expression</code>. Duas hipóteses:</p>
+<div id="outline-container-headline-1" class="outline-3">
+<h3 id="headline-1">
+A descoberta
+</h3>
+<div id="outline-text-headline-1" class="outline-text-3">
+<p>
+Tudo começou com um usuário (eu mesmo, escaneando o próprio frontend do Ollanta) reportando um número absurdo de issues do tipo <code>js:detect-eval</code>:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>critical  Vulnerability
+</span></span><span style="display:flex;"><span>eval<span style="color:#f92672">()</span> executes arbitrary code and must not be used with untrusted input
+</span></span><span style="display:flex;"><span>app/main.js:L13     js:detect-eval
+</span></span><span style="display:flex;"><span>app/main.js:L14     js:detect-eval
+</span></span><span style="display:flex;"><span>app/main.js:L15     js:detect-eval
+</span></span><span style="display:flex;"><span>...mais <span style="color:#ae81ff">150</span> linhas...</span></span></code></pre></div>
+</div>
+<p>
+Toda chamada de função em cada arquivo <code>.js</code> aparecia como <code>eval()</code>. A primeira reação foi verificar o código: será que o frontend realmente tem 150 chamadas a <code>eval()</code> escondidas?</p>
+<div class="src src-javascript">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-javascript" data-lang="javascript"><span style="display:flex;"><span><span style="color:#75715e">// app/main.js
+</span></span></span><span style="display:flex;"><span><span style="color:#a6e22e">configureProjectFlowFeature</span>({ <span style="color:#a6e22e">render</span> });
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">configureActivityFeature</span>({ <span style="color:#a6e22e">render</span> });
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">configureCodeFeature</span>({ <span style="color:#a6e22e">render</span> });</span></span></code></pre></div>
+</div>
+<p>
+Zero <code>eval()</code> em 682 linhas de código. Falso positivo. Mas o scanner sempre retornando os mesmos resultados. A regra <code>js:detect-eval</code> usa a seguinte query tree-sitter:</p>
+<div class="src src-go">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// detect_eval_javascript.go</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">query</span> <span style="color:#f92672">:=</span> <span style="color:#e6db74">`(call_expression
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">  function: (identifier) @eval
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">  (#eq? @eval &#34;eval&#34;)
+</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">) @expr`</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">matches</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">ctx</span>.<span style="color:#a6e22e">Query</span>.<span style="color:#a6e22e">Run</span>(<span style="color:#a6e22e">ctx</span>.<span style="color:#a6e22e">ParsedFile</span>, <span style="color:#a6e22e">query</span>, <span style="color:#a6e22e">ctx</span>.<span style="color:#a6e22e">Grammar</span>)</span></span></code></pre></div>
+</div>
+<p>
+O predicado <code>(#eq? @eval &#34;eval&#34;)</code> deveria garantir que só matches com texto literal <code>&#34;eval&#34;</code> fossem retornados. Mas o scanner retornava <em>todas</em> as <code>call_expression</code>. Duas hipóteses:</p>
 <ol>
 <li>O parser tree-sitter está quebrado e não reconhece a sintaxe do predicado</li>
 <li>O <code>go-tree-sitter</code> não está avaliando o predicado</li>
 </ol>
 <p>Hipótese 1 é fácil de descartar: se o parser não reconhecesse <code>(#eq?)</code>, a query nem compilaria.</p>
 <blockquote>
-<p><strong>Saiba mais:</strong> o ciclo de vida de uma query tree-sitter começa com <strong>compilação</strong> (<code>ts_query_new</code>), que valida a sintaxe da S-expression e dos predicados. Se o predicado for inválido (argumentos errados, tipo errado), a compilação falha com um <code>QueryError</code>. Depois, a query é <strong>executada</strong> via cursor (<code>ts_query_cursor_exec</code> e <code>ts_query_cursor_next_match</code>), que retorna matches <strong>estruturais</strong> — isto é, nós que casam com os padrões da S-expression <strong>independentemente dos predicados</strong>. A <strong>avaliação dos predicados</strong> é responsabilidade do binding em linguagem hospedeira (Go, Python, Rust, etc.), não do C da tree-sitter.</p>
+<p><em>Saiba mais:</em> o ciclo de vida de uma query tree-sitter começa com <em>compilação</em> (<code>ts_query_new</code>), que valida a sintaxe da S-expression e dos predicados. Se o predicado for inválido (argumentos errados, tipo errado), a compilação falha com um <code>QueryError</code>. Depois, a query é <em>executada</em> via cursor (<code>ts_query_cursor_exec</code> e <code>ts_query_cursor_next_match</code>), que retorna matches <em>estruturais</em> — isto é, nós que casam com os padrões da S-expression <em>independentemente dos predicados</em>. A <em>avaliação dos predicados</em> é responsabilidade do binding em linguagem hospedeira (Go, Python, Rust, etc.), não do C da tree-sitter.</p>
 </blockquote>
-<h2 id="a-biblioteca">A biblioteca</h2>
-<p>O <code>go-tree-sitter</code> expõe a API tree-sitter através dessas funções principais:</p>
-
-
-  <pre><code class="language-go">// bindings.go — smacker/go-tree-sitter
-
-func NewQuery(pattern []byte, lang *Language) (*Query, error)  // compila a query
-func (qc *QueryCursor) Exec(q *Query, n *Node)                 // executa no nó raiz
-func (qc *QueryCursor) NextMatch() (*QueryMatch, bool)          // itera sobre matches</code></pre>
- <p>Olhando a documentação, encontrei o método que faltava:</p>
-
-
-  <pre><code class="language-go">func (qc *QueryCursor) FilterPredicates(m *QueryMatch, input []byte) *QueryMatch</code></pre>
- <p>Ele existe. Foi implementado com suporte completo a <code>#eq?</code>, <code>#not-eq?</code>, <code>#match?</code>, <code>#not-match?</code>. Tem testes e funciona. Mas e o problema? <strong>Ninguém o chamava.</strong></p>
-<h2 id="o-ponto-cego">O ponto cego</h2>
-<p>O <code>QueryRunner</code> do Ollanta em <code>ollantaparser/query.go</code>:</p>
-
-
-  <pre><code class="language-go">func (qr *QueryRunner) Run(f *ParsedFile, query string, lang Language) ([]QueryMatch, error) {
-    q, err := sitter.NewQuery([]byte(query), lang.tsLanguage())
-    // ...
-    cursor.Exec(q, f.RootNode())
-
-    var matches []QueryMatch
-    for {
-        m, ok := cursor.NextMatch()
-        if !ok {
-            break
-        }
-        qm := QueryMatch{Captures: make(map[string]*sitter.Node, len(m.Captures))}
-        for _, cap := range m.Captures {
-            name := q.CaptureNameForId(cap.Index)
-            qm.Captures[name] = cap.Node
-        }
-        matches = append(matches, qm)
-    }
-    return matches, nil
-}</code></pre>
- <p>Perceba que o <code>NextMatch()</code> retorna matches estruturais. <code>FilterPredicates()</code> filtra pelos predicados. O <code>Run()</code> chamava o primeiro e ignorava o segundo. Um <code>for</code> que devolve <strong>tudo que estruturalmente casa</strong>, sem aplicar o filtro semântico. Isso afetava <strong>20 regras</strong> que usavam <code>#eq?</code> ou <code>#match?</code>:</p>
-
-
-  <pre><code class="language-go">// Detectar eval()
-(#eq? @eval &#34;eval&#34;)
-
-// Detectar WebSocket
-(#eq? @ctor &#34;WebSocket&#34;)
-
-// Detectar pickle.load
-(#eq? @mod &#34;pickle&#34;)
-(#match? @func &#34;^(load|loads)$&#34;)
-
-// Detectar hashlib.md5
-(#eq? @mod &#34;hashlib&#34;)
-(#match? @func &#34;^(md5|sha1)$&#34;)</code></pre>
- <p>Todas retornando falsos positivos em todas as linguagens. As regras Python (pickle, hashlib, subprocess) e JavaScript (eval, WebSocket, child_process) compartilhavam o mesmo destino: qualquer chamada de função que casasse com a S-expression era reportada, porque o predicado <code>#eq?</code> ou <code>#match?</code> nunca era avaliado. O binding Go expõe <code>FilterPredicates</code> desde que o klothoplatform contribuiu com a implementação, mas o <code>QueryRunner.Run()</code> do Ollanta nunca foi atualizado para usá-lo.</p>
-<h2 id="por-que-demorei-para-perceber">Por que demorei para perceber?</h2>
-<p>O teste existente para <code>js:detect-eval</code>:</p>
-
-
-  <pre><code class="language-go">func TestTreeSitterSensor_JS_DetectEval(t *testing.T) {
-    src := []byte(&#34;const r = eval(input);\n&#34;)
-    s := defaultSensor()
-    issues, err := s.Analyze(&#34;test.js&#34;, src, &#34;javascript&#34;, nil)
-    // ... verifica se encontrou js:detect-eval
-}</code></pre>
- <p>Testa o caso <strong>positivo</strong> — existe um <code>eval(input)</code>, ele é detectado. Mas não testa o caso <strong>negativo</strong> — chamadas que <strong>não</strong> são <code>eval()</code> não deveriam ser detectadas.</p>
-<p>Sem teste negativo, o bug passou despercebido. Os 35 testes da suíte continuavam verdes porque todos só verificavam a presença de issues, nunca a ausência de falsos positivos. O código que retorna tudo sem filtrar ainda passa no teste, porque <code>eval(input)</code> é estruturalmente um <code>call_expression</code> com <code>function: (identifier)</code> — o match está correto, o filtro é que nunca roda.</p>
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-3">
+<h3 id="headline-2">
+A biblioteca
+</h3>
+<div id="outline-text-headline-2" class="outline-text-3">
+<p>
+O <code>go-tree-sitter</code> expõe a API tree-sitter através dessas funções principais:</p>
+<div class="src src-go">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// bindings.go — smacker/go-tree-sitter</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">NewQuery</span>(<span style="color:#a6e22e">pattern</span> []<span style="color:#66d9ef">byte</span>, <span style="color:#a6e22e">lang</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">Language</span>) (<span style="color:#f92672">*</span><span style="color:#a6e22e">Query</span>, <span style="color:#66d9ef">error</span>)  <span style="color:#75715e">// compila a query</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">qc</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">QueryCursor</span>) <span style="color:#a6e22e">Exec</span>(<span style="color:#a6e22e">q</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">Query</span>, <span style="color:#a6e22e">n</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">Node</span>)                 <span style="color:#75715e">// executa no nó raiz</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">qc</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">QueryCursor</span>) <span style="color:#a6e22e">NextMatch</span>() (<span style="color:#f92672">*</span><span style="color:#a6e22e">QueryMatch</span>, <span style="color:#66d9ef">bool</span>)          <span style="color:#75715e">// itera sobre matches</span></span></span></code></pre></div>
+</div>
+<p>
+Olhando a documentação, encontrei o método que faltava:</p>
+<div class="src src-go">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">qc</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">QueryCursor</span>) <span style="color:#a6e22e">FilterPredicates</span>(<span style="color:#a6e22e">m</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">QueryMatch</span>, <span style="color:#a6e22e">input</span> []<span style="color:#66d9ef">byte</span>) <span style="color:#f92672">*</span><span style="color:#a6e22e">QueryMatch</span></span></span></code></pre></div>
+</div>
+<p>
+Ele existe. Foi implementado com suporte completo a <code>#eq?</code>, <code>#not-eq?</code>, <code>#match?</code>, <code>#not-match?</code>. Tem testes e funciona. Mas e o problema? <em>Ninguém o chamava.</em></p>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-3">
+<h3 id="headline-3">
+O ponto cego
+</h3>
+<div id="outline-text-headline-3" class="outline-text-3">
+<p>
+O <code>QueryRunner</code> do Ollanta em <code>ollantaparser/query.go</code>:</p>
+<div class="src src-go">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">qr</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">QueryRunner</span>) <span style="color:#a6e22e">Run</span>(<span style="color:#a6e22e">f</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">ParsedFile</span>, <span style="color:#a6e22e">query</span> <span style="color:#66d9ef">string</span>, <span style="color:#a6e22e">lang</span> <span style="color:#a6e22e">Language</span>) ([]<span style="color:#a6e22e">QueryMatch</span>, <span style="color:#66d9ef">error</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">q</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">sitter</span>.<span style="color:#a6e22e">NewQuery</span>([]byte(<span style="color:#a6e22e">query</span>), <span style="color:#a6e22e">lang</span>.<span style="color:#a6e22e">tsLanguage</span>())
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ...</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">cursor</span>.<span style="color:#a6e22e">Exec</span>(<span style="color:#a6e22e">q</span>, <span style="color:#a6e22e">f</span>.<span style="color:#a6e22e">RootNode</span>())
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">matches</span> []<span style="color:#a6e22e">QueryMatch</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">m</span>, <span style="color:#a6e22e">ok</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">cursor</span>.<span style="color:#a6e22e">NextMatch</span>()
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> !<span style="color:#a6e22e">ok</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">break</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">qm</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">QueryMatch</span>{<span style="color:#a6e22e">Captures</span>: make(<span style="color:#66d9ef">map</span>[<span style="color:#66d9ef">string</span>]<span style="color:#f92672">*</span><span style="color:#a6e22e">sitter</span>.<span style="color:#a6e22e">Node</span>, len(<span style="color:#a6e22e">m</span>.<span style="color:#a6e22e">Captures</span>))}
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">cap</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">m</span>.<span style="color:#a6e22e">Captures</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">name</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">q</span>.<span style="color:#a6e22e">CaptureNameForId</span>(<span style="color:#a6e22e">cap</span>.<span style="color:#a6e22e">Index</span>)
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">qm</span>.<span style="color:#a6e22e">Captures</span>[<span style="color:#a6e22e">name</span>] = <span style="color:#a6e22e">cap</span>.<span style="color:#a6e22e">Node</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">matches</span> = append(<span style="color:#a6e22e">matches</span>, <span style="color:#a6e22e">qm</span>)
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">matches</span>, <span style="color:#66d9ef">nil</span>
+</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+</div>
+<p>
+Perceba que o <code>NextMatch()</code> retorna matches estruturais. <code>FilterPredicates()</code> filtra pelos predicados. O <code>Run()</code> chamava o primeiro e ignorava o segundo. Um <code>for</code> que devolve <em>tudo que estruturalmente casa</em>, sem aplicar o filtro semântico. Isso afetava <em>20 regras</em> que usavam <code>#eq?</code> ou <code>#match?</code>:</p>
+<div class="src src-go">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// Detectar eval()</span>
+</span></span><span style="display:flex;"><span>(<span style="color:#960050;background-color:#1e0010">#</span><span style="color:#a6e22e">eq</span><span style="color:#960050;background-color:#1e0010">?</span> <span style="color:#960050;background-color:#1e0010">@</span><span style="color:#a6e22e">eval</span> <span style="color:#e6db74">&#34;eval&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Detectar WebSocket</span>
+</span></span><span style="display:flex;"><span>(<span style="color:#960050;background-color:#1e0010">#</span><span style="color:#a6e22e">eq</span><span style="color:#960050;background-color:#1e0010">?</span> <span style="color:#960050;background-color:#1e0010">@</span><span style="color:#a6e22e">ctor</span> <span style="color:#e6db74">&#34;WebSocket&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Detectar pickle.load</span>
+</span></span><span style="display:flex;"><span>(<span style="color:#960050;background-color:#1e0010">#</span><span style="color:#a6e22e">eq</span><span style="color:#960050;background-color:#1e0010">?</span> <span style="color:#960050;background-color:#1e0010">@</span><span style="color:#a6e22e">mod</span> <span style="color:#e6db74">&#34;pickle&#34;</span>)
+</span></span><span style="display:flex;"><span>(<span style="color:#960050;background-color:#1e0010">#</span><span style="color:#a6e22e">match</span><span style="color:#960050;background-color:#1e0010">?</span> <span style="color:#960050;background-color:#1e0010">@</span><span style="color:#66d9ef">func</span> <span style="color:#e6db74">&#34;^(load|loads)$&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Detectar hashlib.md5</span>
+</span></span><span style="display:flex;"><span>(<span style="color:#960050;background-color:#1e0010">#</span><span style="color:#a6e22e">eq</span><span style="color:#960050;background-color:#1e0010">?</span> <span style="color:#960050;background-color:#1e0010">@</span><span style="color:#a6e22e">mod</span> <span style="color:#e6db74">&#34;hashlib&#34;</span>)
+</span></span><span style="display:flex;"><span>(<span style="color:#960050;background-color:#1e0010">#</span><span style="color:#a6e22e">match</span><span style="color:#960050;background-color:#1e0010">?</span> <span style="color:#960050;background-color:#1e0010">@</span><span style="color:#66d9ef">func</span> <span style="color:#e6db74">&#34;^(md5|sha1)$&#34;</span>)</span></span></code></pre></div>
+</div>
+<p>
+Todas retornando falsos positivos em todas as linguagens. As regras Python (pickle, hashlib, subprocess) e JavaScript (eval, WebSocket, child_process) compartilhavam o mesmo destino: qualquer chamada de função que casasse com a S-expression era reportada, porque o predicado <code>#eq?</code> ou <code>#match?</code> nunca era avaliado. O binding Go expõe <code>FilterPredicates</code> desde que o klothoplatform contribuiu com a implementação, mas o <code>QueryRunner.Run()</code> do Ollanta nunca foi atualizado para usá-lo.</p>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-3">
+<h3 id="headline-4">
+Por que demorei para perceber?
+</h3>
+<div id="outline-text-headline-4" class="outline-text-3">
+<p>
+O teste existente para <code>js:detect-eval</code>:</p>
+<div class="src src-go">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">TestTreeSitterSensor_JS_DetectEval</span>(<span style="color:#a6e22e">t</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">testing</span>.<span style="color:#a6e22e">T</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">src</span> <span style="color:#f92672">:=</span> []byte(<span style="color:#e6db74">&#34;const r = eval(input);\n&#34;</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">s</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">defaultSensor</span>()
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">issues</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">s</span>.<span style="color:#a6e22e">Analyze</span>(<span style="color:#e6db74">&#34;test.js&#34;</span>, <span style="color:#a6e22e">src</span>, <span style="color:#e6db74">&#34;javascript&#34;</span>, <span style="color:#66d9ef">nil</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ... verifica se encontrou js:detect-eval</span>
+</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+</div>
+<p>
+Testa o caso <em>positivo</em> — existe um <code>eval(input)</code>, ele é detectado. Mas não testa o caso <em>negativo</em> — chamadas que <em>não</em> são <code>eval()</code> não deveriam ser detectadas.</p>
+<p>
+Sem teste negativo, o bug passou despercebido. Os 35 testes da suíte continuavam verdes porque todos só verificavam a presença de issues, nunca a ausência de falsos positivos. O código que retorna tudo sem filtrar ainda passa no teste, porque <code>eval(input)</code> é estruturalmente um <code>call_expression</code> com <code>function: (identifier)</code> — o match está correto, o filtro é que nunca roda.</p>
 <blockquote>
-<p><strong>Saiba mais:</strong> esse fenômeno tem nome: <strong>viés de confirmação</strong> em testes. Quando você só testa que &ldquo;a feature funciona&rdquo; mas nunca que &ldquo;a feature não dispara onde não deveria&rdquo;, você está testando a presença do seu código, não a correção dele. Em análise estática, testes negativos são tão importantes quanto positivos — uma regra que só dispara em código suspeito mas nunca em código limpo é o que separa uma ferramenta utilizável de um gerador de ruído.</p>
+<p><em>Saiba mais:</em> esse fenômeno tem nome: <em>viés de confirmação</em> em testes. Quando você só testa que &#34;a feature funciona&#34; mas nunca que &#34;a feature não dispara onde não deveria&#34;, você está testando a presença do seu código, não a correção dele. Em análise estática, testes negativos são tão importantes quanto positivos — uma regra que só dispara em código suspeito mas nunca em código limpo é o que separa uma ferramenta utilizável de um gerador de ruído.</p>
 </blockquote>
-<h2 id="o-contraste">O contraste</h2>
-<p>O que torna esse bug particularmente insidioso é que, à primeira vista, o código parece correto. A query tree-sitter está certa <code>(#eq? @eval &quot;eval&quot;)</code> é a sintaxe padrão e compila sem erro. O <code>QueryRunner</code> também parece correto — ele recebe uma query, executa contra a árvore sintática e retorna matches. Nada grita &ldquo;estou faltando um filtro&rdquo;.</p>
-<p>A verdade é que o design da API tree-sitter separa <strong>matches estruturais</strong> de <strong>predicados semânticos</strong>. O C da tree-sitter retorna matches brutos o binding é que decide se aplica predicados ou não. Em Python, isso é automático. Em Rust, também. Em Go, depende de você chamar <code>FilterPredicates</code> explicitamente. Se você não sabe disso, seu código compila, seus testes passam, e seus usuários recebem 150 falsos positivos.</p>
-<h2 id="a-correção">A correção</h2>
-<p>O fluxograma abaixo mostra o caminho que o código percorre desde o arquivo fonte até o resultado da análise. A seta tracejada em vermelho representa o <strong>bug</strong> sem <code>FilterPredicates</code>, o match estrutural vira falso positivo. A seta cheia em verde representa a <strong>correção</strong> com <code>FilterPredicates</code>, o match é testado contra o predicado e só vira issue se passar:</p>
-
-
-  
-    
-  
-  <div class="mermaid">graph TD
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-3">
+<h3 id="headline-5">
+O contraste
+</h3>
+<div id="outline-text-headline-5" class="outline-text-3">
+<p>
+O que torna esse bug particularmente insidioso é que, à primeira vista, o código parece correto. A query tree-sitter está certa <code>(#eq? @eval &#34;eval&#34;)</code> é a sintaxe padrão e compila sem erro. O <code>QueryRunner</code> também parece correto — ele recebe uma query, executa contra a árvore sintática e retorna matches. Nada grita &#34;estou faltando um filtro&#34;.</p>
+<p>
+A verdade é que o design da API tree-sitter separa <em>matches estruturais</em> de <em>predicados semânticos</em>. O C da tree-sitter retorna matches brutos o binding é que decide se aplica predicados ou não. Em Python, isso é automático. Em Rust, também. Em Go, depende de você chamar <code>FilterPredicates</code> explicitamente. Se você não sabe disso, seu código compila, seus testes passam, e seus usuários recebem 150 falsos positivos.</p>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-3">
+<h3 id="headline-6">
+A correção
+</h3>
+<div id="outline-text-headline-6" class="outline-text-3">
+<p>
+O fluxograma abaixo mostra o caminho que o código percorre desde o arquivo fonte até o resultado da análise. A seta tracejada em vermelho representa o <em>bug</em> sem <code>FilterPredicates</code>, o match estrutural vira falso positivo. A seta cheia em verde representa a <em>correção</em> com <code>FilterPredicates</code>, o match é testado contra o predicado e só vira issue se passar:</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph TD
     A[&#34;📄 Código Fonte&lt;br&gt;ex: configure({render})&#34;]:::code --&gt; B[&#34;🔧 Tree-sitter Parser&#34;]:::parser
     B --&gt; C{&#34;🔍 NextMatch()&lt;br&gt;Match Estrutural&#34;}:::decision
     
@@ -185,65 +238,81 @@ func (qc *QueryCursor) NextMatch() (*QueryMatch, bool)          // itera sobre m
     classDef fp fill:#4e1b2e,stroke:#c06b7a,color:#f0c8d0
     classDef filter fill:#3d2b1e,stroke:#c08b50,color:#f0dcc8
     classDef pass fill:#2d4e2d,stroke:#7ab86b,color:#d0f0c8
-    classDef tp fill:#2d4e3d,stroke:#6bc08b,color:#c8f0d8</div>
- <p>Quatro linhas, um <code>continue</code>:</p>
-
-
-  <pre><code class="language-go">for {
-    m, ok := cursor.NextMatch()
-    if !ok {
-        break
-    }
-    m = cursor.FilterPredicates(m, f.Source)  // ← linha adicionada
-    if len(m.Captures) == 0 {                  // ← linha adicionada
-        continue                                // ← linha adicionada
-    }                                           // ← linha adicionada (chave)
-    qm := QueryMatch{...}
-    for _, cap := range m.Captures { ... }
-    matches = append(matches, qm)
-}</code></pre>
- <p>O <code>FilterPredicates</code> recebe o match bruto e os bytes do arquivo fonte. Ele basicamente faz o seguinte:</p>
+    classDef tp fill:#2d4e3d,stroke:#6bc08b,color:#c8f0d8</code></pre>
+</div>
+<p>
+Quatro linhas, um <code>continue</code>:</p>
+<div class="src src-go">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">for</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">m</span>, <span style="color:#a6e22e">ok</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">cursor</span>.<span style="color:#a6e22e">NextMatch</span>()
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> !<span style="color:#a6e22e">ok</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">break</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">m</span> = <span style="color:#a6e22e">cursor</span>.<span style="color:#a6e22e">FilterPredicates</span>(<span style="color:#a6e22e">m</span>, <span style="color:#a6e22e">f</span>.<span style="color:#a6e22e">Source</span>)  <span style="color:#75715e">// ← linha adicionada</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> len(<span style="color:#a6e22e">m</span>.<span style="color:#a6e22e">Captures</span>) <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> {                  <span style="color:#75715e">// ← linha adicionada</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">continue</span>                                <span style="color:#75715e">// ← linha adicionada</span>
+</span></span><span style="display:flex;"><span>    }                                           <span style="color:#75715e">// ← linha adicionada (chave)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">qm</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">QueryMatch</span>{<span style="color:#f92672">...</span>}
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">cap</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">m</span>.<span style="color:#a6e22e">Captures</span> { <span style="color:#f92672">...</span> }
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">matches</span> = append(<span style="color:#a6e22e">matches</span>, <span style="color:#a6e22e">qm</span>)
+</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+</div>
+<p>
+O <code>FilterPredicates</code> recebe o match bruto e os bytes do arquivo fonte. Ele basicamente faz o seguinte:</p>
 <ol>
 <li>Obtém os predicados definidos para o padrão que gerou aquele match</li>
 <li>Para cada predicado <code>#eq?</code>, compara o texto do nó capturado com o valor esperado</li>
 <li>Para <code>#match?</code>, compila uma regex e testa contra o texto do nó</li>
-<li>Retorna um novo match <strong>com as capturas que passaram em TODOS os predicados</strong></li>
+<li>Retorna um novo match <em>com as capturas que passaram em TODOS os predicados</em></li>
 </ol>
 <p>Se nenhuma captura passar, <code>FilterPredicates</code> retorna um match vazio (<code>len(Captures) == 0</code>), e o loop simplesmente pula para o próximo match. Sem a correção, cada regra com predicado devolvia N matches (N = número de nós que casam estruturalmente). Com a correção, devolve apenas os matches que passam nos predicados — exatamente o que a query pede.</p>
-<h2 id="o-diff-completo">O diff completo</h2>
-
-
-  <pre><code class="language-bash">// ollantaparser/query.go — Run()
-  for {
-      m, ok := cursor.NextMatch()
-      if !ok {
-          break
-      }
-&#43;     m = cursor.FilterPredicates(m, f.Source)
-&#43;     if len(m.Captures) == 0 {
-&#43;         continue
-&#43;     }
-      qm := QueryMatch{...}
-      for _, cap := range m.Captures {
-          name := q.CaptureNameForId(cap.Index)
-          qm.Captures[name] = cap.Node
-      }
-      matches = append(matches, qm)
-  }</code></pre>
- 
-
-  <pre><code class="language-bash">// ollantarules/languages/treesitter/sensor_test.go
-&#43; func TestTreeSitterSensor_JS_DetectEval_NoFalsePositive(t *testing.T)
-&#43; func TestTreeSitterSensor_JS_DetectEval_NoFalsePositiveOtherCalls(t *testing.T)
-&#43; func TestTreeSitterSensor_PY_DangerousSubprocess_NoFalsePositive(t *testing.T)</code></pre>
- <p>Três testes negativos que verificam que as regras <strong>não</strong> disparam onde não devem. Isso garante que, se alguém no futuro remover ou quebrar o <code>FilterPredicates</code>, os testes vão falhar imediatamente — não mais na mão do usuário.</p>
-<h2 id="por-que-isso-é-um-padrão-de-erro-comum">Por que isso é um padrão de erro comum?</h2>
-<p>Esse bug não é um bug específico do Ollanta. É um sintoma de um problema clássico de design conhecido como <strong><a href="https://medium.com/itautech/hands-on-o-que-%C3%A9-acoplamento-temporal-e-como-solucion%C3%A1-lo-5ef31d37ca0d">acoplamento temporal</a></strong> (temporal coupling).</p>
-<p>O diagrama de sequência abaixo mostra a conversa entre as três camadas envolvidas. O Ollanta chama o binding, que chama o C. O C devolve um match bruto, e o binding o repassa sem filtrar. O ponto crítico está na nota &ldquo;Ponto de Falha&rdquo;: depois que <code>NextMatch()</code> retorna, a API <strong>permite</strong> que o código prossiga sem chamar <code>FilterPredicates</code>. Não há erro, não há exceção, eu simplesmente sigo em frente e trato o match bruto como resultado final. A correção (em verde no diagrama) é o passo esquecido de chamar <code>FilterPredicates</code> antes de aceitar o match:</p>
-
-
-  
-  <div class="mermaid">sequenceDiagram
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-3">
+<h3 id="headline-7">
+O diff completo
+</h3>
+<div id="outline-text-headline-7" class="outline-text-3">
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>// ollantaparser/query.go — Run<span style="color:#f92672">()</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>      m, ok :<span style="color:#f92672">=</span> cursor.NextMatch<span style="color:#f92672">()</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">if</span> !ok <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>          break
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span>+     m <span style="color:#f92672">=</span> cursor.FilterPredicates<span style="color:#f92672">(</span>m, f.Source<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>+     <span style="color:#66d9ef">if</span> len<span style="color:#f92672">(</span>m.Captures<span style="color:#f92672">)</span> <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>+         <span style="color:#66d9ef">continue</span>
+</span></span><span style="display:flex;"><span>+     <span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span>      qm :<span style="color:#f92672">=</span> QueryMatch<span style="color:#f92672">{</span>...<span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">for</span> _, cap :<span style="color:#f92672">=</span> range m.Captures <span style="color:#f92672">{</span>
+</span></span><span style="display:flex;"><span>          name :<span style="color:#f92672">=</span> q.CaptureNameForId<span style="color:#f92672">(</span>cap.Index<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>          qm.Captures<span style="color:#f92672">[</span>name<span style="color:#f92672">]</span> <span style="color:#f92672">=</span> cap.Node
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">}</span>
+</span></span><span style="display:flex;"><span>      matches <span style="color:#f92672">=</span> append<span style="color:#f92672">(</span>matches, qm<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">}</span></span></span></code></pre></div>
+</div>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>// ollantarules/languages/treesitter/sensor_test.go
+</span></span><span style="display:flex;"><span>+ func TestTreeSitterSensor_JS_DetectEval_NoFalsePositive<span style="color:#f92672">(</span>t *testing.T<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>+ func TestTreeSitterSensor_JS_DetectEval_NoFalsePositiveOtherCalls<span style="color:#f92672">(</span>t *testing.T<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>+ func TestTreeSitterSensor_PY_DangerousSubprocess_NoFalsePositive<span style="color:#f92672">(</span>t *testing.T<span style="color:#f92672">)</span></span></span></code></pre></div>
+</div>
+<p>
+Três testes negativos que verificam que as regras <em>não</em> disparam onde não devem. Isso garante que, se alguém no futuro remover ou quebrar o <code>FilterPredicates</code>, os testes vão falhar imediatamente — não mais na mão do usuário.</p>
+</div>
+</div>
+<div id="outline-container-headline-8" class="outline-3">
+<h3 id="headline-8">
+Por que isso é um padrão de erro comum?
+</h3>
+<div id="outline-text-headline-8" class="outline-text-3">
+<p>
+Esse bug não é um bug específico do Ollanta. É um sintoma de um problema clássico de design conhecido como <em><a href="https://medium.com/itautech/hands-on-o-que-%C3%A9-acoplamento-temporal-e-como-solucion%C3%A1-lo-5ef31d37ca0d">acoplamento temporal</a></em> (temporal coupling).</p>
+<p>
+O diagrama de sequência abaixo mostra a conversa entre as três camadas envolvidas. O Ollanta chama o binding, que chama o C. O C devolve um match bruto, e o binding o repassa sem filtrar. O ponto crítico está na nota &#34;Ponto de Falha&#34;: depois que <code>NextMatch()</code> retorna, a API <em>permite</em> que o código prossiga sem chamar <code>FilterPredicates</code>. Não há erro, não há exceção, eu simplesmente sigo em frente e trato o match bruto como resultado final. A correção (em verde no diagrama) é o passo esquecido de chamar <code>FilterPredicates</code> antes de aceitar o match:</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">sequenceDiagram
     participant Dev as 🧑‍💻 Ollanta (Go)
     participant Bind as 🔗 go-tree-sitter
     participant C as ⚙️ Tree-sitter (C)
@@ -263,34 +332,50 @@ func (qc *QueryCursor) NextMatch() (*QueryMatch, bool)          // itera sobre m
             Dev-&gt;&gt;Bind: FilterPredicates(QueryMatch)
             Bind--&gt;&gt;Dev: 🚫 Match Vazio (Filtro Falhou)
         end
-    end</div>
- <p>A operação principal (<code>NextMatch</code>) retorna resultados incompletos, e uma operação secundária (<code>FilterPredicates</code>) precisa ser chamada na sequência para valida-los mas não há aviso ou erro se você simplesmente esquecer. É uma API que esconde uma armadilha em vez de tornar o código correto a opção mais fácil. Algumas heurísticas que adotei depois dessa descoberta:</p>
-<p><strong>1. Para cada regra, adicione um teste negativo</strong></p>
-<p>Um teste positivo comprova que a regra detecta código ruim. Um teste negativo comprova que ela não incomoda código bom. Ambos são necessários:</p>
-
-
-  <pre><code class="language-go">// Testa detecção
-src := []byte(&#34;eval(input)&#34;)
-// → deve retornar issue
-
-// Testa silêncio
-src := []byte(&#34;configureFeature({ render })&#34;)
-// → NÃO deve retornar issue</code></pre>
- <p><strong>2. APIs que exigem um passo extra deveriam ser um <code>must</code></strong></p>
-<p>Se <code>NextMatch()</code> sempre precisa ser seguido de <code>FilterPredicates()</code>, talvez o método correto seja <code>NextFilteredMatch()</code> que já aplica os predicados. Ou, no mínimo, uma documentação que grite &ldquo;VOCÊ PRECISA CHAMAR FILTERPREDICATES DEPOIS DE NEXTMATCH&rdquo;. No Ollanta, a correção ideal seria fazer o <code>QueryRunner.Run</code> já retornar matches filtrados — encapsulando o padrão para que ninguém mais esqueça.</p>
-<p><strong>3. Leia o binding, não só a documentação da lib original</strong></p>
-<p>A documentação do tree-sitter C diz &ldquo;predicates are not evaluated by default&rdquo;. Mas quem lê a documentação do tree-sitter C quando está programando em Go? O binding <code>go-tree-sitter</code> tem uma implementação completa de <code>FilterPredicates</code>, mas ela só funciona se você souber que ela existe. Quando você usa uma biblioteca via CGo, o contrato da API é o que o binding Go expõe, não o que o C original faz. Leia a fonte do binding.</p>
-<h2 id="o-que-aprendi-com-isso">O que aprendi com isso</h2>
+    end</code></pre>
+</div>
+<p>
+A operação principal (<code>NextMatch</code>) retorna resultados incompletos, e uma operação secundária (<code>FilterPredicates</code>) precisa ser chamada na sequência para valida-los mas não há aviso ou erro se você simplesmente esquecer. É uma API que esconde uma armadilha em vez de tornar o código correto a opção mais fácil. Algumas heurísticas que adotei depois dessa descoberta:</p>
+<p>
+<em>1. Para cada regra, adicione um teste negativo</em></p>
+<p>
+Um teste positivo comprova que a regra detecta código ruim. Um teste negativo comprova que ela não incomoda código bom. Ambos são necessários:</p>
+<div class="src src-go">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// Testa detecção</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">src</span> <span style="color:#f92672">:=</span> []byte(<span style="color:#e6db74">&#34;eval(input)&#34;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// → deve retornar issue</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Testa silêncio</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">src</span> <span style="color:#f92672">:=</span> []byte(<span style="color:#e6db74">&#34;configureFeature({ render })&#34;</span>)
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// → NÃO deve retornar issue</span></span></span></code></pre></div>
+</div>
+<p>
+<em>2. APIs que exigem um passo extra deveriam ser um <code>must</code></em></p>
+<p>
+Se <code>NextMatch()</code> sempre precisa ser seguido de <code>FilterPredicates()</code>, talvez o método correto seja <code>NextFilteredMatch()</code> que já aplica os predicados. Ou, no mínimo, uma documentação que grite &#34;VOCÊ PRECISA CHAMAR FILTERPREDICATES DEPOIS DE NEXTMATCH&#34;. No Ollanta, a correção ideal seria fazer o <code>QueryRunner.Run</code> já retornar matches filtrados — encapsulando o padrão para que ninguém mais esqueça.</p>
+<p>
+<em>3. Leia o binding, não só a documentação da lib original</em></p>
+<p>
+A documentação do tree-sitter C diz &#34;predicates are not evaluated by default&#34;. Mas quem lê a documentação do tree-sitter C quando está programando em Go? O binding <code>go-tree-sitter</code> tem uma implementação completa de <code>FilterPredicates</code>, mas ela só funciona se você souber que ela existe. Quando você usa uma biblioteca via CGo, o contrato da API é o que o binding Go expõe, não o que o C original faz. Leia a fonte do binding.</p>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-3">
+<h3 id="headline-9">
+O que aprendi com isso
+</h3>
+<div id="outline-text-headline-9" class="outline-text-3">
 <ul>
-<li><strong><code>QueryRunner.Run()</code></strong> — antes retornava matches estruturais; depois retorna matches <strong>filtrados por predicados</strong>.</li>
-<li><strong>150 falsos positivos de <code>detect-eval</code> por scan</strong> — depois 0 (o código não tem <code>eval()</code>).</li>
-<li><strong>20 regras com <code>#eq?</code>/<code>#match?</code></strong> — antes geravam ruído; depois todas silenciosas onde deveriam ser.</li>
-<li><strong>Testes</strong> — antes só verificavam presença de issues; depois verificam presença <strong>e</strong> ausência.</li>
+<li><em><code>QueryRunner.Run()</code></em> — antes retornava matches estruturais; depois retorna matches <em>filtrados por predicados</em>.</li>
+<li><em>150 falsos positivos de <code>detect-eval</code> por scan</em> — depois 0 (o código não tem <code>eval()</code>).</li>
+<li><em>20 regras com <code>#eq?~/~#match?</code></em> — antes geravam ruído; depois todas silenciosas onde deveriam ser.</li>
+<li><em>Testes</em> — antes só verificavam presença de issues; depois verificam presença <em>e</em> ausência.</li>
 </ul>
 <p>A linha <code>m = cursor.FilterPredicates(m, f.Source)</code> não é complexa. Não envolve algoritmos, estruturas de dados ou padrões de concorrência. É uma chamada de método que faltava e que, por faltar, transformou um analisador estático em um gerador de ruídos.</p>
 <blockquote>
-<p>Este artigo foi escrito a partir de uma correção real no repositório do <a href="https://github.com/scovl/Ollanta">Ollanta</a>. O diff completo está em <a href="https://github.com/scovl/Ollanta/commit/0a73aa2ec05c1dfa7c7a0b0e750cb05c841cb4f9">https://github.com/scovl/Ollanta/commit/0a73aa2ec05c1dfa7c7a0b0e750cb05c841cb4f9</a>.</p>
+<p>Este artigo foi escrito a partir de uma correção real no repositório do <a href="https://github.com/scovl/Ollanta">Ollanta</a>. O diff completo está em <a href="https://github.com/scovl/Ollanta/commit/0a73aa2ec05c1dfa7c7a0b0e750cb05c841cb4f9"><a href="https://github.com/scovl/Ollanta/commit/0a73aa2ec05c1dfa7c7a0b0e750cb05c841cb4f9">https://github.com/scovl/Ollanta/commit/0a73aa2ec05c1dfa7c7a0b0e750cb05c841cb4f9</a></a>.</p>
 </blockquote>
+</div>
+</div>
 
   </div>
 </article>

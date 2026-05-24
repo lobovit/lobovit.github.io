@@ -29,656 +29,867 @@
     <p class="meta"><time>2025-05-23</time> · <span class="tag">tratamento de erros</span><span class="tag">exceções</span><span class="tag">javascript</span><span class="tag">typescript</span><span class="tag">rust</span><span class="tag">clojure</span><span class="tag">boas práticas</span><span class="tag">c&#43;&#43;</span></p>
   </header>
   <div class="content">
-    <p>O tratamento de exceções surgiu para separar o fluxo normal do programa do tratamento de situações inesperadas, como falhas de hardware ou erros de entrada/saída. Inicialmente, programas usavam códigos de retorno para lidar com erros, mas isso era propenso a falhas e difícil de manter.</p>
-<p>O modelo de tratamento estruturado de exceções evoluiu desde os anos 60, ganhando formas mais concretas em linguagens como <a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a>, <a href="https://en.wikipedia.org/wiki/Ada_(programming_language)">Ada</a>, <a href="https://en.wikipedia.org/wiki/C%2B%2B">C++</a> e <a href="https://en.wikipedia.org/wiki/Java_(programming_language)">Java</a>, e depois sendo adotado por outras como <a href="https://en.wikipedia.org/wiki/JavaScript">JavaScript</a>.</p>
-<p>O objetivo sempre foi permitir que programas lidassem de forma controlada com erros imprevisíveis, sem travar o sistema. As exceções não foram criadas para controlar o fluxo normal do programa, mas sim para tratar casos realmente excepcionais. Neste artigo, vamos ver por que usar <code>try/catch</code> como controle de fluxo é um erro e qual é o seu propósito real.</p>
-<h2 id="propósito-do-trycatch">Propósito do Try/Catch</h2>
-<p>A linguagem <strong><a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a></strong> (1964) foi pioneira ao introduzir um sistema estruturado de tratamento de condições excepcionais através do constructo <code>ON ... DO</code> para casos como falhas de operações de <strong><a href="https://en.wikipedia.org/wiki/Input/output">I/O</a></strong> (entrada/saída) e outros erros de execução.</p>
-<p>Esse mecanismo de <strong><a href="https://en.wikipedia.org/wiki/Error_handling#Error_handlers">handlers</a></strong> de erro já demonstrava a vantagem de estruturar o código para lidar separadamente com situações de erro. Em essência, o modelo PL/I possuía:</p>
-<ul>
-<li><strong>Bloco Protegido</strong> – equivalente funcional ao bloco <code>try</code>, delimitando o código onde erros poderiam ocorrer.</li>
-<li><strong>Rotina de Tratamento (Handler)</strong> – definida via construções <code>ON ... DO</code>, análoga ao <code>catch</code> atual, executada caso uma condição excepcional fosse detectada.</li>
-</ul>
-<p>Um exemplo simplificado em pseudo-sintaxe inspirada no <a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a> ilustrava essa estrutura:</p>
-
-
-  <pre><code class="language-pli">BEGIN;
+    
+<p>
+O tratamento de exceções surgiu para separar o fluxo normal do programa do tratamento de situações inesperadas, como falhas de hardware ou erros de entrada/saída. Inicialmente, programas usavam códigos de retorno para lidar com erros, mas isso era propenso a falhas e difícil de manter. </p>
+<p>
+O modelo de tratamento estruturado de exceções evoluiu desde os anos 60, ganhando formas mais concretas em linguagens como <a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a>, <a href="https://en.wikipedia.org/wiki/Ada_(programming_language">Ada</a>), <a href="https://en.wikipedia.org/wiki/C%2B%2B">C++</a> e <a href="https://en.wikipedia.org/wiki/Java_(programming_language">Java</a>), e depois sendo adotado por outras como <a href="https://en.wikipedia.org/wiki/JavaScript">JavaScript</a>. </p>
+<p>
+O objetivo sempre foi permitir que programas lidassem de forma controlada com erros imprevisíveis, sem travar o sistema. As exceções não foram criadas para controlar o fluxo normal do programa, mas sim para tratar casos realmente excepcionais. Neste artigo, vamos ver por que usar <code>try/catch</code> como controle de fluxo é um erro e qual é o seu propósito real.</p>
+<div id="outline-container-headline-1" class="outline-3">
+<h3 id="headline-1">
+Propósito do Try/Catch
+</h3>
+<div id="outline-text-headline-1" class="outline-text-3">
+<p>
+A linguagem <em><a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a></em> (1964) foi pioneira ao introduzir um sistema estruturado de tratamento de condições excepcionais através do constructo <code>ON ... DO</code> para casos como falhas de operações de <em><a href="https://en.wikipedia.org/wiki/Input/output">I/O</a></em> (entrada/saída) e outros erros de execução.</p>
+<p>
+Esse mecanismo de <em><a href="https://en.wikipedia.org/wiki/Error_handling#Error_handlers">handlers</a></em> de erro já demonstrava a vantagem de estruturar o código para lidar separadamente com situações de erro. Em essência, o modelo PL/I possuía:</p>
+<p>
+/ /Bloco Protegido* – equivalente funcional ao bloco <code>try</code>, delimitando o código onde erros poderiam ocorrer.
+/ /Rotina de Tratamento (Handler)* – definida via construções <code>ON ... DO</code>, análoga ao <code>catch</code> atual, executada caso uma condição excepcional fosse detectada.</p>
+<p>
+Um exemplo simplificado em pseudo-sintaxe inspirada no <a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a> ilustrava essa estrutura:</p>
+<div class="src src-pli">
+<pre tabindex="0"><code class="language-pli" data-lang="pli">BEGIN;
    ON ERROR DO BEGIN;
       /* Código de recuperação (handler) */
    END;
    /* Bloco protegido (código propenso a erro) */
    ...
 END;</code></pre>
- <p>Desde cedo, a ideia de separar o código principal do tratamento de erros foi vista como um grande avanço, pois deixava os programas mais organizados e fáceis de entender. O <a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a> trouxe esse conceito pioneiramente em 1964, mas quem realmente mudou o jogo foi o <strong><a href="https://en.wikipedia.org/wiki/Lisp_(programming_language)">Lisp</a></strong>.</p>
-<p>Versões do <a href="https://en.wikipedia.org/wiki/Lisp_(programming_language)">Lisp</a> nos anos 1970 introduziram as funções <code>catch</code> e <code>throw</code> como um mecanismo de <strong>controle de fluxo não-local</strong> — uma forma de &ldquo;saltar&rdquo; diretamente para um ponto específico da pilha de chamadas, ignorando o código intermediário. É importante distinguir que <code>catch/throw</code> no Lisp não eram propriamente um sistema de tratamento de exceções, mas sim uma ferramenta de controle de fluxo.</p>
-<p>Basicamente, marcava-se um ponto de captura com uma <em>tag</em> simbólica usando <code>catch</code> e, quando necessário, utilizava-se <code>throw</code> com a mesma tag para desviar imediatamente a execução para lá. Esse mecanismo era útil para sair de loops aninhados ou retornar de funções profundamente encadeadas, mas não oferecia tipagem de erros, handlers especializados ou capacidade de reinício como um sistema de exceções moderno.</p>
-<p>O verdadeiro avanço do Lisp no tratamento de exceções veio posteriormente com o <strong><a href="https://en.wikipedia.org/wiki/Common_Lisp#Condition_system">Common Lisp Condition System</a></strong>, que introduziu conceitos sofisticados como <em>handlers</em> tipados, <em>restarts</em> (pontos de recuperação) e a separação entre sinalização (<code>signal</code>) e tratamento de condições. Este sistema permite não apenas capturar erros, mas também corrigi-los e continuar a execução — um paradigma que vai além do simples <code>try/catch</code> e influenciou sistemas modernos de tratamento de erros.</p>
-<p>A distinção é crucial: enquanto <code>catch/throw</code> eram ferramentas de controle de fluxo (similares a um <code>goto</code> estruturado), o Condition System modelava verdadeiramente o tratamento de situações excepcionais com tipagem, recuperação e estratégias de reinício — conceitos que, embora formalizados após a introdução de exceções no C++, influenciaram linguagens posteriores como <a href="https://en.wikipedia.org/wiki/Java_(programming_language)">Java</a> e seguem como referência para sistemas modernos de tratamento de erros.</p>
-<p>Consolidando essa evolução histórica, linguagens como <a href="https://en.wikipedia.org/wiki/C%2B%2B">C++</a> formalizaram e refinaram esses conceitos pioneiros por meio das estruturas <strong><code>try</code></strong> e <strong><code>catch</code></strong>, introduzindo um sistema de exceções baseado em tipos. Em <a href="https://en.wikipedia.org/wiki/C%2B%2B">C++</a>, por exemplo, podemos proteger um bloco de código e tratar erros assim:</p>
-
-
-  <pre><code class="language-cpp">try {
-    // Código que pode lançar exceções
-    throw std::runtime_error(&#34;Erro!&#34;);
-} catch (const std::exception&amp; e) {
-    // Tratamento da exceção
-    std::cerr &lt;&lt; &#34;Exceção capturada: &#34; &lt;&lt; e.what();
-}</code></pre>
- <p>O objetivo principal desse mecanismo é ajudar os programadores a lidar com problemas que ocorram durante a execução de forma organizada, separando claramente a lógica normal do tratamento de erros. Ele leva adiante – e aprimora – os princípios introduzidos por linguagens como <a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a> e <a href="https://en.wikipedia.org/wiki/Lisp_(programming_language)">Lisp</a>, porém com uma implementação mais robusta e integrada à tipagem da linguagem.</p>
+</div>
+<p>
+Desde cedo, a ideia de separar o código principal do tratamento de erros foi vista como um grande avanço, pois deixava os programas mais organizados e fáceis de entender. O <a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a> trouxe esse conceito pioneiramente em 1964, mas quem realmente mudou o jogo foi o <em><a href="https://en.wikipedia.org/wiki/Lisp_(programming_language">Lisp</a>)</em>. </p>
+<p>
+Versões do <a href="https://en.wikipedia.org/wiki/Lisp_(programming_language">Lisp</a>) nos anos 1970 introduziram as funções <code>catch</code> e <code>throw</code> como um mecanismo de <em>controle de fluxo não-local</em> — uma forma de &#34;saltar&#34; diretamente para um ponto específico da pilha de chamadas, ignorando o código intermediário. É importante distinguir que <code>catch/throw</code> no Lisp não eram propriamente um sistema de tratamento de exceções, mas sim uma ferramenta de controle de fluxo.</p>
+<p>
+Basicamente, marcava-se um ponto de captura com uma <em>tag</em> simbólica usando <code>catch</code> e, quando necessário, utilizava-se <code>throw</code> com a mesma tag para desviar imediatamente a execução para lá. Esse mecanismo era útil para sair de loops aninhados ou retornar de funções profundamente encadeadas, mas não oferecia tipagem de erros, handlers especializados ou capacidade de reinício como um sistema de exceções moderno.</p>
+<p>
+O verdadeiro avanço do Lisp no tratamento de exceções veio posteriormente com o <em><a href="https://en.wikipedia.org/wiki/Common_Lisp#Condition_system">Common Lisp Condition System</a></em>, que introduziu conceitos sofisticados como <em>handlers</em> tipados, <em>restarts</em> (pontos de recuperação) e a separação entre sinalização (<code>signal</code>) e tratamento de condições. Este sistema permite não apenas capturar erros, mas também corrigi-los e continuar a execução — um paradigma que vai além do simples <code>try/catch</code> e influenciou sistemas modernos de tratamento de erros.</p>
+<p>
+A distinção é crucial: enquanto <code>catch/throw</code> eram ferramentas de controle de fluxo (similares a um <code>goto</code> estruturado), o Condition System modelava verdadeiramente o tratamento de situações excepcionais com tipagem, recuperação e estratégias de reinício — conceitos que, embora formalizados após a introdução de exceções no C++, influenciaram linguagens posteriores como <a href="https://en.wikipedia.org/wiki/Java_(programming_language">Java</a>) e seguem como referência para sistemas modernos de tratamento de erros.</p>
+<p>
+Consolidando essa evolução histórica, linguagens como <a href="https://en.wikipedia.org/wiki/C%2B%2B">C++</a> formalizaram e refinaram esses conceitos pioneiros por meio das estruturas <em><code>try</code></em> e <em><code>catch</code></em>, introduzindo um sistema de exceções baseado em tipos. Em <a href="https://en.wikipedia.org/wiki/C%2B%2B">C++</a>, por exemplo, podemos proteger um bloco de código e tratar erros assim:</p>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">try</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Código que pode lançar exceções
+</span></span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>runtime_error(<span style="color:#e6db74">&#34;Erro!&#34;</span>);
+</span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">catch</span> (<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>exception<span style="color:#f92672">&amp;</span> e) {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Tratamento da exceção
+</span></span></span><span style="display:flex;"><span>    std<span style="color:#f92672">::</span>cerr <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;Exceção capturada: &#34;</span> <span style="color:#f92672">&lt;&lt;</span> e.what();
+</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+</div>
+<p>
+O objetivo principal desse mecanismo é ajudar os programadores a lidar com problemas que ocorram durante a execução de forma organizada, separando claramente a lógica normal do tratamento de erros. Ele leva adiante – e aprimora – os princípios introduzidos por linguagens como <a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a> e <a href="https://en.wikipedia.org/wiki/Lisp_(programming_language">Lisp</a>), porém com uma implementação mais robusta e integrada à tipagem da linguagem.</p>
 <blockquote>
-<p>Nesse ponto, vale destacar um princípio essencial do livro <strong><a href="https://en.wikipedia.org/wiki/The_Pragmatic_Programmer">The Pragmatic Programmer</a></strong>, que recomenda: “Crash early” — ou seja, falhe cedo e com clareza quando algo realmente inesperado ocorre. Segundo os autores, &ldquo;dead programs tell no lies&rdquo; — um programa que trava rapidamente pode ser mais confiável que um inválido operando silenciosamente com dados corrompidos. Isso reforça o propósito original das exceções: detectar falhas graves imediatamente, evitando consequências imprevisíveis.</p>
+<p>Nesse ponto, vale destacar um princípio essencial do livro <em><a href="https://en.wikipedia.org/wiki/The_Pragmatic_Programmer">The Pragmatic Programmer</a></em>, que recomenda: “Crash early” — ou seja, falhe cedo e com clareza quando algo realmente inesperado ocorre. Segundo os autores, &#34;dead programs tell no lies&#34; — um programa que trava rapidamente pode ser mais confiável que um inválido operando silenciosamente com dados corrompidos. Isso reforça o propósito original das exceções: detectar falhas graves imediatamente, evitando consequências imprevisíveis.</p>
 </blockquote>
-<p>Antes de explorarmos os detalhes técnicos e as melhores práticas do uso de <code>try/catch</code>, é importante entender o propósito fundamental desse mecanismo no contexto da programação moderna. O tratamento estruturado de exceções surgiu para resolver problemas clássicos de legibilidade, robustez e manutenção do código, especialmente em situações onde o fluxo normal de execução pode ser interrompido por eventos inesperados.</p>
-<p>A seguir, vamos analisar como o <code>try/catch</code> evoluiu historicamente, quais problemas ele resolve em relação a abordagens mais antigas (como códigos de erro) e por que sua adoção tornou-se um marco na organização e clareza dos programas:</p>
+<p>
+Antes de explorarmos os detalhes técnicos e as melhores práticas do uso de <code>try/catch</code>, é importante entender o propósito fundamental desse mecanismo no contexto da programação moderna. O tratamento estruturado de exceções surgiu para resolver problemas clássicos de legibilidade, robustez e manutenção do código, especialmente em situações onde o fluxo normal de execução pode ser interrompido por eventos inesperados. </p>
+<p>
+A seguir, vamos analisar como o <code>try/catch</code> evoluiu historicamente, quais problemas ele resolve em relação a abordagens mais antigas (como códigos de erro) e por que sua adoção tornou-se um marco na organização e clareza dos programas:</p>
 <ol>
-<li><strong>Problemas com Códigos de Erro</strong>:
-Com códigos de retorno, o chamador pode simplesmente esquecer de verificar se ocorreu um erro. Quando isso acontece, o programa continua executando como se tudo estivesse normal, mesmo que tenha ocorrido um problema sério.</li>
+<li><em>Problemas com Códigos de Erro</em>:
+Com códigos de retorno, o chamador pode simplesmente esquecer de verificar se ocorreu um erro. Quando isso acontece, o programa continua executando como se tudo estivesse normal, mesmo que tenha ocorrido um problema sério. </li>
 </ol>
 <p>O exemplo abaixo ilustra como isso pode levar a situações indesejadas – a função <code>read_int()</code> retorna um código indicando erro ou sucesso, mas se quem a chamou não conferir esse código, um valor inválido poderá ser usado em cálculo a seguir:</p>
-<p><img src="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/01.png" alt=""></p>
-<p>No diagrama, vê-se um fluxo onde <code>read_int()</code> pode indicar uma falha, mas esse retorno não é verificado ao atribuir o resultado à variável <code>x</code>. Em consequência, o programa segue seu curso normal, calculando <code>y = x * 2</code> mesmo que <code>x</code> possa conter um valor inválido. Isso resulta em uma operação com dado incorreto no final do fluxo, demonstrando como a falta de verificação de erros pode propagar problemas silenciosamente pelo programa.</p>
-<ol start="2">
-<li><strong>Separação de Preocupações</strong>:
-Com exceções, a detecção de um erro (na função chamada) fica separada do tratamento do erro (na função chamadora). Isso permite um código mais limpo, em que a lógica principal não fica poluída por verificações de erro a cada passo. O tratamento pode ser centralizado em um único lugar, geralmente no nível mais alto da aplicação, enquanto o fluxo normal de execução permanece claro.</li>
+<p>
+<img src="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/01.png" alt="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/01.png" title="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/01.png" /></p>
+<p>
+No diagrama, vê-se um fluxo onde <code>read_int()</code> pode indicar uma falha, mas esse retorno não é verificado ao atribuir o resultado à variável <code>x</code>. Em consequência, o programa segue seu curso normal, calculando <code>y = x * 2</code> mesmo que <code>x</code> possa conter um valor inválido. Isso resulta em uma operação com dado incorreto no final do fluxo, demonstrando como a falta de verificação de erros pode propagar problemas silenciosamente pelo programa.</p>
+<ol>
+<li><em>Separação de Preocupações</em>:
+Com exceções, a detecção de um erro (na função chamada) fica separada do tratamento do erro (na função chamadora). Isso permite um código mais limpo, em que a lógica principal não fica poluída por verificações de erro a cada passo. O tratamento pode ser centralizado em um único lugar, geralmente no nível mais alto da aplicação, enquanto o fluxo normal de execução permanece claro. </li>
 </ol>
 <p>O diagrama abaixo ilustra essa separação: o caminho principal (em azul) representa a execução bem-sucedida – inicia, processa dados, salva resultados, envia notificação e finaliza com sucesso. Porém, se em qualquer dessas etapas ocorrer uma exceção, o fluxo é desviado para o bloco de tratamento de erros (em vermelho), onde o erro é registrado e o programa termina de forma controlada.</p>
-<p><img src="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/02.png" alt=""></p>
-<p>Esse diagrama destaca como o código principal pode se concentrar na lógica de negócio, enquanto o tratamento de erro fica isolado no bloco <code>catch</code>. Essa é a essência do <code>try/catch</code>: permitir que o fluxo “normal” do programa permaneça legível e que todo o código referente a erros esteja agrupado e bem definido em outro lugar. O resultado é um código mais organizado e de fácil manutenção.</p>
-<ol start="3">
-<li><strong>Erros Não Podem Ser Ignorados</strong>:
-Se uma exceção não for capturada por nenhum handler correspondente, o C++ chama <code>std::terminate()</code>, que encerra o programa de forma abrupta. Diferentemente de um código de erro que pode ser ignorado sem querer, uma exceção não tratada provoca a finalização do programa, garantindo que erros críticos não passem despercebidos.</li>
-</ol>
-<p>O diagrama a seguir mostra dois fluxos possíveis de um programa simples: no caminho normal, a função é executada e imprime uma mensagem (&ldquo;Esta linha&hellip;&rdquo;) antes de retornar ao <code>main</code> e encerrar normalmente; já no caminho de erro, a função lança uma exceção (<code>std::runtime_error</code>), que não é capturada em nenhuma parte do programa, resultando na <strong>chamada imediata de <code>std::terminate()</code></strong> e encerramento abrupto da aplicação. Note que no diagrama, o caminho vermelho representa o comportamento real do C++: unwinding incompleto seguido de terminação forçada.</p>
-<p><img src="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/03.png" alt=""></p>
-<p>Podemos observar, em rosa, o ponto onde &ldquo;dá ruim&rdquo; (onde a exceção é lançada) e, em vermelho, o caminho do erro levando à chamada de <code>std::terminate()</code>. Esse comportamento é intencional: como o próprio <a href="https://en.wikipedia.org/wiki/Bjarne_Stroustrup">Stroustrup</a> explica, <strong>&ldquo;se uma função encontrar um erro que não consiga resolver, ela lança uma exceção; alguma função acima na hierarquia de chamadas pode capturá-la, mas, se ninguém o fizer, o programa termina&rdquo;</strong>.</p>
-<p><strong>Detalhes do Comportamento no Diagrama</strong>: O caminho vermelho &ldquo;Exceção não capturada → <code>std::terminate()</code> chamado&rdquo; reflete o comportamento real do C++. Diferentemente de linguagens que fazem unwinding completo antes de terminar, o C++ chama <code>std::terminate()</code> imediatamente quando nenhum handler é encontrado, interrompendo o processo de unwinding. Isso significa que objetos em frames superiores (como variáveis locais em <code>main</code>) podem não ter seus destrutores executados.</p>
-<p><strong>Importante sobre Stack Unwinding</strong>: Quando uma exceção não é capturada, o C++ <strong>não</strong> executa o stack unwinding completo. Em vez disso, <code>std::terminate()</code> é chamado imediatamente, o que significa que <strong>destrutores só são chamados para objetos nos frames de pilha que foram efetivamente desempilhados até o ponto onde a exceção foi lançada</strong>. Objetos em frames superiores (incluindo objetos locais em <code>main</code>) podem não ter seus destrutores executados.</p>
-<p>Embora terminar a aplicação possa parecer drástico, isso na verdade evita consequências piores, como continuar a execução com dados corrompidos. Diferente dos códigos de erro (em que o programador <strong>precisa</strong> lembrar de verificar cada retorno), as exceções forçam uma decisão: ou você trata o problema em algum lugar, ou o programa será finalizado. Assim, falhas graves não &ldquo;passam batido&rdquo;.</p>
-<p>A separação clara entre lógica principal e lógica de erro permite a liberação automática de recursos <strong>quando há handlers apropriados</strong>, graças ao stack unwinding controlado do mecanismo de exceções em <a href="https://en.wikipedia.org/wiki/C%2B%2B">C++</a>. Porém, é crucial entender que sem tratamento adequado, essa garantia de limpeza não se aplica.</p>
-<hr>
-<h2 id="principais-usos-do"><strong>Principais Usos do <code>try/catch</code> — Exemplos Práticos em Diferentes Contextos</strong></h2>
-<p>O bloco <code>try/catch</code> é fundamental para lidar com eventos <strong>realmente excepcionais</strong> — aqueles que interrompem o fluxo normal e não podem ser resolvidos apenas com valores de retorno ou verificações simples. Exemplos clássicos: falta de memória, falhas de <strong><a href="https://en.wikipedia.org/wiki/Input/output">I/O</a></strong>, corrupção de dados, ou erros lógicos imprevistos.</p>
-<p>A seguir, os principais cenários onde o uso do <code>try/catch</code> é apropriado, já com exemplos comentados em cada contexto:</p>
-<h3 id="falhas-de-io-arquivos-rede-dispositivos">Falhas de I/O (Arquivos, Rede, Dispositivos)</h3>
-<p>Situações em que o programa depende de recursos externos — um arquivo, uma conexão de rede, um socket — e o resultado pode variar a qualquer momento, independentemente da lógica do seu código.</p>
-
-
-  <pre><code class="language-cpp">try {
-    std::ifstream arq(&#34;dados.txt&#34;);
-    // Por padrão, streams C&#43;&#43; NÃO lançam exceções.
-    // Para habilitá-las, configure os bits de exceção:
-    arq.exceptions(std::ios::failbit | std::ios::badbit);
-    
-    std::string linha;
-    while (std::getline(arq, linha))  // agora pode lançar exceção
-        processar(linha);
-} catch (const std::ios_base::failure&amp; e) {
-    // Tipo específico para erros de I/O quando exceções estão habilitadas
-    logErro(&#34;Falha de I/O: &#34; &#43; std::string{e.what()});
-    logErro(&#34;Código de erro: &#34; &#43; std::to_string(e.code().value()));
-} catch (const std::exception&amp; e) {
-    // Captura outros tipos de erro (ex: problemas em processar())
-    logErro(&#34;Erro geral: &#34; &#43; std::string{e.what()});
-}</code></pre>
- <ul>
-<li><strong>Fluxo normal:</strong> abrir, ler, processar.</li>
-<li><strong>Fluxo de erro:</strong> qualquer falha salta direto para o <code>catch</code>.</li>
-</ul>
-<blockquote>
-<p><strong>Importante sobre Streams C++</strong>: Por padrão, as streams (<code>std::ifstream</code>, <code>std::ofstream</code>, etc.) <strong>não lançam exceções</strong> quando encontram erros — elas apenas definem bits de estado interno (<code>failbit</code>, <code>badbit</code>, <code>eofbit</code>) que devem ser verificados manualmente. Para que uma stream lance exceções automaticamente, é necessário configurar explicitamente quais condições devem disparar exceções usando o método <code>exceptions()</code>.</p>
-</blockquote>
-<p>No exemplo acima, <code>arq.exceptions(std::ios::failbit | std::ios::badbit)</code> instrui a stream a lançar uma exceção do tipo <code>std::ios_base::failure</code> sempre que ocorrer uma falha de operação (<code>failbit</code>) ou um erro irrecuperável (<code>badbit</code>). Sem essa configuração, operações como <code>std::getline()</code> ou <code>read()</code> falhariam silenciosamente, exigindo verificações manuais de estado.</p>
-<p><strong>Alternativa com Códigos de Status</strong> (quando exceções não estão habilitadas):</p>
-
-
-  <pre><code class="language-cpp">// Tratamento tradicional sem exceções - verificação manual
-std::ifstream arq(&#34;dados.txt&#34;);
-if (!arq.is_open()) {
-    logErro(&#34;Erro: não foi possível abrir dados.txt&#34;);
-    return;
-}
-
-std::string linha;
-while (std::getline(arq, linha)) {
-    if (arq.bad()) {
-        logErro(&#34;Erro irrecuperável durante leitura&#34;);
-        break;
-    }
-    if (arq.fail() &amp;&amp; !arq.eof()) {
-        logErro(&#34;Falha na operação de leitura&#34;);
-        break;
-    }
-    processar(linha);
-}</code></pre>
- <p><strong>Comparação</strong>: Com exceções habilitadas, o <code>try/catch</code> separa claramente o fluxo principal do tratamento de erros usando <code>std::ios_base::failure</code> específico. Sem exceções, você deve verificar manualmente os estados da stream (<code>bad()</code>, <code>fail()</code>, <code>eof()</code>) após cada operação. A abordagem com exceções mantém o código principal mais limpo, enquanto códigos de status oferecem controle mais granular sobre cada tipo de falha.</p>
-<blockquote>
-<p>Conforme discutido por <a href="https://en.wikipedia.org/wiki/Scott_Meyers">Scott Meyers</a> no seu livro <strong><a href="https://en.wikipedia.org/wiki/Effective_C%2B%2B">Effective C++</a></strong>, página 61-65, item 13, o uso de RAII e arquiteturas seguras de exceção (exception-safe) garante que recursos sejam sempre liberados corretamente mesmo em falha, movendo o código para o nível de basic ou strong exception safety. Ver também Item 29, p.115.</p>
-</blockquote>
-<hr>
-<h3 id="papel-do-raii-limpeza-automática">Papel do RAII: limpeza automática</h3>
-<p>Em C++ não há <code>finally</code>, porque o RAII resolve a liberação de recursos durante o “desenrolar” da pilha:</p>
-
-
-  <pre><code class="language-cpp">#include &lt;fstream&gt;
-#include &lt;memory&gt;
-
-void processarArquivo(const std::string&amp; caminho) {
-    std::ifstream f(caminho);                     // fecha sozinho no destrutor
-    if (!f) {
-        throw std::ios_base::failure(&#34;Falha ao abrir: &#34; &#43; caminho);
-    }
-    
-    // Configurar stream para lançar exceções em caso de erro
-    f.exceptions(std::ios::failbit | std::ios::badbit);
-
-    auto buf = std::make_unique&lt;char[]&gt;(1024);    // libera sozinho
-
-    f.read(buf.get(), 1024);                      // agora pode lançar std::ios_base::failure
-    // ...processa dados...
-}   // Se qualquer exceção &#34;subir&#34;, f e buf são destruídos aqui</code></pre>
- <p>Quando uma exceção é lançada, a execução normal do programa é imediatamente interrompida. Nesse momento, todos os objetos locais têm seus destrutores chamados automaticamente, o que garante a liberação dos recursos alocados, como arquivos abertos ou blocos de memória. O controle do fluxo, então, é transferido para o bloco <code>catch</code> mais próximo que seja capaz de tratar aquela exceção.</p>
-<p><strong>RAII e Níveis de Segurança de Exceção</strong>: O RAII garante automaticamente o nível <strong>basic exception safety</strong> — o programa permanece em um estado válido após uma exceção, sem vazamentos de recursos. Este é um dos três níveis formais de segurança de exceção em C++:</p>
+<p>
+<img src="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/02.png" alt="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/02.png" title="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/02.png" /></p>
+<p>
+Esse diagrama destaca como o código principal pode se concentrar na lógica de negócio, enquanto o tratamento de erro fica isolado no bloco <code>catch</code>. Essa é a essência do <code>try/catch</code>: permitir que o fluxo “normal” do programa permaneça legível e que todo o código referente a erros esteja agrupado e bem definido em outro lugar. O resultado é um código mais organizado e de fácil manutenção.</p>
 <ol>
-<li><strong>No-throw guarantee</strong> (forte): A operação não pode falhar — garantido por funções marcadas com <code>noexcept</code></li>
-<li><strong>Strong exception safety</strong> (forte): Em caso de falha, o estado do programa permanece inalterado (como se a operação nunca tivesse sido tentada)</li>
-<li><strong>Basic exception safety</strong> (básico): O programa permanece em estado válido, recursos são liberados, mas o estado pode ter mudado</li>
+<li><em>Erros Não Podem Ser Ignorados</em>:
+Se uma exceção não for capturada por nenhum handler correspondente, o C++ chama <code>std::terminate()</code>, que encerra o programa de forma abrupta. Diferentemente de um código de erro que pode ser ignorado sem querer, uma exceção não tratada provoca a finalização do programa, garantindo que erros críticos não passem despercebidos. </li>
 </ol>
-<p>RAII por si só oferece basic safety, mas pode ser combinado com técnicas como <strong>copy-and-swap idiom</strong> para alcançar strong safety, ou com <strong><code>noexcept</code> move constructors</strong> para garantir operações que não falham. Essas garantias formais tornam o código C++ mais previsível e robusto.</p>
-<p>Esse mecanismo faz com que, mesmo em situações em que &ldquo;tudo dá errado&rdquo;, o programa consiga fechar arquivos, devolver memória e encerrar de maneira previsível. Caso seja apropriado, o programa pode até continuar sua execução após o tratamento, dependendo da gravidade do erro e da lógica implementada.</p>
-<p>Por outro lado, é importante não usar <code>try/catch</code> para controlar o fluxo nominal do programa. Exceções não devem ser empregadas para lidar com situações esperadas, como o fim de um arquivo durante uma leitura sequencial. Da mesma forma, se um resultado pode ser tratado por meio de valores de retorno, essa abordagem deve ser preferida. Reservar exceções para falhas realmente irrecuperáveis mantém o código mais claro e eficiente.</p>
+<p>O diagrama a seguir mostra dois fluxos possíveis de um programa simples: no caminho normal, a função é executada e imprime uma mensagem (&#34;Esta linha…&#34;) antes de retornar ao <code>main</code> e encerrar normalmente; já no caminho de erro, a função lança uma exceção (<code>std::runtime_error</code>), que não é capturada em nenhuma parte do programa, resultando na <em>chamada imediata de <code>std::terminate()</code></em> e encerramento abrupto da aplicação. Note que no diagrama, o caminho vermelho representa o comportamento real do C++: unwinding incompleto seguido de terminação forçada.</p>
+<p>
+<img src="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/03.png" alt="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/03.png" title="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/03.png" /></p>
+<p>
+Podemos observar, em rosa, o ponto onde &#34;dá ruim&#34; (onde a exceção é lançada) e, em vermelho, o caminho do erro levando à chamada de <code>std::terminate()</code>. Esse comportamento é intencional: como o próprio <a href="https://en.wikipedia.org/wiki/Bjarne_Stroustrup">Stroustrup</a> explica, <em>&#34;se uma função encontrar um erro que não consiga resolver, ela lança uma exceção; alguma função acima na hierarquia de chamadas pode capturá-la, mas, se ninguém o fizer, o programa termina&#34;</em>.</p>
+<p>
+<em>Detalhes do Comportamento no Diagrama</em>: O caminho vermelho &#34;Exceção não capturada → <code>std::terminate()</code> chamado&#34; reflete o comportamento real do C++. Diferentemente de linguagens que fazem unwinding completo antes de terminar, o C++ chama <code>std::terminate()</code> imediatamente quando nenhum handler é encontrado, interrompendo o processo de unwinding. Isso significa que objetos em frames superiores (como variáveis locais em <code>main</code>) podem não ter seus destrutores executados. </p>
+<p>
+<em>Importante sobre Stack Unwinding</em>: Quando uma exceção não é capturada, o C++ <em>não</em> executa o stack unwinding completo. Em vez disso, <code>std::terminate()</code> é chamado imediatamente, o que significa que <em>destrutores só são chamados para objetos nos frames de pilha que foram efetivamente desempilhados até o ponto onde a exceção foi lançada</em>. Objetos em frames superiores (incluindo objetos locais em <code>main</code>) podem não ter seus destrutores executados.</p>
+<p>
+Embora terminar a aplicação possa parecer drástico, isso na verdade evita consequências piores, como continuar a execução com dados corrompidos. Diferente dos códigos de erro (em que o programador <em>precisa</em> lembrar de verificar cada retorno), as exceções forçam uma decisão: ou você trata o problema em algum lugar, ou o programa será finalizado. Assim, falhas graves não &#34;passam batido&#34;. </p>
+<p>
+A separação clara entre lógica principal e lógica de erro permite a liberação automática de recursos <em>quando há handlers apropriados</em>, graças ao stack unwinding controlado do mecanismo de exceções em <a href="https://en.wikipedia.org/wiki/C%2B%2B">C++</a>. Porém, é crucial entender que sem tratamento adequado, essa garantia de limpeza não se aplica. </p>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-3">
+<h3 id="headline-2">
+<em>Principais Usos do <code>try/catch</code> — Exemplos Práticos em Diferentes Contextos</em>
+</h3>
+<div id="outline-text-headline-2" class="outline-text-3">
+<p>
+O bloco <code>try/catch</code> é fundamental para lidar com eventos <em>realmente excepcionais</em> — aqueles que interrompem o fluxo normal e não podem ser resolvidos apenas com valores de retorno ou verificações simples. Exemplos clássicos: falta de memória, falhas de <em><a href="https://en.wikipedia.org/wiki/Input/output">I/O</a></em>, corrupção de dados, ou erros lógicos imprevistos.</p>
+<p>
+A seguir, os principais cenários onde o uso do <code>try/catch</code> é apropriado, já com exemplos comentados em cada contexto:</p>
+<div id="outline-container-headline-3" class="outline-4">
+<h4 id="headline-3">
+Falhas de I/O (Arquivos, Rede, Dispositivos)
+</h4>
+<div id="outline-text-headline-3" class="outline-text-4">
+<p>
+Situações em que o programa depende de recursos externos — um arquivo, uma conexão de rede, um socket — e o resultado pode variar a qualquer momento, independentemente da lógica do seu código.</p>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">try</span> {
+</span></span><span style="display:flex;"><span>    std<span style="color:#f92672">::</span>ifstream arq(<span style="color:#e6db74">&#34;dados.txt&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Por padrão, streams C++ NÃO lançam exceções.
+</span></span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Para habilitá-las, configure os bits de exceção:
+</span></span></span><span style="display:flex;"><span>    arq.exceptions(std<span style="color:#f92672">::</span>ios<span style="color:#f92672">::</span>failbit <span style="color:#f92672">|</span> std<span style="color:#f92672">::</span>ios<span style="color:#f92672">::</span>badbit);
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    std<span style="color:#f92672">::</span>string linha;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (std<span style="color:#f92672">::</span>getline(arq, linha))  <span style="color:#75715e">// agora pode lançar exceção
+</span></span></span><span style="display:flex;"><span>        processar(linha);
+</span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">catch</span> (<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>ios_base<span style="color:#f92672">::</span>failure<span style="color:#f92672">&amp;</span> e) {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Tipo específico para erros de I/O quando exceções estão habilitadas
+</span></span></span><span style="display:flex;"><span>    logErro(<span style="color:#e6db74">&#34;Falha de I/O: &#34;</span> <span style="color:#f92672">+</span> std<span style="color:#f92672">::</span>string{e.what()});
+</span></span><span style="display:flex;"><span>    logErro(<span style="color:#e6db74">&#34;Código de erro: &#34;</span> <span style="color:#f92672">+</span> std<span style="color:#f92672">::</span>to_string(e.code().value()));
+</span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">catch</span> (<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>exception<span style="color:#f92672">&amp;</span> e) {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Captura outros tipos de erro (ex: problemas em processar())
+</span></span></span><span style="display:flex;"><span>    logErro(<span style="color:#e6db74">&#34;Erro geral: &#34;</span> <span style="color:#f92672">+</span> std<span style="color:#f92672">::</span>string{e.what()});
+</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+</div>
+<p>
+/ /Fluxo normal:* abrir, ler, processar.
+/ /Fluxo de erro:* qualquer falha salta direto para o <code>catch</code>.</p>
+<blockquote>
+<p><em>Importante sobre Streams C++</em>: Por padrão, as streams (<code>std::ifstream</code>, <code>std::ofstream</code>, etc.) <em>não lançam exceções</em> quando encontram erros — elas apenas definem bits de estado interno (<code>failbit</code>, <code>badbit</code>, <code>eofbit</code>) que devem ser verificados manualmente. Para que uma stream lance exceções automaticamente, é necessário configurar explicitamente quais condições devem disparar exceções usando o método <code>exceptions()</code>.</p>
+</blockquote>
+<p>
+No exemplo acima, <code>arq.exceptions(std::ios::failbit | std::ios::badbit)</code> instrui a stream a lançar uma exceção do tipo <code>std::ios_base::failure</code> sempre que ocorrer uma falha de operação (<code>failbit</code>) ou um erro irrecuperável (<code>badbit</code>). Sem essa configuração, operações como <code>std::getline()</code> ou <code>read()</code> falhariam silenciosamente, exigindo verificações manuais de estado.</p>
+<p>
+<em>Alternativa com Códigos de Status</em> (quando exceções não estão habilitadas):</p>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// Tratamento tradicional sem exceções - verificação manual
+</span></span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>ifstream arq(<span style="color:#e6db74">&#34;dados.txt&#34;</span>);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>arq.is_open()) {
+</span></span><span style="display:flex;"><span>    logErro(<span style="color:#e6db74">&#34;Erro: não foi possível abrir dados.txt&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>string linha;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">while</span> (std<span style="color:#f92672">::</span>getline(arq, linha)) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (arq.bad()) {
+</span></span><span style="display:flex;"><span>        logErro(<span style="color:#e6db74">&#34;Erro irrecuperável durante leitura&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">break</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (arq.fail() <span style="color:#f92672">&amp;&amp;</span> <span style="color:#f92672">!</span>arq.eof()) {
+</span></span><span style="display:flex;"><span>        logErro(<span style="color:#e6db74">&#34;Falha na operação de leitura&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">break</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    processar(linha);
+</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+</div>
+<p>
+<em>Comparação</em>: Com exceções habilitadas, o <code>try/catch</code> separa claramente o fluxo principal do tratamento de erros usando <code>std::ios_base::failure</code> específico. Sem exceções, você deve verificar manualmente os estados da stream (<code>bad()</code>, <code>fail()</code>, <code>eof()</code>) após cada operação. A abordagem com exceções mantém o código principal mais limpo, enquanto códigos de status oferecem controle mais granular sobre cada tipo de falha.</p>
+<blockquote>
+<p>Conforme discutido por <a href="https://en.wikipedia.org/wiki/Scott_Meyers">Scott Meyers</a> no seu livro <em><a href="https://en.wikipedia.org/wiki/Effective_C%2B%2B">Effective C++</a></em>, página 61-65, item 13, o uso de RAII e arquiteturas seguras de exceção (exception-safe) garante que recursos sejam sempre liberados corretamente mesmo em falha, movendo o código para o nível de basic ou strong exception safety. Ver também Item 29, p.115.</p>
+</blockquote>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-4">
+<h4 id="headline-4">
+Papel do RAII: limpeza automática
+</h4>
+<div id="outline-text-headline-4" class="outline-text-4">
+<p>
+Em C++ não há <code>finally</code>, porque o RAII resolve a liberação de recursos durante o “desenrolar” da pilha:</p>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;fstream&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;memory&gt;</span><span style="color:#75715e">
+</span></span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">processarArquivo</span>(<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span> caminho) {
+</span></span><span style="display:flex;"><span>    std<span style="color:#f92672">::</span>ifstream f(caminho);                     <span style="color:#75715e">// fecha sozinho no destrutor
+</span></span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>f) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>ios_base<span style="color:#f92672">::</span>failure(<span style="color:#e6db74">&#34;Falha ao abrir: &#34;</span> <span style="color:#f92672">+</span> caminho);
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Configurar stream para lançar exceções em caso de erro
+</span></span></span><span style="display:flex;"><span>    f.exceptions(std<span style="color:#f92672">::</span>ios<span style="color:#f92672">::</span>failbit <span style="color:#f92672">|</span> std<span style="color:#f92672">::</span>ios<span style="color:#f92672">::</span>badbit);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span> buf <span style="color:#f92672">=</span> std<span style="color:#f92672">::</span>make_unique<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">char</span>[]<span style="color:#f92672">&gt;</span>(<span style="color:#ae81ff">1024</span>);    <span style="color:#75715e">// libera sozinho
+</span></span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    f.read(buf.get(), <span style="color:#ae81ff">1024</span>);                      <span style="color:#75715e">// agora pode lançar std::ios_base::failure
+</span></span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ...processa dados...
+</span></span></span><span style="display:flex;"><span>}   <span style="color:#75715e">// Se qualquer exceção &#34;subir&#34;, f e buf são destruídos aqui
+</span></span></span></code></pre></div>
+</div>
+<p>
+Quando uma exceção é lançada, a execução normal do programa é imediatamente interrompida. Nesse momento, todos os objetos locais têm seus destrutores chamados automaticamente, o que garante a liberação dos recursos alocados, como arquivos abertos ou blocos de memória. O controle do fluxo, então, é transferido para o bloco <code>catch</code> mais próximo que seja capaz de tratar aquela exceção.</p>
+<p>
+<em>RAII e Níveis de Segurança de Exceção</em>: O RAII garante automaticamente o nível <em>basic exception safety</em> — o programa permanece em um estado válido após uma exceção, sem vazamentos de recursos. Este é um dos três níveis formais de segurança de exceção em C++:</p>
+<ol>
+<li><em>No-throw guarantee</em> (forte): A operação não pode falhar — garantido por funções marcadas com <code>noexcept</code></li>
+<li><em>Strong exception safety</em> (forte): Em caso de falha, o estado do programa permanece inalterado (como se a operação nunca tivesse sido tentada)</li>
+<li><em>Basic exception safety</em> (básico): O programa permanece em estado válido, recursos são liberados, mas o estado pode ter mudado</li>
+</ol>
+<p>RAII por si só oferece basic safety, mas pode ser combinado com técnicas como <em>copy-and-swap idiom</em> para alcançar strong safety, ou com <em><code>noexcept</code> move constructors</em> para garantir operações que não falham. Essas garantias formais tornam o código C++ mais previsível e robusto.</p>
+<p>
+Esse mecanismo faz com que, mesmo em situações em que &#34;tudo dá errado&#34;, o programa consiga fechar arquivos, devolver memória e encerrar de maneira previsível. Caso seja apropriado, o programa pode até continuar sua execução após o tratamento, dependendo da gravidade do erro e da lógica implementada.</p>
+<p>
+Por outro lado, é importante não usar <code>try/catch</code> para controlar o fluxo nominal do programa. Exceções não devem ser empregadas para lidar com situações esperadas, como o fim de um arquivo durante uma leitura sequencial. Da mesma forma, se um resultado pode ser tratado por meio de valores de retorno, essa abordagem deve ser preferida. Reservar exceções para falhas realmente irrecuperáveis mantém o código mais claro e eficiente.</p>
 <blockquote>
 <p>Em resumo, o <code>try/catch</code> serve para isolar o código de negócio do tratamento de falhas, garantir a liberação automática de recursos (graças ao RAII) e evitar que erros críticos passem despercebidos. Essa separação contribui para a clareza, robustez e manutenibilidade do software.</p>
 </blockquote>
-<h2 id="tratamento-de-exceções-em-diferentes-contextos">Tratamento de Exceções em Diferentes Contextos</h2>
-<p>Agora que vimos <strong>por que</strong> e <strong>quando</strong> usar <code>try/catch</code>, vamos explorar o mecanismo em ação em cenários do dia a dia. Os exemplos abaixo seguem o mesmo princípio apresentado na seção anterior:</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-3">
+<h3 id="headline-5">
+Tratamento de Exceções em Diferentes Contextos
+</h3>
+<div id="outline-text-headline-5" class="outline-text-3">
+<p>
+Agora que vimos <em>por que</em> e <em>quando</em> usar <code>try/catch</code>, vamos explorar o mecanismo em ação em cenários do dia a dia. Os exemplos abaixo seguem o mesmo princípio apresentado na seção anterior:</p>
 <blockquote>
-<p><strong>separe a lógica &ldquo;feliz&rdquo; do que acontece quando algo dá errado</strong>.</p>
+<p><em>separe a lógica &#34;feliz&#34; do que acontece quando algo dá errado</em>.</p>
 </blockquote>
-<h3 id="gerenciamento-de-recursos">Gerenciamento de recursos</h3>
-
-
-  <pre><code class="language-cpp">void processar() {
-    auto dados = std::make_unique&lt;Buffer&gt;(1024);   // libera sozinho
-
-    try {
-        dados-&gt;carregar();
-        dados-&gt;processar();
-        dados-&gt;salvar();
-    } catch (...) {
-        logErro(&#34;Falha no processamento, propagando...&#34;);
-        throw;                                     // sobe para quem souber tratar
-    }                                             // `dados` é liberado aqui
-}</code></pre>
- <ul>
-<li>O <code>unique_ptr</code> garante liberação, dispensando <code>finally</code>.</li>
-<li>O bloco <code>catch</code> adiciona contexto e re‑lança.</li>
-</ul>
-<p>O exemplo acima ilustra como o uso combinado de <code>try/catch</code> e RAII (através do <code>unique_ptr</code>) simplifica o gerenciamento de recursos em C++. Ao encapsular a lógica principal dentro de um bloco <code>try</code>, garantimos que qualquer exceção lançada durante o carregamento, processamento ou salvamento dos dados seja capturada no <code>catch</code>, onde podemos registrar o erro e, se necessário, propagar a exceção para níveis superiores.</p>
-<p>O uso do <code>unique_ptr</code> assegura que a memória alocada para o buffer será automaticamente liberada ao final do escopo, mesmo que uma exceção ocorra — eliminando a necessidade de blocos <code>finally</code> ou liberações manuais.</p>
+<div id="outline-container-headline-6" class="outline-4">
+<h4 id="headline-6">
+Gerenciamento de recursos
+</h4>
+<div id="outline-text-headline-6" class="outline-text-4">
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">processar</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span> dados <span style="color:#f92672">=</span> std<span style="color:#f92672">::</span>make_unique<span style="color:#f92672">&lt;</span>Buffer<span style="color:#f92672">&gt;</span>(<span style="color:#ae81ff">1024</span>);   <span style="color:#75715e">// libera sozinho
+</span></span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">try</span> {
+</span></span><span style="display:flex;"><span>        dados<span style="color:#f92672">-&gt;</span>carregar();
+</span></span><span style="display:flex;"><span>        dados<span style="color:#f92672">-&gt;</span>processar();
+</span></span><span style="display:flex;"><span>        dados<span style="color:#f92672">-&gt;</span>salvar();
+</span></span><span style="display:flex;"><span>    } <span style="color:#66d9ef">catch</span> (...) {
+</span></span><span style="display:flex;"><span>        logErro(<span style="color:#e6db74">&#34;Falha no processamento, propagando...&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">throw</span>;                                     <span style="color:#75715e">// sobe para quem souber tratar
+</span></span></span><span style="display:flex;"><span>    }                                             <span style="color:#75715e">// `dados` é liberado aqui
+</span></span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-2">
+<h2 id="headline-7">
+O <code>unique_ptr</code> garante liberação, dispensando <code>finally</code>.
+</h2>
+</div>
+<div id="outline-container-headline-8" class="outline-2">
+<h2 id="headline-8">
+O bloco <code>catch</code> adiciona contexto e re‑lança.
+</h2>
+<div id="outline-text-headline-8" class="outline-text-2">
+<p>
+O exemplo acima ilustra como o uso combinado de <code>try/catch</code> e RAII (através do <code>unique_ptr</code>) simplifica o gerenciamento de recursos em C++. Ao encapsular a lógica principal dentro de um bloco <code>try</code>, garantimos que qualquer exceção lançada durante o carregamento, processamento ou salvamento dos dados seja capturada no <code>catch</code>, onde podemos registrar o erro e, se necessário, propagar a exceção para níveis superiores. </p>
+<p>
+O uso do <code>unique_ptr</code> assegura que a memória alocada para o buffer será automaticamente liberada ao final do escopo, mesmo que uma exceção ocorra — eliminando a necessidade de blocos <code>finally</code> ou liberações manuais. </p>
 <blockquote>
 <p>Assim, o código permanece limpo, seguro e robusto, pois separa claramente o fluxo normal do tratamento de falhas, um dos principais propósitos do mecanismo de exceções discutido neste artigo.</p>
 </blockquote>
-<h3 id="validação-de-dados">Validação de dados</h3>
-
-
-  <pre><code class="language-cpp">class Usuario {
-public:
-    void setIdade(int idade) {
-        if (idade &lt; 0 || idade &gt; 120)
-            throw std::invalid_argument(&#34;Idade fora do intervalo permitido&#34;);
-        idade_ = idade;
-    }
-private:
-    int idade_{};
-};
-
-try {
-    Usuario u;
-    u.setIdade(valorLido);
-} catch (const std::invalid_argument&amp; e) {
-    logErro(&#34;Entrada inválida: &#34; &#43; std::string{e.what()});
-}</code></pre>
- <ul>
-<li>A regra de negócio fica <strong>dentro</strong> da classe.</li>
-<li>Quem usa a API só precisa lidar com a exceção, sem checar retornos.</li>
-</ul>
-<p>O exemplo acima demonstra como encapsular regras de validação diretamente na classe, lançando exceções quando os dados não atendem aos critérios esperados (por exemplo, uma idade fora do intervalo permitido). Isso centraliza a lógica de negócio e simplifica o uso da API, pois quem consome a classe só precisa tratar possíveis exceções, sem se preocupar em checar retornos de erro manualmente.</p>
+<div id="outline-container-headline-9" class="outline-4">
+<h4 id="headline-9">
+Validação de dados
+</h4>
+<div id="outline-text-headline-9" class="outline-text-4">
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Usuario</span> {
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span><span style="color:#f92672">:</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">void</span> setIdade(<span style="color:#66d9ef">int</span> idade) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (idade <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">||</span> idade <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">120</span>)
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>invalid_argument(<span style="color:#e6db74">&#34;Idade fora do intervalo permitido&#34;</span>);
+</span></span><span style="display:flex;"><span>        idade_ <span style="color:#f92672">=</span> idade;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">private</span><span style="color:#f92672">:</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> idade_{};
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">try</span> {
+</span></span><span style="display:flex;"><span>    Usuario u;
+</span></span><span style="display:flex;"><span>    u.setIdade(valorLido);
+</span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">catch</span> (<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>invalid_argument<span style="color:#f92672">&amp;</span> e) {
+</span></span><span style="display:flex;"><span>    logErro(<span style="color:#e6db74">&#34;Entrada inválida: &#34;</span> <span style="color:#f92672">+</span> std<span style="color:#f92672">::</span>string{e.what()});
+</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+</div>
+<p>
+/ A regra de negócio fica /dentro* da classe.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-10" class="outline-2">
+<h2 id="headline-10">
+Quem usa a API só precisa lidar com a exceção, sem checar retornos.
+</h2>
+<div id="outline-text-headline-10" class="outline-text-2">
+<p>
+O exemplo acima demonstra como encapsular regras de validação diretamente na classe, lançando exceções quando os dados não atendem aos critérios esperados (por exemplo, uma idade fora do intervalo permitido). Isso centraliza a lógica de negócio e simplifica o uso da API, pois quem consome a classe só precisa tratar possíveis exceções, sem se preocupar em checar retornos de erro manualmente. </p>
 <blockquote>
 <p>Esse padrão torna o código mais limpo, seguro e fácil de manter, além de separar claramente o fluxo normal do tratamento de falhas. Essa abordagem de propagação de exceções é especialmente útil em cenários mais complexos, como operações transacionais, que veremos a seguir.</p>
 </blockquote>
-<h3 id="transações-atômicas">Transações atômicas</h3>
-
-
-  <pre><code class="language-cpp">void transferir(Conta&amp; a, Conta&amp; b, double v) {
-    if (v &lt;= 0) throw std::invalid_argument(&#34;valor &lt;= 0&#34;);
-
-    std::scoped_lock lk(a.mtx(), b.mtx());  // C&#43;&#43;17: adquire ambos sem deadlock
-
-    bool debitado = false;
-    try {
-        a.debitar(v);
-        debitado = true;
-        b.creditar(v);
-    } catch (...) {          // qualquer erro ⇒ rollback se necessário
-        if (debitado) a.creditar(v);
-        throw;
-    }
-}</code></pre>
- <ul>
-<li><strong>All‑or‑nothing</strong>: ou ambas as contas mudam, ou nada persiste.</li>
-<li><code>scoped_lock</code> adquire ambos os mutexes simultaneamente e os libera automaticamente, mesmo em caso de exceção.</li>
-</ul>
+<div id="outline-container-headline-11" class="outline-4">
+<h4 id="headline-11">
+Transações atômicas
+</h4>
+<div id="outline-text-headline-11" class="outline-text-4">
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">transferir</span>(Conta<span style="color:#f92672">&amp;</span> a, Conta<span style="color:#f92672">&amp;</span> b, <span style="color:#66d9ef">double</span> v) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (v <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span>) <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>invalid_argument(<span style="color:#e6db74">&#34;valor &lt;= 0&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    std<span style="color:#f92672">::</span>scoped_lock lk(a.mtx(), b.mtx());  <span style="color:#75715e">// C++17: adquire ambos sem deadlock
+</span></span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">bool</span> debitado <span style="color:#f92672">=</span> false;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">try</span> {
+</span></span><span style="display:flex;"><span>        a.debitar(v);
+</span></span><span style="display:flex;"><span>        debitado <span style="color:#f92672">=</span> true;
+</span></span><span style="display:flex;"><span>        b.creditar(v);
+</span></span><span style="display:flex;"><span>    } <span style="color:#66d9ef">catch</span> (...) {          <span style="color:#75715e">// qualquer erro ⇒ rollback se necessário
+</span></span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (debitado) a.creditar(v);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">throw</span>;
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+</div>
+<p>
+/ /All‑or‑nothing*: ou ambas as contas mudam, ou nada persiste.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-12" class="outline-2">
+<h2 id="headline-12">
+<code>scoped_lock</code> adquire ambos os mutexes simultaneamente e os libera automaticamente, mesmo em caso de exceção.
+</h2>
+<div id="outline-text-headline-12" class="outline-text-2">
 <blockquote>
-<p><strong>✅ Prevenção de deadlock</strong>: O código utiliza <code>std::scoped_lock</code> (C++17+) que adquire ambos os mutexes simultaneamente usando um algoritmo livre de deadlock. Isso elimina a necessidade de ordenação manual dos locks e previne deadlocks que poderiam ocorrer com <code>lock_guard</code> separados quando diferentes threads adquirem os mesmos mutexes em ordens distintas.</p>
+<p><em>✅ Prevenção de deadlock</em>: O código utiliza <code>std::scoped_lock</code> (C++17+) que adquire ambos os mutexes simultaneamente usando um algoritmo livre de deadlock. Isso elimina a necessidade de ordenação manual dos locks e previne deadlocks que poderiam ocorrer com <code>lock_guard</code> separados quando diferentes threads adquirem os mesmos mutexes em ordens distintas.</p>
 </blockquote>
-<p>O exemplo acima ilustra como implementar uma operação transacional utilizando exceções para garantir a atomicidade: se qualquer etapa da transferência falhar (por exemplo, por saldo insuficiente ou erro inesperado), o código faz o rollback condicional — creditando a conta de origem apenas se o débito foi efetivamente aplicado — antes de propagar a exceção.</p>
-<p>O uso de <code>scoped_lock</code> assegura que os mutexes das contas sejam adquiridos de forma livre de deadlock e liberados automaticamente, mesmo em caso de erro, evitando tanto deadlocks quanto vazamentos de recursos.</p>
+<p>
+O exemplo acima ilustra como implementar uma operação transacional utilizando exceções para garantir a atomicidade: se qualquer etapa da transferência falhar (por exemplo, por saldo insuficiente ou erro inesperado), o código faz o rollback condicional — creditando a conta de origem apenas se o débito foi efetivamente aplicado — antes de propagar a exceção. </p>
+<p>
+O uso de <code>scoped_lock</code> assegura que os mutexes das contas sejam adquiridos de forma livre de deadlock e liberados automaticamente, mesmo em caso de erro, evitando tanto deadlocks quanto vazamentos de recursos. </p>
 <blockquote>
 <p>Esse padrão é fundamental em sistemas financeiros e outros domínios críticos, pois assegura que as alterações de estado sejam consistentes e não deixem o sistema em situação intermediária caso ocorra uma falha.</p>
 </blockquote>
-<p>A seguir, veremos como enriquecer o contexto das exceções ao longo das camadas da aplicação, facilitando o diagnóstico e a rastreabilidade dos erros.</p>
-<h3 id="enriquecendo-contexto-em-camadas">Enriquecendo contexto em camadas</h3>
-
-
-  <pre><code class="language-cpp">void baixa()  { /* ... */ throw std::runtime_error(&#34;DB offline&#34;); }
-void media()  { try { baixa(); }
-                catch (const std::exception&amp; e) {
-                    throw std::runtime_error(&#34;Camada média: &#34; &#43; std::string{e.what()});
-                }}
-void alta()   { try { media(); }
-                catch (const std::exception&amp; e) {
-                    throw std::runtime_error(&#34;Camada alta: &#34;  &#43; std::string{e.what()});
-                }}</code></pre>
- <p>O objetivo desse padrão é fornecer uma trilha clara e detalhada do caminho percorrido pelo erro, desde sua origem até o ponto mais alto da pilha de chamadas. Ao enriquecer a mensagem de exceção em cada camada, o desenvolvedor consegue identificar rapidamente onde o problema começou e por quais etapas ele passou, facilitando o diagnóstico e a correção. Esse encadeamento de mensagens resulta em um relatório final como:</p>
-
-
-  <pre><code class="language-">&#34;Camada alta: Camada média: DB offline&#34;</code></pre>
- <p>Exceções devem ser usadas exclusivamente para situações realmente excepcionais, ou seja, aquelas que impedem o fluxo normal do programa de continuar. Não utilize exceções para controlar o fluxo rotineiro da aplicação, pois isso pode tornar o código confuso, difícil de manter e impactar negativamente a performance.</p>
+<p>
+A seguir, veremos como enriquecer o contexto das exceções ao longo das camadas da aplicação, facilitando o diagnóstico e a rastreabilidade dos erros.</p>
+<div id="outline-container-headline-13" class="outline-4">
+<h4 id="headline-13">
+Enriquecendo contexto em camadas
+</h4>
+<div id="outline-text-headline-13" class="outline-text-4">
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">baixa</span>()  { <span style="color:#75715e">/* ... */</span> <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>runtime_error(<span style="color:#e6db74">&#34;DB offline&#34;</span>); }
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">media</span>()  { <span style="color:#66d9ef">try</span> { baixa(); }
+</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">catch</span> (<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>exception<span style="color:#f92672">&amp;</span> e) {
+</span></span><span style="display:flex;"><span>                    <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>runtime_error(<span style="color:#e6db74">&#34;Camada média: &#34;</span> <span style="color:#f92672">+</span> std<span style="color:#f92672">::</span>string{e.what()});
+</span></span><span style="display:flex;"><span>                }}
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">alta</span>()   { <span style="color:#66d9ef">try</span> { media(); }
+</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">catch</span> (<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>exception<span style="color:#f92672">&amp;</span> e) {
+</span></span><span style="display:flex;"><span>                    <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>runtime_error(<span style="color:#e6db74">&#34;Camada alta: &#34;</span>  <span style="color:#f92672">+</span> std<span style="color:#f92672">::</span>string{e.what()});
+</span></span><span style="display:flex;"><span>                }}</span></span></code></pre></div>
+</div>
+<p>
+O objetivo desse padrão é fornecer uma trilha clara e detalhada do caminho percorrido pelo erro, desde sua origem até o ponto mais alto da pilha de chamadas. Ao enriquecer a mensagem de exceção em cada camada, o desenvolvedor consegue identificar rapidamente onde o problema começou e por quais etapas ele passou, facilitando o diagnóstico e a correção. Esse encadeamento de mensagens resulta em um relatório final como:</p>
+<div class="src src-text">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>&#34;Camada alta: Camada média: DB offline&#34;</span></span></code></pre></div>
+</div>
+<p>
+Exceções devem ser usadas exclusivamente para situações realmente excepcionais, ou seja, aquelas que impedem o fluxo normal do programa de continuar. Não utilize exceções para controlar o fluxo rotineiro da aplicação, pois isso pode tornar o código confuso, difícil de manter e impactar negativamente a performance.</p>
 <blockquote>
 <p>Algumas boas práticas são fundamentais para um uso correto do <code>try/catch</code>: sempre capture tipos específicos de exceção primeiro, evitando tratar tudo como erro genérico; nunca ignore exceções silenciosamente — registre o erro ou converta-o em um erro de domínio; em C++, garanta o uso de RAII (Resource Acquisition Is Initialization) para liberar recursos automaticamente, dispensando a necessidade de blocos <code>finally</code> e prevenindo vazamentos (em outras linguagens, utilize os mecanismos equivalentes, como <code>with</code> em Python ou <code>using</code> em C#).</p>
 </blockquote>
-<p>Documente claramente quais exceções sua função pode lançar, facilitando o uso e os testes; e lembre-se de que lançar exceções tem custo, então não utilize esse mecanismo para situações comuns do fluxo de controle.</p>
+<p>
+Documente claramente quais exceções sua função pode lançar, facilitando o uso e os testes; e lembre-se de que lançar exceções tem custo, então não utilize esse mecanismo para situações comuns do fluxo de controle.</p>
 <hr>
-<h3 id="má-prática-de-design--quando-o-trycatch-vira-gambiarra">Má prática de design — quando o <code>try/catch</code> vira gambiarra</h3>
-<p>No tópico anterior, vimos quando é apropriado lançar exceções; agora, é importante abordar o outro lado: o que acontece quando utilizamos <code>try/catch</code> para tratar situações que não são realmente excepcionais. Usar exceções como substituto de verificações normais, como um simples <code>if</code>, é considerado um anti-padrão e pode trazer consequências negativas para a clareza, desempenho e manutenção do código. Observe o exemplo abaixo:</p>
-
-
-  <pre><code class="language-ts">// ❌  Exceção controlando fluxo normal
-function getItemPrice(item: { name: string; price?: number }): number {
-  try {
-    if (item.price === undefined)            // caso esperado
-      throw new Error(&#34;Preço indefinido&#34;);   // força exceção
-    return item.price;
-  } catch {
-    return 0;                                // valor padrão
-  }
-}</code></pre>
- <p>Usar exceções para tratar situações rotineiras, como uma simples validação de campo, é prejudicial por vários motivos. Primeiro, isso surpreende quem lê o código, pois dá a impressão de que ocorreu uma falha grave, quando na verdade é apenas um caso esperado e trivial — quebrando o <a href="https://en.wikipedia.org/wiki/Principle_of_least_astonishment">Princípio do Menor Espanto (POLA)</a>.</p>
-<p>Além disso, lançar e capturar exceções é uma operação significativamente mais custosa do que um simples <code>if</code>. O modelo C++ usa <strong>&ldquo;zero-cost exceptions&rdquo;</strong> — que significa zero custo <strong>apenas no caminho normal</strong> (quando nenhuma exceção é lançada) — mas o custo de realmente lançar uma exceção é extremamente alto. Como explica <a href="https://devblogs.microsoft.com/oldnewthing/20220228-00/?p=106296">Raymond Chen</a>, da Microsoft, o termo pode ser enganoso: <em>&ldquo;Metadata-based exception handling should really be called super-expensive exceptions&rdquo;</em>.</p>
-<p>O processo envolve: busca por metadados no PC (program counter), decodificação de dados DWARF compactados, chamadas ao <em>personality routine</em>, e o custoso <strong>stack unwinding</strong>. <a href="https://isocpp.org/blog/2019/09/cppcon-2019-de-fragmenting-cpp-making-exceptions-and-rtti-more-affordable-a">Herb Sutter</a> demonstra que exceções violam o <em>zero-overhead principle</em> do C++, sendo uma das únicas duas funcionalidades da linguagem (junto com RTTI) que têm opções para serem desabilitadas pelos compiladores.</p>
-<p>Adicionalmente, mesmo quando não lançadas, exceções <strong>podem</strong> limitar certas otimizações do compilador: antes de operações que podem gerar exceção, o compilador pode precisar descarregar registradores para memória e evitar reordenações que quebrariam a semântica de unwinding. As <a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#e3-use-exceptions-for-error-handling-only">C++ Core Guidelines</a> enfatizam que &ldquo;exceptions are for error handling only&rdquo; e que usar exceções para controle de fluxo normal &ldquo;makes code hard to follow and maintain.&rdquo;</p>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-4">
+<h4 id="headline-14">
+Má prática de design — quando o <code>try/catch</code> vira gambiarra
+</h4>
+<div id="outline-text-headline-14" class="outline-text-4">
+<p>
+No tópico anterior, vimos quando é apropriado lançar exceções; agora, é importante abordar o outro lado: o que acontece quando utilizamos <code>try/catch</code> para tratar situações que não são realmente excepcionais. Usar exceções como substituto de verificações normais, como um simples <code>if</code>, é considerado um anti-padrão e pode trazer consequências negativas para a clareza, desempenho e manutenção do código. Observe o exemplo abaixo:</p>
+<div class="src src-ts">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-ts" data-lang="ts"><span style="display:flex;"><span><span style="color:#75715e">// ❌  Exceção controlando fluxo normal
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">function</span> <span style="color:#a6e22e">getItemPrice</span>(<span style="color:#a6e22e">item</span><span style="color:#f92672">:</span> { <span style="color:#a6e22e">name</span>: <span style="color:#66d9ef">string</span>; <span style="color:#a6e22e">price?</span>: <span style="color:#66d9ef">number</span> })<span style="color:#f92672">:</span> <span style="color:#66d9ef">number</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">try</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">item</span>.<span style="color:#a6e22e">price</span> <span style="color:#f92672">===</span> <span style="color:#66d9ef">undefined</span>)            <span style="color:#75715e">// caso esperado
+</span></span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> Error(<span style="color:#e6db74">&#34;Preço indefinido&#34;</span>);   <span style="color:#75715e">// força exceção
+</span></span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">item</span>.<span style="color:#a6e22e">price</span>;
+</span></span><span style="display:flex;"><span>  } <span style="color:#66d9ef">catch</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;                                <span style="color:#75715e">// valor padrão
+</span></span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+</div>
+<p>
+Usar exceções para tratar situações rotineiras, como uma simples validação de campo, é prejudicial por vários motivos. Primeiro, isso surpreende quem lê o código, pois dá a impressão de que ocorreu uma falha grave, quando na verdade é apenas um caso esperado e trivial — quebrando o <a href="https://en.wikipedia.org/wiki/Principle_of_least_astonishment">Princípio do Menor Espanto (POLA)</a>. </p>
+<p>
+Além disso, lançar e capturar exceções é uma operação significativamente mais custosa do que um simples <code>if</code>. O modelo C++ usa <em>&#34;zero-cost exceptions&#34;</em> — que significa zero custo <em>apenas no caminho normal</em> (quando nenhuma exceção é lançada) — mas o custo de realmente lançar uma exceção é extremamente alto. Como explica <a href="https://devblogs.microsoft.com/oldnewthing/20220228-00/?p=106296">Raymond Chen</a>, da Microsoft, o termo pode ser enganoso: <em>&#34;Metadata-based exception handling should really be called super-expensive exceptions&#34;</em>.</p>
+<p>
+O processo envolve: busca por metadados no PC (program counter), decodificação de dados DWARF compactados, chamadas ao <em>personality routine</em>, e o custoso <em>stack unwinding</em>. <a href="https://isocpp.org/blog/2019/09/cppcon-2019-de-fragmenting-cpp-making-exceptions-and-rtti-more-affordable-a">Herb Sutter</a> demonstra que exceções violam o <em>zero-overhead principle</em> do C++, sendo uma das únicas duas funcionalidades da linguagem (junto com RTTI) que têm opções para serem desabilitadas pelos compiladores.</p>
+<p>
+Adicionalmente, mesmo quando não lançadas, exceções <em>podem</em> limitar certas otimizações do compilador: antes de operações que podem gerar exceção, o compilador pode precisar descarregar registradores para memória e evitar reordenações que quebrariam a semântica de unwinding. As <a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#e3-use-exceptions-for-error-handling-only">C++ Core Guidelines</a> enfatizam que &#34;exceptions are for error handling only&#34; e que usar exceções para controle de fluxo normal &#34;makes code hard to follow and maintain.&#34;</p>
 <blockquote>
-<p>Essa ideia está diretamente alinhada ao conselho do livro <strong><a href="https://en.wikipedia.org/wiki/The_Pragmatic_Programmer">The Pragmatic Programmer</a></strong>: trate apenas o que realmente é excepcional como exceção — caso contrário, você adiciona complexidade desnecessária e viola princípios como <a href="https://en.wikipedia.org/wiki/Principle_of_least_astonishment">Principle of Least Astonishment</a>.</p>
+<p>Essa ideia está diretamente alinhada ao conselho do livro <em><a href="https://en.wikipedia.org/wiki/The_Pragmatic_Programmer">The Pragmatic Programmer</a></em>: trate apenas o que realmente é excepcional como exceção — caso contrário, você adiciona complexidade desnecessária e viola princípios como <a href="https://en.wikipedia.org/wiki/Principle_of_least_astonishment">Principle of Least Astonishment</a>.</p>
 </blockquote>
 <blockquote>
-<p>Além disso, conforme <a href="https://github.com/mattklein123">Matt Klein</a> argumenta em seu artigo <strong>&ldquo;Crash early and crash often for more reliable software&rdquo;</strong> (7 abr 2019), verificações de erro excessivas prejudicam a confiabilidade do software. Ele afirma literalmente: <em>&ldquo;The only error checking a program needs are for errors that can actually happen during normal control flow&rdquo;</em> (A única verificação de erro que um programa precisa é para erros que podem realmente acontecer durante o fluxo de controle normal).</p>
+<p>Além disso, conforme <a href="https://github.com/mattklein123">Matt Klein</a> argumenta em seu artigo <em>&#34;Crash early and crash often for more reliable software&#34;</em> (7 abr 2019), verificações de erro excessivas prejudicam a confiabilidade do software. Ele afirma literalmente: <em>&#34;The only error checking a program needs are for errors that can actually happen during normal control flow&#34;</em> (A única verificação de erro que um programa precisa é para erros que podem realmente acontecer durante o fluxo de controle normal).</p>
 </blockquote>
-<p>Klein explica que checks desnecessários aumentam a complexidade e geram dívida de manutenção ao proliferarem ramos de código raramente exercitados, que por sua vez se tornam fontes de bugs ocultos e comportamentos imprevisíveis.</p>
-<p>Outro problema é que esse uso inadequado de exceções <a href="https://en.wikipedia.org/wiki/Stack_trace">polui o stack-trace</a>, tornando mais difícil depurar e analisar o comportamento do sistema. O excesso de exceções desnecessárias pode mascarar erros reais, dificultar o profiling e tornar o código mais difícil de manter.</p>
-<p>Por isso, para validações simples e previsíveis, prefira sempre estruturas de controle explícitas, reservando as exceções apenas para situações realmente inesperadas ou graves. Vamos ver um exemplo idiomático em TypeScript:</p>
-
-
-  <pre><code class="language-ts">// ✅  Política de negócio explícita (se 0 é valor válido)
-function getItemPrice(item: { name: string; price?: number }): number {
-  return item.price ?? 0;     // política: preço indefinido = gratuito
-}
-
-// ✅  Tratamento de erro de domínio (se preço é obrigatório)
-function getItemPriceStrict(item: { name: string; price?: number }): number | undefined {
-  return item.price;          // deixa caller decidir o que fazer
-}
-
-// ✅  Alternativa com Result/Either pattern
-type Result&lt;T, E&gt; = { success: true; data: T } | { success: false; error: E };
-
-function getItemPriceResult(item: { name: string; price?: number }): Result&lt;number, string&gt; {
-  if (item.price === undefined) {
-    return { success: false, error: &#34;Preço não informado&#34; };
-  }
-  return { success: true, data: item.price };
-}</code></pre>
- <p><strong>Distinguindo Política de Negócio vs. Erro de Domínio</strong>: O exemplo acima demonstra três abordagens distintas:</p>
+<p>
+Klein explica que checks desnecessários aumentam a complexidade e geram dívida de manutenção ao proliferarem ramos de código raramente exercitados, que por sua vez se tornam fontes de bugs ocultos e comportamentos imprevisíveis.</p>
+<p>
+Outro problema é que esse uso inadequado de exceções <a href="https://en.wikipedia.org/wiki/Stack_trace">polui o stack-trace</a>, tornando mais difícil depurar e analisar o comportamento do sistema. O excesso de exceções desnecessárias pode mascarar erros reais, dificultar o profiling e tornar o código mais difícil de manter. </p>
+<p>
+Por isso, para validações simples e previsíveis, prefira sempre estruturas de controle explícitas, reservando as exceções apenas para situações realmente inesperadas ou graves. Vamos ver um exemplo idiomático em TypeScript:</p>
+<div class="src src-ts">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-ts" data-lang="ts"><span style="display:flex;"><span><span style="color:#75715e">// ✅  Política de negócio explícita (se 0 é valor válido)
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">function</span> <span style="color:#a6e22e">getItemPrice</span>(<span style="color:#a6e22e">item</span><span style="color:#f92672">:</span> { <span style="color:#a6e22e">name</span>: <span style="color:#66d9ef">string</span>; <span style="color:#a6e22e">price?</span>: <span style="color:#66d9ef">number</span> })<span style="color:#f92672">:</span> <span style="color:#66d9ef">number</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">item</span>.<span style="color:#a6e22e">price</span> <span style="color:#f92672">??</span> <span style="color:#ae81ff">0</span>;     <span style="color:#75715e">// política: preço indefinido = gratuito
+</span></span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// ✅  Tratamento de erro de domínio (se preço é obrigatório)
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">function</span> <span style="color:#a6e22e">getItemPriceStrict</span>(<span style="color:#a6e22e">item</span><span style="color:#f92672">:</span> { <span style="color:#a6e22e">name</span>: <span style="color:#66d9ef">string</span>; <span style="color:#a6e22e">price?</span>: <span style="color:#66d9ef">number</span> })<span style="color:#f92672">:</span> <span style="color:#66d9ef">number</span> <span style="color:#f92672">|</span> <span style="color:#66d9ef">undefined</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">item</span>.<span style="color:#a6e22e">price</span>;          <span style="color:#75715e">// deixa caller decidir o que fazer
+</span></span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// ✅  Alternativa com Result/Either pattern
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">Result</span>&lt;<span style="color:#f92672">T</span>, <span style="color:#a6e22e">E</span>&gt; <span style="color:#f92672">=</span> { <span style="color:#a6e22e">success</span>: <span style="color:#66d9ef">true</span>; <span style="color:#a6e22e">data</span>: <span style="color:#66d9ef">T</span> } <span style="color:#f92672">|</span> { <span style="color:#a6e22e">success</span>: <span style="color:#66d9ef">false</span>; <span style="color:#a6e22e">error</span>: <span style="color:#66d9ef">E</span> };
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">function</span> <span style="color:#a6e22e">getItemPriceResult</span>(<span style="color:#a6e22e">item</span><span style="color:#f92672">:</span> { <span style="color:#a6e22e">name</span>: <span style="color:#66d9ef">string</span>; <span style="color:#a6e22e">price?</span>: <span style="color:#66d9ef">number</span> })<span style="color:#f92672">:</span> <span style="color:#a6e22e">Result</span>&lt;<span style="color:#f92672">number</span>, <span style="color:#a6e22e">string</span>&gt; {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">item</span>.<span style="color:#a6e22e">price</span> <span style="color:#f92672">===</span> <span style="color:#66d9ef">undefined</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> { <span style="color:#a6e22e">success</span>: <span style="color:#66d9ef">false</span>, <span style="color:#a6e22e">error</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;Preço não informado&#34;</span> };
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> { <span style="color:#a6e22e">success</span>: <span style="color:#66d9ef">true</span>, <span style="color:#a6e22e">data</span>: <span style="color:#66d9ef">item.price</span> };
+</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+</div>
+<p>
+<em>Distinguindo Política de Negócio vs. Erro de Domínio</em>: O exemplo acima demonstra três abordagens distintas:</p>
 <ol>
-<li><strong>Política de Negócio</strong> (<code>?? 0</code>): Use quando o fallback faz parte das regras de negócio (ex: item sem preço = gratuito)</li>
-<li><strong>Delegar Decisão</strong> (<code>number | undefined</code>): Deixa o caller decidir como tratar valores ausentes</li>
-<li><strong>Erro Explícito</strong> (Result pattern): Força tratamento explícito do caso de erro, evitando &ldquo;silenciar&rdquo; problemas de domínio</li>
+<li><em>Política de Negócio</em> (<code>?? 0</code>): Use quando o fallback faz parte das regras de negócio (ex: item sem preço = gratuito)</li>
+<li><em>Delegar Decisão</em> (<code>number | undefined</code>): Deixa o caller decidir como tratar valores ausentes</li>
+<li><em>Erro Explícito</em> (Result pattern): Força tratamento explícito do caso de erro, evitando &#34;silenciar&#34; problemas de domínio</li>
 </ol>
-<p>O resultado de evitar exceções para casos esperados é um código mais claro, eficiente e sem armadilhas ocultas. Em vez de usar <code>try/catch</code> para controlar fluxos normais, prefira estruturas explícitas como <code>if</code>, valores opcionais (<code>std::optional</code>, <code>std::expected</code> em C++23, <code>tl::expected</code>, <code>nullish ??</code>) ou retornos convencionais.</p>
+<p>O resultado de evitar exceções para casos esperados é um código mais claro, eficiente e sem armadilhas ocultas. Em vez de usar <code>try/catch</code> para controlar fluxos normais, prefira estruturas explícitas como <code>if</code>, valores opcionais (<code>std::optional</code>, <code>std::expected</code> em C++23, <code>tl::expected</code>, <code>nullish ??</code>) ou retornos convencionais. </p>
 <blockquote>
 <p>Assim, situações como campo obrigatório não preenchido, busca sem resultado ou divisão por zero prevista são tratadas de forma transparente e previsível, sem sobrecarregar o sistema com o custo e a complexidade das exceções.</p>
 </blockquote>
-<p>Já para eventos realmente excepcionais — como disco cheio, queda de conexão, corrupção de dados ou necessidade de desfazer uma operação crítica — o uso de exceções (<code>throw</code>) é apropriado.</p>
-<p>Nesses casos, não há como prever ou contornar o problema apenas com verificações simples, e a exceção serve para interromper o fluxo e sinalizar que algo grave aconteceu, permitindo que o erro seja tratado em um nível superior ou que o programa seja encerrado de forma segura.</p>
-<p>Diversas linguagens modernas reforçam essa separação: <strong>Rust</strong> usa <code>Result&lt;T, E&gt;</code> para erros esperados e reserva <code>panic!</code> para condições irrecuperáveis (bugs, invariantes violadas); <strong>Clojure</strong> herda exceções da JVM mas favorece erros como dados (mapas, keywords) nas camadas de domínio; <strong>TypeScript</strong> incentiva o uso de tipos como <code>unknown</code> e alternativas funcionais como <code>Either</code>.</p>
-<p>Todas seguem o mesmo princípio: erros previsíveis devem ser tratados como dados, enquanto exceções ficam para situações realmente imprevisíveis. Assim, lançar exceção só quando necessário aproxima o erro da sua origem, evita estados inconsistentes e facilita o diagnóstico, enquanto o uso excessivo só dificulta a manutenção e a clareza do código.</p>
-<h4 id="alternativa-correta-retorno-explícito-de-erro">Alternativa correta: retorno explícito de erro</h4>
-<p>Para casos previsíveis como divisão por zero, a abordagem ideal é usar tipos como <code>std::optional</code> que tornam a possibilidade de falha explícita:</p>
-
-
-  <pre><code class="language-cpp">std::optional&lt;int&gt; dividir_seguro(int a, int b) {
-    if (b == 0) return std::nullopt;   // falha previsível
-    return a / b;
-}
-
-// Uso claro e sem exceções
-auto media = dividir_seguro(a, b);     // retorno explícito
-if (!media) {                          // falha prevista
-    log(&#34;b = 0, usando valor padrão&#34;);
-} else {
-    usar(*media);
-}</code></pre>
- <p>No exemplo apresentado acima, vemos que tratar situações esperadas com exceções — como retornar 0 quando o preço está indefinido — prejudica a clareza e a eficiência do código. Isso ocorre porque exceções interrompem o fluxo normal e impactam significativamente otimizações do compilador: impedem marcação de funções com <code>noexcept</code> (essencial para move semântics eficientes na STL), forçam spilling de registradores para memória, e limitam reordenação de instruções que poderiam melhorar o pipeline do processador.</p>
-<p>O ideal é reservar exceções para eventos realmente inesperados, como um air-bag que só deve ser acionado em caso de acidente, enquanto validações de domínio e casos previstos devem ser tratados com retornos explícitos, usando estruturas como <code>if</code>, valores opcionais ou operadores como <code>??</code>.</p>
+<p>
+Já para eventos realmente excepcionais — como disco cheio, queda de conexão, corrupção de dados ou necessidade de desfazer uma operação crítica — o uso de exceções (<code>throw</code>) é apropriado. </p>
+<p>
+Nesses casos, não há como prever ou contornar o problema apenas com verificações simples, e a exceção serve para interromper o fluxo e sinalizar que algo grave aconteceu, permitindo que o erro seja tratado em um nível superior ou que o programa seja encerrado de forma segura.</p>
+<p>
+Diversas linguagens modernas reforçam essa separação: <em>Rust</em> usa <code>Result&lt;T, E&gt;</code> para erros esperados e reserva <code>panic!</code> para condições irrecuperáveis (bugs, invariantes violadas); <em>Clojure</em> herda exceções da JVM mas favorece erros como dados (mapas, keywords) nas camadas de domínio; <em>TypeScript</em> incentiva o uso de tipos como <code>unknown</code> e alternativas funcionais como <code>Either</code>. </p>
+<p>
+Todas seguem o mesmo princípio: erros previsíveis devem ser tratados como dados, enquanto exceções ficam para situações realmente imprevisíveis. Assim, lançar exceção só quando necessário aproxima o erro da sua origem, evita estados inconsistentes e facilita o diagnóstico, enquanto o uso excessivo só dificulta a manutenção e a clareza do código. </p>
+<div id="outline-container-headline-15" class="outline-5">
+<h5 id="headline-15">
+Alternativa correta: retorno explícito de erro
+</h5>
+<div id="outline-text-headline-15" class="outline-text-5">
+<p>
+Para casos previsíveis como divisão por zero, a abordagem ideal é usar tipos como <code>std::optional</code> que tornam a possibilidade de falha explícita:</p>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>std<span style="color:#f92672">::</span>optional<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;</span> dividir_seguro(<span style="color:#66d9ef">int</span> a, <span style="color:#66d9ef">int</span> b) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (b <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>) <span style="color:#66d9ef">return</span> std<span style="color:#f92672">::</span>nullopt;   <span style="color:#75715e">// falha previsível
+</span></span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> a <span style="color:#f92672">/</span> b;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Uso claro e sem exceções
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> media <span style="color:#f92672">=</span> dividir_seguro(a, b);     <span style="color:#75715e">// retorno explícito
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>media) {                          <span style="color:#75715e">// falha prevista
+</span></span></span><span style="display:flex;"><span>    log(<span style="color:#e6db74">&#34;b = 0, usando valor padrão&#34;</span>);
+</span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>    usar(<span style="color:#f92672">*</span>media);
+</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+</div>
+<p>
+No exemplo apresentado acima, vemos que tratar situações esperadas com exceções — como retornar 0 quando o preço está indefinido — prejudica a clareza e a eficiência do código. Isso ocorre porque exceções interrompem o fluxo normal e impactam significativamente otimizações do compilador: impedem marcação de funções com <code>noexcept</code> (essencial para move semântics eficientes na STL), forçam spilling de registradores para memória, e limitam reordenação de instruções que poderiam melhorar o pipeline do processador. </p>
+<p>
+O ideal é reservar exceções para eventos realmente inesperados, como um air-bag que só deve ser acionado em caso de acidente, enquanto validações de domínio e casos previstos devem ser tratados com retornos explícitos, usando estruturas como <code>if</code>, valores opcionais ou operadores como <code>??</code>. </p>
 <blockquote>
 <p>Linguagens modernas reforçam essa separação ao tratar erros esperados como dados e reservar exceções para situações imprevisíveis. Seguindo essas práticas, seu código permanece limpo, eficiente e fácil de manter, pois cada ferramenta é usada para o propósito correto, evitando surpresas e facilitando o diagnóstico de problemas reais.</p>
 </blockquote>
 <hr>
-<h3 id="designbycontract-e-asserções">Design by Contract e asserções</h3>
-<p>Beleza, mas como decidir, de forma objetiva, o que é “inesperado”? A resposta clássica vem do <strong><a href="https://en.wikipedia.org/wiki/Design_by_contract">Design by Contract (DbC)</a></strong> de <a href="https://en.wikipedia.org/wiki/Bertrand_Meyer">Bertrand Meyer</a>.</p>
-<p>O <strong>Design by Contract</strong> (DbC) é um paradigma de desenvolvimento que define um contrato explícito entre um componente e seus clientes, garantindo que ambos entendam as expectativas e as responsabilidades. O DbC estabelece três elementos essenciais:</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-16" class="outline-4">
+<h4 id="headline-16">
+Design by Contract e asserções
+</h4>
+<div id="outline-text-headline-16" class="outline-text-4">
+<p>
+Beleza, mas como decidir, de forma objetiva, o que é “inesperado”? A resposta clássica vem do <em><a href="https://en.wikipedia.org/wiki/Design_by_contract">Design by Contract (DbC)</a></em> de <a href="https://en.wikipedia.org/wiki/Bertrand_Meyer">Bertrand Meyer</a>.</p>
+<p>
+O <em>Design by Contract</em> (DbC) é um paradigma de desenvolvimento que define um contrato explícito entre um componente e seus clientes, garantindo que ambos entendam as expectativas e as responsabilidades. O DbC estabelece três elementos essenciais:</p>
 <ol>
-<li><strong>Pré-condições</strong>: Obrigações que devem ser satisfeitas pelo chamador antes de invocar uma operação.</li>
-<li><strong>Pós-condições</strong>: Garantias que a operação fornece quando as pré-condições são atendidas.</li>
-<li><strong>Invariantes</strong>: Propriedades que devem ser mantidas ao longo do tempo.</li>
+<li><em>Pré-condições</em>: Obrigações que devem ser satisfeitas pelo chamador antes de invocar uma operação.</li>
+<li><em>Pós-condições</em>: Garantias que a operação fornece quando as pré-condições são atendidas.</li>
+<li><em>Invariantes</em>: Propriedades que devem ser mantidas ao longo do tempo.</li>
 </ol>
-<p>Se a pré-condição de uma função não for atendida, ou seja, se o uso já começa errado (por exemplo, tentar sacar um valor negativo ou maior que o saldo), lançar uma exceção é apropriado, pois indica um erro de uso da interface; por outro lado, se a violação da pré-condição é algo frequente e esperado, como um campo vazio em um formulário, o ideal é tratar esse caso antes mesmo de chamar a função, evitando o uso de exceções para fluxos normais.</p>
-<p>O exemplo em C++ abaixo ilustra como aplicar esse princípio, diferenciando claramente quando lançar exceção por violação de contrato e quando validar previamente:</p>
-
-
-  <pre><code class="language-cpp">class Conta {
-    double saldo_{0};                       // invariante: ≥ 0
-public:
-    void sacar(double v) {
-        if (v &lt;= 0)                      // pré‑condição violada → erro do usuário
-            throw std::invalid_argument(&#34;valor ≤ 0&#34;);
-        if (v &gt; saldo_)                  // pré‑condição violada → uso incorreto
-            throw std::runtime_error(&#34;saldo insuficiente&#34;);
-
-        double antigo = saldo_;
-        saldo_ -= v;
-
-        if (saldo_ != antigo - v)        // pós‑condição falhou → erro interno
-            throw std::logic_error(&#34;sacar corrompeu saldo&#34;);
-        assert(saldo_ &gt;= 0);             // invariante (desligada em release)
-    }
-};</code></pre>
- <h4 id="programação-com-asserções">Programação com <strong>asserções</strong></h4>
-<ul>
-<li><strong>O que são:</strong> checagens de <em>bugs</em> de desenvolvimento, desativadas em builds release.</li>
-<li><strong>Quando usar:</strong> para invariantes internas e estados “impossíveis”.</li>
-<li><strong>Quando <em>não</em> usar:</strong> para validar entrada de usuário ou recursos externos (isso é papel de exceção ou valor de retorno).</li>
-</ul>
-
-
-  <pre><code class="language-cpp">void push(Buffer&amp; buf, int x) {
-    assert(!buf.cheio());          // bug se falhar em dev
-    buf.escreve(x);
-}</code></pre>
- <p>O código apresentado acima ilustra como aplicar, de forma prática, os princípios do <a href="https://en.wikipedia.org/wiki/Design_by_contract">Design by Contract (DbC)</a> e o uso de asserções para garantir a robustez do software. Cada tipo de situação exige uma ferramenta adequada: bugs internos, como a quebra de invariantes, devem ser detectados com <code>assert</code> (que só dispara em modo debug); violações de pré-condições, ou seja, quando o usuário utiliza a interface de forma incorreta, são tratadas com exceções específicas como <code>invalid_argument</code> ou <code>domain_error</code>.</p>
-<p>Falhas em recursos externos, como problemas de I/O ou falta de memória, são sinalizadas por exceções de runtime (<code>ios_base::failure</code>, <code>bad_alloc</code>); e, finalmente, situações esperadas e frequentes, como um campo opcional vazio, devem ser representadas por tipos como <code>std::optional</code>, <code>std::expected</code> (C++23), <code>tl::expected</code>, <code>boost::outcome</code> ou códigos de status, evitando o uso de exceções para o fluxo normal.</p>
-<p>O mini-checklist apresentado resume o contrato em três etapas: primeiro, garantir as pré-condições (validando entradas e lançando exceções quando necessário); segundo, executar o trabalho principal da função; e, por fim, verificar as pós-condições e usar asserções para garantir que as invariantes do objeto foram mantidas.</p>
-<p>Assim, o chamador sabe exatamente o que precisa fornecer, a função garante o resultado correto ou lança uma exceção se não puder cumprir, e o objeto permanece sempre em um estado válido. Essa abordagem torna o código mais seguro, previsível e fácil de manter.</p>
+<p>Se a pré-condição de uma função não for atendida, ou seja, se o uso já começa errado (por exemplo, tentar sacar um valor negativo ou maior que o saldo), lançar uma exceção é apropriado, pois indica um erro de uso da interface; por outro lado, se a violação da pré-condição é algo frequente e esperado, como um campo vazio em um formulário, o ideal é tratar esse caso antes mesmo de chamar a função, evitando o uso de exceções para fluxos normais. </p>
+<p>
+O exemplo em C++ abaixo ilustra como aplicar esse princípio, diferenciando claramente quando lançar exceção por violação de contrato e quando validar previamente:</p>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Conta</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">double</span> saldo_{<span style="color:#ae81ff">0</span>};                       <span style="color:#75715e">// invariante: ≥ 0
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span><span style="color:#f92672">:</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">void</span> sacar(<span style="color:#66d9ef">double</span> v) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (v <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span>)                      <span style="color:#75715e">// pré‑condição violada → erro do usuário
+</span></span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>invalid_argument(<span style="color:#e6db74">&#34;valor ≤ 0&#34;</span>);
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (v <span style="color:#f92672">&gt;</span> saldo_)                  <span style="color:#75715e">// pré‑condição violada → uso incorreto
+</span></span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>runtime_error(<span style="color:#e6db74">&#34;saldo insuficiente&#34;</span>);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">double</span> antigo <span style="color:#f92672">=</span> saldo_;
+</span></span><span style="display:flex;"><span>        saldo_ <span style="color:#f92672">-=</span> v;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (saldo_ <span style="color:#f92672">!=</span> antigo <span style="color:#f92672">-</span> v)        <span style="color:#75715e">// pós‑condição falhou → erro interno
+</span></span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>logic_error(<span style="color:#e6db74">&#34;sacar corrompeu saldo&#34;</span>);
+</span></span><span style="display:flex;"><span>        assert(saldo_ <span style="color:#f92672">&gt;=</span> <span style="color:#ae81ff">0</span>);             <span style="color:#75715e">// invariante (desligada em release)
+</span></span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>};</span></span></code></pre></div>
+</div>
+<div id="outline-container-headline-17" class="outline-5">
+<h5 id="headline-17">
+Programação com <em>asserções</em>
+</h5>
+<div id="outline-text-headline-17" class="outline-text-5">
+<p>
+/ <em>O que são:</em> checagens de /bugs* de desenvolvimento, desativadas em builds release.
+/ <em>Quando usar:* para invariantes internas e estados “impossíveis”.
+/ /Quando /não</em> usar:* para validar entrada de usuário ou recursos externos (isso é papel de exceção ou valor de retorno).</p>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">push</span>(Buffer<span style="color:#f92672">&amp;</span> buf, <span style="color:#66d9ef">int</span> x) {
+</span></span><span style="display:flex;"><span>    assert(<span style="color:#f92672">!</span>buf.cheio());          <span style="color:#75715e">// bug se falhar em dev
+</span></span></span><span style="display:flex;"><span>    buf.escreve(x);
+</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+</div>
+<p>
+O código apresentado acima ilustra como aplicar, de forma prática, os princípios do <a href="https://en.wikipedia.org/wiki/Design_by_contract">Design by Contract (DbC)</a> e o uso de asserções para garantir a robustez do software. Cada tipo de situação exige uma ferramenta adequada: bugs internos, como a quebra de invariantes, devem ser detectados com <code>assert</code> (que só dispara em modo debug); violações de pré-condições, ou seja, quando o usuário utiliza a interface de forma incorreta, são tratadas com exceções específicas como <code>invalid_argument</code> ou <code>domain_error</code>.</p>
+<p>
+Falhas em recursos externos, como problemas de I/O ou falta de memória, são sinalizadas por exceções de runtime (<code>ios_base::failure</code>, <code>bad_alloc</code>); e, finalmente, situações esperadas e frequentes, como um campo opcional vazio, devem ser representadas por tipos como <code>std::optional</code>, <code>std::expected</code> (C++23), <code>tl::expected</code>, <code>boost::outcome</code> ou códigos de status, evitando o uso de exceções para o fluxo normal.</p>
+<p>
+O mini-checklist apresentado resume o contrato em três etapas: primeiro, garantir as pré-condições (validando entradas e lançando exceções quando necessário); segundo, executar o trabalho principal da função; e, por fim, verificar as pós-condições e usar asserções para garantir que as invariantes do objeto foram mantidas. </p>
+<p>
+Assim, o chamador sabe exatamente o que precisa fornecer, a função garante o resultado correto ou lança uma exceção se não puder cumprir, e o objeto permanece sempre em um estado válido. Essa abordagem torna o código mais seguro, previsível e fácil de manter.</p>
 <blockquote>
-<p>Isso fecha, de forma formal, o ciclo começado lá atrás: <em>&ldquo;exceção para o inesperado, valor para o esperado, assert para o impossível&rdquo;</em>.</p>
+<p>Isso fecha, de forma formal, o ciclo começado lá atrás: <em>&#34;exceção para o inesperado, valor para o esperado, assert para o impossível&#34;</em>.</p>
 </blockquote>
-<p>Até aqui vimos que <strong>pré‑/pós‑condições e asserções</strong> deixam claro <em>o que</em> cada parte deve cumprir — e que exceções só aparecem quando o contrato é quebrado. Mas o inverso também é verdadeiro: <strong>quando usamos exceções para controlar o fluxo diário, criamos contratos escondidos</strong> que amarram módulos sem ninguém notar.</p>
-<p>Quando usamos exceções para controlar o fluxo normal do programa, criamos dependências ocultas entre módulos: o cliente precisa conhecer os tipos de exceção internos do serviço, o que torna o contrato implícito — afinal, as ações a serem tomadas em caso de erro (“se der erro X faça Y”) não aparecem na assinatura da função, mas apenas nos blocos <code>catch</code> espalhados pelo código.</p>
-<p>Isso gera fragilidade, pois qualquer alteração nos tipos de exceção ou nas condições que as disparam pode quebrar vários pontos do sistema, como ilustrado no exemplo em C++ abaixo, onde o serviço lança exceções específicas e o cliente é obrigado a capturar cada uma delas individualmente. Observe o exemplo abaixo:</p>
-
-
-  <pre><code class="language-cpp">// ❌ Problema: raw pointer &#43; exceções específicas
-try {
-    auto* u = auth.autenticar(user, pass);  // Quem é dono de u?
-} catch(const UsuarioNaoEncontrado&amp;) { … }
-  catch(const SenhaInvalida&amp;)       { … }
-
-// ✅ Melhor: contrato explícito sem raw pointers
-auto resultado = auth.autenticar(user, pass);
-if (resultado.has_value()) {
-    Usuario&amp; u = resultado.value();  // propriedade clara
-    // ... usar u
-} else {
-    // tratar resultado.error()
-}</code></pre>
- <p>Quando um serviço lança exceções específicas para sinalizar falhas, qualquer alteração nesses tipos de erro obriga o desenvolvedor a revisar e atualizar todos os blocos <code>catch</code> espalhados pelo código cliente.</p>
+<p>
+Até aqui vimos que <em>pré‑/pós‑condições e asserções</em> deixam claro <em>o que</em> cada parte deve cumprir — e que exceções só aparecem quando o contrato é quebrado. Mas o inverso também é verdadeiro: <em>quando usamos exceções para controlar o fluxo diário, criamos contratos escondidos</em> que amarram módulos sem ninguém notar.</p>
+<p>
+Quando usamos exceções para controlar o fluxo normal do programa, criamos dependências ocultas entre módulos: o cliente precisa conhecer os tipos de exceção internos do serviço, o que torna o contrato implícito — afinal, as ações a serem tomadas em caso de erro (“se der erro X faça Y”) não aparecem na assinatura da função, mas apenas nos blocos <code>catch</code> espalhados pelo código. </p>
+<p>
+Isso gera fragilidade, pois qualquer alteração nos tipos de exceção ou nas condições que as disparam pode quebrar vários pontos do sistema, como ilustrado no exemplo em C++ abaixo, onde o serviço lança exceções específicas e o cliente é obrigado a capturar cada uma delas individualmente. Observe o exemplo abaixo:</p>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// ❌ Problema: raw pointer + exceções específicas
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">try</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span><span style="color:#f92672">*</span> u <span style="color:#f92672">=</span> auth.autenticar(user, pass);  <span style="color:#75715e">// Quem é dono de u?
+</span></span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">catch</span>(<span style="color:#66d9ef">const</span> UsuarioNaoEncontrado<span style="color:#f92672">&amp;</span>) { <span style="color:#960050;background-color:#1e0010">…</span> }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">catch</span>(<span style="color:#66d9ef">const</span> SenhaInvalida<span style="color:#f92672">&amp;</span>)       { <span style="color:#960050;background-color:#1e0010">…</span> }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// ✅ Melhor: contrato explícito sem raw pointers
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> resultado <span style="color:#f92672">=</span> auth.autenticar(user, pass);
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> (resultado.has_value()) {
+</span></span><span style="display:flex;"><span>    Usuario<span style="color:#f92672">&amp;</span> u <span style="color:#f92672">=</span> resultado.value();  <span style="color:#75715e">// propriedade clara
+</span></span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ... usar u
+</span></span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// tratar resultado.error()
+</span></span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+</div>
+<p>
+Quando um serviço lança exceções específicas para sinalizar falhas, qualquer alteração nesses tipos de erro obriga o desenvolvedor a revisar e atualizar todos os blocos <code>catch</code> espalhados pelo código cliente. </p>
 <blockquote>
-<p><strong>Isso cria um acoplamento invisível entre módulos</strong>: o cliente precisa conhecer detalhes internos do serviço para capturar corretamente cada exceção, tornando a manutenção mais trabalhosa e sujeita a erros. O controle de fluxo baseado em exceções, nesse contexto, esconde contratos importantes e dificulta a evolução segura da API.</p>
+<p><em>Isso cria um acoplamento invisível entre módulos</em>: o cliente precisa conhecer detalhes internos do serviço para capturar corretamente cada exceção, tornando a manutenção mais trabalhosa e sujeita a erros. O controle de fluxo baseado em exceções, nesse contexto, esconde contratos importantes e dificulta a evolução segura da API.</p>
 </blockquote>
-<p>Para tornar o contrato explícito e facilitar a manutenção, o <strong>C++23</strong> introduziu o <code>std::expected&lt;T, E&gt;</code>, que incorpora o erro ao próprio tipo de retorno da função. Para versões anteriores do C++, alternativas incluem <code>tl::expected</code> (biblioteca header-only), <code>boost::outcome</code>, ou a combinação de <code>std::optional&lt;T&gt;</code> com um código de erro separado. Assim, a assinatura já deixa claro para o usuário todas as possibilidades de sucesso ou falha:</p>
-
-
-  <pre><code class="language-cpp">// C&#43;&#43;23 - propriedade clara
-std::expected&lt;Usuario, ErroAuth&gt;
-autenticar(std::string_view user, std::string_view pass);
-
-// Alternativa com smart pointer se necessário
-std::expected&lt;std::unique_ptr&lt;Usuario&gt;, ErroAuth&gt;
-autenticar(std::string_view user, std::string_view pass);
-
-// Alternativas para C&#43;&#43; &lt; 23
-tl::expected&lt;Usuario, ErroAuth&gt;               // por valor
-outcome::result&lt;Usuario, ErroAuth&gt;            // por valor
-std::optional&lt;std::unique_ptr&lt;Usuario&gt;&gt;       // smart pointer &#43; erro separado</code></pre>
- <p>O resultado é um código menos acoplado, mais documentado e mais seguro. O usuário da função já sabe todas as possibilidades de sucesso ou falha, e o compilador força o tratamento via <code>resultado.error()</code>.</p>
+<p>
+Para tornar o contrato explícito e facilitar a manutenção, o <em>C++23</em> introduziu o <code>std::expected&lt;T, E&gt;</code>, que incorpora o erro ao próprio tipo de retorno da função. Para versões anteriores do C++, alternativas incluem <code>tl::expected</code> (biblioteca header-only), <code>boost::outcome</code>, ou a combinação de <code>std::optional&lt;T&gt;</code> com um código de erro separado. Assim, a assinatura já deixa claro para o usuário todas as possibilidades de sucesso ou falha:</p>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// C++23 - propriedade clara
+</span></span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>expected<span style="color:#f92672">&lt;</span>Usuario, ErroAuth<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span>autenticar(std<span style="color:#f92672">::</span>string_view user, std<span style="color:#f92672">::</span>string_view pass);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Alternativa com smart pointer se necessário
+</span></span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>expected<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>unique_ptr<span style="color:#f92672">&lt;</span>Usuario<span style="color:#f92672">&gt;</span>, ErroAuth<span style="color:#f92672">&gt;</span>
+</span></span><span style="display:flex;"><span>autenticar(std<span style="color:#f92672">::</span>string_view user, std<span style="color:#f92672">::</span>string_view pass);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Alternativas para C++ &lt; 23
+</span></span></span><span style="display:flex;"><span>tl<span style="color:#f92672">::</span>expected<span style="color:#f92672">&lt;</span>Usuario, ErroAuth<span style="color:#f92672">&gt;</span>               <span style="color:#75715e">// por valor
+</span></span></span><span style="display:flex;"><span>outcome<span style="color:#f92672">::</span>result<span style="color:#f92672">&lt;</span>Usuario, ErroAuth<span style="color:#f92672">&gt;</span>            <span style="color:#75715e">// por valor
+</span></span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>optional<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>unique_ptr<span style="color:#f92672">&lt;</span>Usuario<span style="color:#f92672">&gt;&gt;</span>       <span style="color:#75715e">// smart pointer + erro separado
+</span></span></span></code></pre></div>
+</div>
+<p>
+O resultado é um código menos acoplado, mais documentado e mais seguro. O usuário da função já sabe todas as possibilidades de sucesso ou falha, e o compilador força o tratamento via <code>resultado.error()</code>.</p>
 <blockquote>
-<p><strong>Contratos de Propriedade</strong>: Evitar raw pointers em APIs públicas elimina ambiguidades sobre quem é responsável pela memória. Retorno por valor (<code>Usuario</code>) transfere propriedade claramente, enquanto <code>std::unique_ptr&lt;Usuario&gt;</code> indica propriedade exclusiva transferida. Ambos evitam vazamentos e dangling pointers que podem surgir com <code>Usuario*</code> quando não está claro se o caller deve fazer <code>delete</code>.</p>
+<p><em>Contratos de Propriedade</em>: Evitar raw pointers em APIs públicas elimina ambiguidades sobre quem é responsável pela memória. Retorno por valor (<code>Usuario</code>) transfere propriedade claramente, enquanto <code>std::unique_ptr&lt;Usuario&gt;</code> indica propriedade exclusiva transferida. Ambos evitam vazamentos e dangling pointers que podem surgir com <code>Usuario*</code> quando não está claro se o caller deve fazer <code>delete</code>.</p>
 </blockquote>
 <hr>
-<h3 id="testabilidade-e-caminhos-de-erro">Testabilidade e caminhos de erro</h3>
-<p>Na seção anterior, vimos que tornar os contratos explícitos e como é possível reduzir o acoplamento entre módulos e deixa o código mais robusto. Um benefício imediato dessa abordagem é a facilidade de testar: quando o erro é representado como valor de retorno, fica muito mais simples cobrir todos os caminhos possíveis em testes unitários, sem depender de manipulação de exceções.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-18" class="outline-4">
+<h4 id="headline-18">
+Testabilidade e caminhos de erro
+</h4>
+<div id="outline-text-headline-18" class="outline-text-4">
+<p>
+Na seção anterior, vimos que tornar os contratos explícitos e como é possível reduzir o acoplamento entre módulos e deixa o código mais robusto. Um benefício imediato dessa abordagem é a facilidade de testar: quando o erro é representado como valor de retorno, fica muito mais simples cobrir todos os caminhos possíveis em testes unitários, sem depender de manipulação de exceções. </p>
 <blockquote>
-<p>Isso está totalmente alinhado com o conselho do livro <strong>Pragmatic Programmer</strong> que diz: “<strong>Test your software, or your users will</strong>”. Ou seja, &ldquo;se você não testar seu software, seus usuários vão testar&rdquo;.</p>
+<p>Isso está totalmente alinhado com o conselho do livro <em>Pragmatic Programmer</em> que diz: “/Test your software, or your users will/”. Ou seja, &#34;se você não testar seu software, seus usuários vão testar&#34;.</p>
 </blockquote>
-<p>Cenários de erro merecem atenção especial nos testes, pois é justamente no tratamento de falhas que costumam aparecer os bugs mais críticos. Testar apenas o “caminho feliz” não garante a qualidade do sistema. Além disso, garantir que mudanças internas não quebrem o contrato de erro é fundamental para evitar regressões. Testes bem escritos também funcionam como documentação viva, mostrando claramente como o sistema reage a cada tipo de problema.</p>
-<p>Por outro lado, quando o tratamento de falhas depende de exceções, surgem desafios práticos. Simular e capturar exceções em testes exige o uso de mocks que lançam erros, além de poluir o código de teste com blocos <code>try-catch</code> ou macros como <code>EXPECT_THROW</code>. Isso pode prejudicar a legibilidade e facilitar a omissão de casos importantes, já que é fácil esquecer de testar um <code>catch</code> específico. O resultado é uma cobertura de testes parcial e menos confiável.</p>
-<p>Ao adotar contratos explícitos, como no exemplo em C++ abaixo usando <code>std::expected</code>, o teste se torna mais direto: basta verificar o valor retornado, sem precisar capturar exceções. Isso simplifica o código de teste, aumenta a clareza e garante que todos os ramos — inclusive os de erro — sejam exercitados de forma sistemática.</p>
-<p>Assim, além de reduzir o acoplamento, esse padrão melhora a testabilidade e contribui para a manutenção segura do software. Abaixo, vamos ver como testar o código com contratos explícitos e como testar o código com exceções:</p>
-<p><strong>Simetria entre Estilos de Contrato de Erro</strong>:</p>
-
-
-  <pre><code class="language-cpp">// ❌ Testando exceções (mais verboso)
-TEST(AuthTest, InvalidPasswordThrows) {
-    AuthService auth;
-    EXPECT_THROW(auth.login(&#34;user&#34;, &#34;wrong&#34;), InvalidPasswordException);
-}
-
-// ✅ Testando erros explícitos (mais direto)  
-TEST(AuthTest, InvalidPasswordReturnsError) {
-    AuthService auth;
-    auto result = auth.login(&#34;user&#34;, &#34;wrong&#34;);
-    ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(result.error(), AuthError::InvalidPassword);
-}</code></pre>
- <p><strong>Técnicas de Teste Específicas</strong>:</p>
+<p>
+Cenários de erro merecem atenção especial nos testes, pois é justamente no tratamento de falhas que costumam aparecer os bugs mais críticos. Testar apenas o “caminho feliz” não garante a qualidade do sistema. Além disso, garantir que mudanças internas não quebrem o contrato de erro é fundamental para evitar regressões. Testes bem escritos também funcionam como documentação viva, mostrando claramente como o sistema reage a cada tipo de problema.</p>
+<p>
+Por outro lado, quando o tratamento de falhas depende de exceções, surgem desafios práticos. Simular e capturar exceções em testes exige o uso de mocks que lançam erros, além de poluir o código de teste com blocos <code>try-catch</code> ou macros como <code>EXPECT_THROW</code>. Isso pode prejudicar a legibilidade e facilitar a omissão de casos importantes, já que é fácil esquecer de testar um <code>catch</code> específico. O resultado é uma cobertura de testes parcial e menos confiável.</p>
+<p>
+Ao adotar contratos explícitos, como no exemplo em C++ abaixo usando <code>std::expected</code>, o teste se torna mais direto: basta verificar o valor retornado, sem precisar capturar exceções. Isso simplifica o código de teste, aumenta a clareza e garante que todos os ramos — inclusive os de erro — sejam exercitados de forma sistemática. </p>
+<p>
+Assim, além de reduzir o acoplamento, esse padrão melhora a testabilidade e contribui para a manutenção segura do software. Abaixo, vamos ver como testar o código com contratos explícitos e como testar o código com exceções:</p>
+<p>
+<em>Simetria entre Estilos de Contrato de Erro</em>:</p>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// ❌ Testando exceções (mais verboso)
+</span></span></span><span style="display:flex;"><span>TEST(AuthTest, InvalidPasswordThrows) {
+</span></span><span style="display:flex;"><span>    AuthService auth;
+</span></span><span style="display:flex;"><span>    EXPECT_THROW(auth.login(<span style="color:#e6db74">&#34;user&#34;</span>, <span style="color:#e6db74">&#34;wrong&#34;</span>), InvalidPasswordException);
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// ✅ Testando erros explícitos (mais direto)  
+</span></span></span><span style="display:flex;"><span>TEST(AuthTest, InvalidPasswordReturnsError) {
+</span></span><span style="display:flex;"><span>    AuthService auth;
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span> result <span style="color:#f92672">=</span> auth.login(<span style="color:#e6db74">&#34;user&#34;</span>, <span style="color:#e6db74">&#34;wrong&#34;</span>);
+</span></span><span style="display:flex;"><span>    ASSERT_FALSE(result.has_value());
+</span></span><span style="display:flex;"><span>    EXPECT_EQ(result.error(), AuthError<span style="color:#f92672">::</span>InvalidPassword);
+</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+</div>
+<p>
+<em>Técnicas de Teste Específicas</em>:</p>
+<ol>
+<li><em>Mocks que simulam falha</em></li>
+</ol>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>   <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">IServico</span> { <span style="color:#66d9ef">public</span><span style="color:#f92672">:</span> <span style="color:#66d9ef">virtual</span> Dados get(std<span style="color:#f92672">::</span>string) <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; };
+</span></span><span style="display:flex;"><span>   <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">MockFalho</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> IServico {
+</span></span><span style="display:flex;"><span>       std<span style="color:#f92672">::</span>exception_ptr ex_;
+</span></span><span style="display:flex;"><span>   <span style="color:#66d9ef">public</span><span style="color:#f92672">:</span>
+</span></span><span style="display:flex;"><span>       <span style="color:#66d9ef">void</span> setFalha(<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span> msg) {
+</span></span><span style="display:flex;"><span>           ex_ <span style="color:#f92672">=</span> std<span style="color:#f92672">::</span>make_exception_ptr(std<span style="color:#f92672">::</span>runtime_error(msg));
+</span></span><span style="display:flex;"><span>       }
+</span></span><span style="display:flex;"><span>       Dados <span style="color:#a6e22e">get</span>(std<span style="color:#f92672">::</span>string) <span style="color:#66d9ef">override</span> { std<span style="color:#f92672">::</span>rethrow_exception(ex_); }
+</span></span><span style="display:flex;"><span>   };</span></span></code></pre></div>
+</div>
+<p>
+   Teste foca em como o <em>consumidor</em> reage, sem depender do serviço real.</p>
+<ol>
+<li><em>Retorno explícito para casos esperados</em></li>
+</ol>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>   <span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Resultado</span> { <span style="color:#66d9ef">bool</span> ok; std<span style="color:#f92672">::</span>string erro; Dados dados; };
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>   Resultado <span style="color:#a6e22e">processar</span>(<span style="color:#66d9ef">const</span> Entrada<span style="color:#f92672">&amp;</span> in) {
+</span></span><span style="display:flex;"><span>       <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>valido(in)) <span style="color:#66d9ef">return</span> {false,<span style="color:#e6db74">&#34;Entrada inválida&#34;</span>,{}};
+</span></span><span style="display:flex;"><span>       <span style="color:#75715e">// ...
+</span></span></span><span style="display:flex;"><span>       <span style="color:#66d9ef">return</span> {true,<span style="color:#e6db74">&#34;&#34;</span>,dados};
+</span></span><span style="display:flex;"><span>   }
+</span></span><span style="display:flex;"><span>   <span style="color:#75715e">// Teste
+</span></span></span><span style="display:flex;"><span>   EXPECT_FALSE(processar(invalido).ok);</span></span></code></pre></div>
+</div>
+<ol>
+<li><em>Tipos de erro explícitos</em> – contrato de erro no tipo</li>
+</ol>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>   <span style="color:#75715e">// Teste com exceções: precisa capturar tipo específico
+</span></span></span><span style="display:flex;"><span>   TEST(FileTest, NonExistentFileThrows) {
+</span></span><span style="display:flex;"><span>       EXPECT_THROW(lerArquivo(<span style="color:#e6db74">&#34;inexistente.txt&#34;</span>), FileNotFoundException);
+</span></span><span style="display:flex;"><span>   }
+</span></span><span style="display:flex;"><span>   
+</span></span><span style="display:flex;"><span>   <span style="color:#75715e">// Teste com expected: verifica valor e erro diretamente
+</span></span></span><span style="display:flex;"><span>   TEST(FileTest, NonExistentFileReturnsError) {
+</span></span><span style="display:flex;"><span>       <span style="color:#66d9ef">auto</span> result <span style="color:#f92672">=</span> lerArquivo(<span style="color:#e6db74">&#34;inexistente.txt&#34;</span>);
+</span></span><span style="display:flex;"><span>       ASSERT_FALSE(result.has_value());
+</span></span><span style="display:flex;"><span>       EXPECT_EQ(result.error(), ErroIO<span style="color:#f92672">::</span>FileNotFound);
+</span></span><span style="display:flex;"><span>       EXPECT_THAT(result.error().message(), HasSubstr(<span style="color:#e6db74">&#34;inexistente.txt&#34;</span>));
+</span></span><span style="display:flex;"><span>   }
+</span></span><span style="display:flex;"><span>   
+</span></span><span style="display:flex;"><span>   <span style="color:#75715e">// Alternativas para C++ &lt; 23
+</span></span></span><span style="display:flex;"><span>   tl<span style="color:#f92672">::</span>expected<span style="color:#f92672">&lt;</span>Dados,ErroIO<span style="color:#f92672">&gt;</span> lerArquivo(...);        <span style="color:#75715e">// tl::expected
+</span></span></span><span style="display:flex;"><span>   outcome<span style="color:#f92672">::</span>result<span style="color:#f92672">&lt;</span>Dados,ErroIO<span style="color:#f92672">&gt;</span> lerArquivo(...);     <span style="color:#75715e">// boost::outcome
+</span></span></span></code></pre></div>
+</div>
 <ol>
 <li>
-<p><strong>Mocks que simulam falha</strong></p>
-
-
-  <pre><code class="language-cpp">class IServico { public: virtual Dados get(std::string) = 0; };
-class MockFalho : public IServico {
-    std::exception_ptr ex_;
-public:
-    void setFalha(const std::string&amp; msg) {
-        ex_ = std::make_exception_ptr(std::runtime_error(msg));
-    }
-    Dados get(std::string) override { std::rethrow_exception(ex_); }
-};</code></pre>
- <p>Teste foca em como o <em>consumidor</em> reage, sem depender do serviço real.</p>
-</li>
-<li>
-<p><strong>Retorno explícito para casos esperados</strong></p>
-
-
-  <pre><code class="language-cpp">struct Resultado { bool ok; std::string erro; Dados dados; };
-
-Resultado processar(const Entrada&amp; in) {
-    if (!valido(in)) return {false,&#34;Entrada inválida&#34;,{}};
-    // ...
-    return {true,&#34;&#34;,dados};
-}
-// Teste
-EXPECT_FALSE(processar(invalido).ok);</code></pre>
- </li>
-<li>
-<p><strong>Tipos de erro explícitos</strong> – contrato de erro no tipo</p>
-
-
-  <pre><code class="language-cpp">// Teste com exceções: precisa capturar tipo específico
-TEST(FileTest, NonExistentFileThrows) {
-    EXPECT_THROW(lerArquivo(&#34;inexistente.txt&#34;), FileNotFoundException);
-}
-
-// Teste com expected: verifica valor e erro diretamente
-TEST(FileTest, NonExistentFileReturnsError) {
-    auto result = lerArquivo(&#34;inexistente.txt&#34;);
-    ASSERT_FALSE(result.has_value());
-    EXPECT_EQ(result.error(), ErroIO::FileNotFound);
-    EXPECT_THAT(result.error().message(), HasSubstr(&#34;inexistente.txt&#34;));
-}
-
-// Alternativas para C&#43;&#43; &lt; 23
-tl::expected&lt;Dados,ErroIO&gt; lerArquivo(...);        // tl::expected
-outcome::result&lt;Dados,ErroIO&gt; lerArquivo(...);     // boost::outcome</code></pre>
- </li>
-<li>
-<p><strong>Testes de propriedade</strong> – use frameworks como <em>rapidcheck</em> ou <em>Catch2 generators</em> para iterar entradas aleatórias e garantir:</p>
+<p><em>Testes de propriedade</em> – use frameworks como <em>rapidcheck</em> ou <em>Catch2 generators</em> para iterar entradas aleatórias e garantir:</p>
 <ul>
 <li>“Nenhum input válido gera exceção”.</li>
 <li>“Toda falha retorna erro não‑vazio”.</li>
 </ul>
 </li>
-<li>
-<p><strong>Ambiente de integração controlado</strong> – docker de DB que cai, servidor fake que devolve <em>timeouts</em>; reproduz falhas reais sem mexer no prod.</p>
-</li>
+<li><em>Ambiente de integração controlado</em> – docker de DB que cai, servidor fake que devolve <em>timeouts</em>; reproduz falhas reais sem mexer no prod.</li>
 </ol>
 <hr>
-<h2 id="checklist-quando-usar-exceções-vs-alternativas">Checklist: Quando Usar Exceções vs. Alternativas</h2>
-<p>Para facilitar decisões técnicas em governança de código, use este checklist operacional:</p>
-<h3 id="-use-exceções-throw-quando">✅ <strong>Use Exceções (throw) quando:</strong></h3>
+</div>
+</div>
+<div id="outline-container-headline-19" class="outline-3">
+<h3 id="headline-19">
+Checklist: Quando Usar Exceções vs. Alternativas
+</h3>
+<div id="outline-text-headline-19" class="outline-text-3">
+<p>
+Para facilitar decisões técnicas em governança de código, use este checklist operacional:</p>
+<div id="outline-container-headline-20" class="outline-4">
+<h4 id="headline-20">
+✅ <em>Use Exceções (throw) quando:</em>
+</h4>
+<div id="outline-text-headline-20" class="outline-text-4">
 <ul>
 <li>
-<p><strong>Recurso externo falhou</strong> → I/O, rede, sistema de arquivos, BD</p>
+<p><em>Recurso externo falhou</em> → I/O, rede, sistema de arquivos, BD</p>
 <ul>
-<li><code>throw std::ios_base::failure(&quot;Disco cheio&quot;)</code></li>
+<li><code>throw std::ios_base::failure(&#34;Disco cheio&#34;)</code></li>
 </ul>
 </li>
 <li>
-<p><strong>Violação de contrato do chamador</strong> → pré-condições quebradas</p>
+<p><em>Violação de contrato do chamador</em> → pré-condições quebradas</p>
 <ul>
-<li><code>throw std::invalid_argument(&quot;Índice fora dos limites&quot;)</code></li>
-<li><code>throw std::runtime_error(&quot;Saldo insuficiente&quot;)</code></li>
+<li><code>throw std::invalid_argument(&#34;Índice fora dos limites&#34;)</code></li>
+<li><code>throw std::runtime_error(&#34;Saldo insuficiente&#34;)</code></li>
 </ul>
 </li>
 <li>
-<p><strong>Condição irrecuperável</strong> → corrupção, invariante violada</p>
+<p><em>Condição irrecuperável</em> → corrupção, invariante violada</p>
 <ul>
-<li><code>throw std::logic_error(&quot;Estado interno inconsistente&quot;)</code></li>
+<li><code>throw std::logic_error(&#34;Estado interno inconsistente&#34;)</code></li>
 </ul>
 </li>
 <li>
-<p><strong>Falha na alocação de recursos críticos</strong> → memória, handles</p>
+<p><em>Falha na alocação de recursos críticos</em> → memória, handles</p>
 <ul>
-<li><code>throw std::bad_alloc()</code> (automático), <code>throw std::runtime_error(&quot;Handle pool esgotado&quot;)</code></li>
+<li><code>throw std::bad_alloc()</code> (automático), <code>throw std::runtime_error(&#34;Handle pool esgotado&#34;)</code></li>
 </ul>
 </li>
 </ul>
-<h3 id="-não-use-exceções-use-alternativas">❌ <strong>NÃO use exceções (use alternativas):</strong></h3>
+</div>
+</div>
+<div id="outline-container-headline-21" class="outline-4">
+<h4 id="headline-21">
+❌ <em>NÃO use exceções (use alternativas):</em>
+</h4>
+<div id="outline-text-headline-21" class="outline-text-4">
 <ul>
-<li>
-<p><strong>Erro de domínio esperado</strong> → <code>Result&lt;T,E&gt;</code>, <code>std::expected</code>, <code>std::optional</code></p>
-
-
-  <pre><code class="language-cpp">std::expected&lt;Usuario, ErroAuth&gt; login(user, pass);  // ✅
-// throw UsuarioNaoEncontrado();                     // ❌</code></pre>
- </li>
-<li>
-<p><strong>Validação de entrada rotineira</strong> → códigos de retorno, bool</p>
-
-
-  <pre><code class="language-cpp">bool validarEmail(const std::string&amp; email);        // ✅
-// throw EmailInvalidoException();                   // ❌</code></pre>
- </li>
-<li>
-<p><strong>Estado &ldquo;impossível&rdquo; interno</strong> → <code>assert()</code>, <code>panic!</code> (debug only)</p>
-
-
-  <pre><code class="language-cpp">assert(index &lt; size);                                // ✅ debug
-// throw std::logic_error(&#34;Impossível&#34;);            // ❌ production</code></pre>
- </li>
-<li>
-<p><strong>Performance crítica</strong> → códigos de erro, flags</p>
-
-
-  <pre><code class="language-cpp">ErrorCode parseNumber(const char* str, int&amp; result); // ✅
-// int parseNumber(const char* str);  // throws     // ❌</code></pre>
- </li>
+<li><em>Erro de domínio esperado</em> → <code>Result&lt;T,E&gt;</code>, <code>std::expected</code>, <code>std::optional</code></li>
 </ul>
-<h3 id="-regra-de-ouro">🎯 <strong>Regra de Ouro:</strong></h3>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>  std<span style="color:#f92672">::</span>expected<span style="color:#f92672">&lt;</span>Usuario, ErroAuth<span style="color:#f92672">&gt;</span> login(user, pass);  <span style="color:#75715e">// ✅
+</span></span></span><span style="display:flex;"><span>  <span style="color:#75715e">// throw UsuarioNaoEncontrado();                     // ❌
+</span></span></span></code></pre></div>
+</div>
+<ul>
+<li><em>Validação de entrada rotineira</em> → códigos de retorno, bool</li>
+</ul>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>  <span style="color:#66d9ef">bool</span> <span style="color:#a6e22e">validarEmail</span>(<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span> email);        <span style="color:#75715e">// ✅
+</span></span></span><span style="display:flex;"><span>  <span style="color:#75715e">// throw EmailInvalidoException();                   // ❌
+</span></span></span></code></pre></div>
+</div>
+<ul>
+<li><em>Estado &#34;impossível&#34; interno</em> → <code>assert()</code>, <code>panic!</code> (debug only)</li>
+</ul>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>  assert(index <span style="color:#f92672">&lt;</span> size);                                <span style="color:#75715e">// ✅ debug
+</span></span></span><span style="display:flex;"><span>  <span style="color:#75715e">// throw std::logic_error(&#34;Impossível&#34;);            // ❌ production
+</span></span></span></code></pre></div>
+</div>
+<ul>
+<li><em>Performance crítica</em> → códigos de erro, flags</li>
+</ul>
+<div class="src src-cpp">
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>  ErrorCode <span style="color:#a6e22e">parseNumber</span>(<span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span><span style="color:#f92672">*</span> str, <span style="color:#66d9ef">int</span><span style="color:#f92672">&amp;</span> result); <span style="color:#75715e">// ✅
+</span></span></span><span style="display:flex;"><span>  <span style="color:#75715e">// int parseNumber(const char* str);  // throws     // ❌
+</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-22" class="outline-4">
+<h4 id="headline-22">
+🎯 <em>Regra de Ouro:</em>
+</h4>
+<div id="outline-text-headline-22" class="outline-text-4">
 <blockquote>
-<p><strong>&ldquo;Exceção para o inesperado, valor para o esperado, assert para o impossível&rdquo;</strong></p>
+<p><em>&#34;Exceção para o inesperado, valor para o esperado, assert para o impossível&#34;</em></p>
 </blockquote>
 <ul>
-<li><strong>Inesperado</strong>: Falhas de sistema, violações de contrato, recursos indisponíveis</li>
-<li><strong>Esperado</strong>: Validações, buscas sem resultado, parsing que pode falhar</li>
-<li><strong>Impossível</strong>: Bugs, invariantes quebradas, estados logicamente inválidos</li>
+<li><em>Inesperado</em>: Falhas de sistema, violações de contrato, recursos indisponíveis</li>
+<li><em>Esperado</em>: Validações, buscas sem resultado, parsing que pode falhar</li>
+<li><em>Impossível</em>: Bugs, invariantes quebradas, estados logicamente inválidos</li>
 </ul>
 <hr>
-<h2 id="referências">Referências</h2>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-23" class="outline-3">
+<h3 id="headline-23">
+Referências
+</h3>
+<div id="outline-text-headline-23" class="outline-text-3">
 <ol>
-<li><a href="https://a.co/d/8ZBw0ix"><strong>&ldquo;The Pragmatic Programmer: Your Journey to Mastery&rdquo;</strong> - David Thomas &amp; Andrew Hunt</a><br>
-*Apresenta o princípio &ldquo;Crash Early&rdquo; e outras práticas essenciais para programação profissional, incluindo tratamento de erros e resiliência em sistemas.</li>
-<li><a href="https://a.co/d/1L2Bwz4"><strong>&ldquo;Effective Modern C++: 42 Specific Ways to Improve Your Use of C++11 and C++14&rdquo;</strong> - Scott Meyers</a><br>
+<li><a href="https://a.co/d/8ZBw0ix"><em>&#34;The Pragmatic Programmer: Your Journey to Mastery&#34;</em> - David Thomas &amp; Andrew Hunt</a>  
+*Apresenta o princípio &#34;Crash Early&#34; e outras práticas essenciais para programação profissional, incluindo tratamento de erros e resiliência em sistemas.</li>
+<li><a href="https://a.co/d/1L2Bwz4"><em>&#34;Effective Modern C++: 42 Specific Ways to Improve Your Use of C++11 and C++14&#34;</em> - Scott Meyers</a>  
 <em>Discute técnicas modernas de C++, incluindo o uso correto de exceções e alternativas como <code>std::optional</code>.</em></li>
-<li><a href="https://a.co/d/3Wy2dFE"><strong>&ldquo;Programming: Principles and Practice Using C++&rdquo;</strong> - Bjarne Stroustrup</a><br>
+<li><a href="https://a.co/d/3Wy2dFE"><em>&#34;Programming: Principles and Practice Using C++&#34;</em> - Bjarne Stroustrup</a>  
 <em>O criador do C++ explica fundamentos da linguagem, incluindo tratamento de erros e quando usar exceções.</em></li>
-<li><a href="https://a.co/d/a4zoUcs"><strong>&ldquo;The Rust Programming Language&rdquo; (Livro Oficial)</strong> - Steve Klabnik &amp; Carol Nichols</a><br>
+<li><a href="https://a.co/d/a4zoUcs"><em>&#34;The Rust Programming Language&#34; (Livro Oficial)</em> - Steve Klabnik &amp; Carol Nichols</a>  
 <em>Explica o sistema de <code>Result</code> e <code>Option</code> do Rust, que evita exceções.</em></li>
-<li><a href="https://a.co/d/4geTFbr"><strong>&ldquo;Clojure for the Brave and True&rdquo;</strong> - Daniel Higginbotham</a><br>
+<li><a href="https://a.co/d/4geTFbr"><em>&#34;Clojure for the Brave and True&#34;</em> - Daniel Higginbotham</a>  
 <em>Aborda a filosofia de tratamento de erros em Clojure usando valores e mapas.</em></li>
-<li><a href="https://a.co/d/8oEH9z4"><strong>&ldquo;Designing Data-Intensive Applications&rdquo;</strong> - Martin Kleppmann</a><br>
-<em>Discute tolerância a falhas em sistemas distribuídos, complementando o conceito de &ldquo;graceful failure&rdquo;.</em></li>
-<li><a href="https://a.co/d/66ya4UP"><strong>&ldquo;Release It!: Design and Deploy Production-Ready Software&rdquo;</strong> - Michael T. Nygard</a><br>
-<em>Ensina padrões como &ldquo;Circuit Breaker&rdquo; para lidar com erros em produção.</em></li>
-<li><a href="https://a.co/d/5bg0IIB"><strong>&ldquo;Functional Light JavaScript&rdquo;</strong> - Kyle Simpson</a><br>
-<em>Mostra como aplicar conceitos funcionais (incluindo tratamento de erros sem exceções) em JavaScript.</em></li>
-<li><a href="https://a.co/d/9S37n8W"><strong>&ldquo;Domain Modeling Made Functional&rdquo;</strong> - Scott Wlaschin</a><br>
-<em>Usa F# para demonstrar como tipos como <code>Result</code> podem modelar erros de forma explícita.</em></li>
+<li><a href="https://a.co/d/8oEH9z4"><em>&#34;Designing Data-Intensive Applications&#34;</em> - Martin Kleppmann</a>  
+<em>Discute tolerância a falhas em sistemas distribuídos, complementando o conceito de &#34;graceful failure&#34;.</em></li>
+<li><a href="https://a.co/d/66ya4UP"><em>&#34;Release It!: Design and Deploy Production-Ready Software&#34;</em> - Michael T. Nygard</a>  
+ <em>Ensina padrões como &#34;Circuit Breaker&#34; para lidar com erros em produção.</em></li>
+<li><a href="https://a.co/d/5bg0IIB"><em>&#34;Functional Light JavaScript&#34;</em> - Kyle Simpson</a>  
+ <em>Mostra como aplicar conceitos funcionais (incluindo tratamento de erros sem exceções) em JavaScript.</em></li>
+<li><a href="https://a.co/d/9S37n8W"><em>&#34;Domain Modeling Made Functional&#34;</em> - Scott Wlaschin</a>  
+ <em>Usa F# para demonstrar como tipos como <code>Result</code> podem modelar erros de forma explícita.</em></li>
 </ol>
-<p><strong>Referências Técnicas e Standards:</strong></p>
-<ol start="10">
+<p><em>Referências Técnicas e Standards:</em></p>
+<ol>
 <li>
-<p><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines"><strong>C++ Core Guidelines</strong></a><br>
+<p><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines"><em>C++ Core Guidelines</em></a>  
 <em>Diretrizes oficiais para C++ moderno, especialmente:</em></p>
 <ul>
 <li><em><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#e3-use-exceptions-for-error-handling-only">E.3: Use exceptions for error handling only</a></em></li>
 <li><em><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#e12-use-noexcept-when-exiting-a-function-because-of-a-throw-is-impossible-or-unacceptable">E.12: Use noexcept when exiting a function because of a throw is impossible or unacceptable</a></em></li>
-<li><em><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#e27-if-you-cant-throw-exceptions-simulate-raii-for-resource-management">E.27: If you can&rsquo;t throw exceptions, simulate RAII for resource management</a></em></li>
+<li><em><a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#e27-if-you-cant-throw-exceptions-simulate-raii-for-resource-management">E.27: If you can&#39;t throw exceptions, simulate RAII for resource management</a></em></li>
 </ul>
 </li>
-<li>
-<p><a href="https://www.stroustrup.com/abstraction-and-machine.pdf"><strong>&ldquo;Abstraction and the C++ Machine Model&rdquo;</strong> - Bjarne Stroustrup</a><br>
-<em>Discussão técnica sobre overhead de exceções e otimizações do compilador.</em></p>
-</li>
-<li>
-<p><a href="https://isocpp.org/std/the-standard"><strong>C++23 Standard - Exception Handling</strong> (ISO/IEC 14882:2024)</a><br>
-<em>Especificação formal de <code>std::terminate</code>, stack unwinding e <code>std::expected</code>. Seções relevantes: [except] (15), [support.exception] (18.8).</em></p>
-</li>
-<li>
-<p><a href="https://isocpp.org/wiki/faq/exceptions"><strong>&ldquo;Exception Handling Considered Harmful&rdquo;</strong> vs. <strong>&ldquo;Exception Handling Considered Useful&rdquo;</strong></a><br>
-<em>FAQ oficial do ISO C++ com argumentos balanceados sobre uso de exceções.</em></p>
-</li>
+<li><a href="https://www.stroustrup.com/abstraction-and-machine.pdf"><em>&#34;Abstraction and the C++ Machine Model&#34;</em> - Bjarne Stroustrup</a>  
+<em>Discussão técnica sobre overhead de exceções e otimizações do compilador.</em></li>
+<li><a href="https://isocpp.org/std/the-standard"><em>C++23 Standard - Exception Handling</em> (ISO/IEC 14882:2024)</a>  
+<em>Especificação formal de <code>std::terminate</code>, stack unwinding e <code>std::expected</code>. Seções relevantes: [except] (15), [support.exception] (18.8).</em></li>
+<li><a href="https://isocpp.org/wiki/faq/exceptions"><em>&#34;Exception Handling Considered Harmful&#34;</em> vs. <em>&#34;Exception Handling Considered Useful&#34;</em></a>  
+<em>FAQ oficial do ISO C++ com argumentos balanceados sobre uso de exceções.</em></li>
 </ol>
+</div>
+</div>
+</div>
+</div>
 
   </div>
 </article>

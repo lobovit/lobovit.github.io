@@ -29,71 +29,144 @@
     <p class="meta"><time>2025-07-21</time> · <span class="tag">Rust</span><span class="tag">Compiladores</span><span class="tag">LLVM</span><span class="tag">Memória</span><span class="tag">Segurança</span></p>
   </header>
   <div class="content">
-    <h1 id="introdução">Introdução</h1>
-<p>O Rust é famoso por ser uma linguagem que evita muitos erros de memória sem precisar de um coletor de lixo rodando em segundo plano. Mas como ele faz isso? O segredo está no compilador, que passa seu código por várias etapas até virar um programa que o computador entende.</p>
-<p>Neste artigo, explicarei de forma simples cada fase desse processo: desde a leitura do código <strong><a href="https://en.wikipedia.org/wiki/Lexical_analysis">lexing</a></strong>, passando pela análise da estrutura <strong><a href="https://en.wikipedia.org/wiki/Parsing">parsing</a></strong>, até a geração do código final pelo <strong><a href="https://llvm.org/">LLVM</a></strong>.</p>
-<p>Mostrarei como o <strong><a href="https://doc.rust-lang.org/reference/borrow-checker.html">borrow checker</a></strong> (aquele que reclama dos seus empréstimos de variáveis), as representações intermediárias (com nomes esquisitos como <a href="https://en.wikipedia.org/wiki/High-level_intermediate_representation">HIR</a>, <a href="https://en.wikipedia.org/wiki/Typed_high_level_intermediate_representation">THIR</a> e <a href="https://en.wikipedia.org/wiki/Mid-level_intermediate_representation">MIR</a>) e as otimizações finais trabalham juntos para impedir problemas como dois lugares mexendo na mesma memória ao mesmo tempo <strong><a href="https://en.wikipedia.org/wiki/Race_condition">data race</a></strong> ou acessar algo que já foi apagado <strong><a href="https://en.wikipedia.org/wiki/Use-after-free">use-after-free</a></strong>.</p>
-<p>No fim das contas, a arquitetura em camadas do compilador do Rust permite que ele seja rápido como C, mas com muito mais garantias de que seu programa não vai dar pau por causa de bugs difíceis de achar. Tudo isso graças a essas etapas intermediárias e checagens automáticas que acontecem antes mesmo do programa rodar.</p>
-<h2 id="a-ponte-entre-seu-código-e-o-computador">A ponte entre seu código e o computador</h2>
-<p>Linguagens como <a href="https://en.wikipedia.org/wiki/C_(programming_language)">C</a>, <a href="https://en.wikipedia.org/wiki/Go_(programming_language)">Go</a> e <a href="https://en.wikipedia.org/wiki/Rust_(programming_language)">Rust</a> ficam em um ponto intermediário: elas oferecem mais controle sobre o funcionamento do computador do que linguagens como <a href="https://en.wikipedia.org/wiki/Java_(programming_language)">Java</a> ou <a href="https://en.wikipedia.org/wiki/C_Sharp_(programming_language)">C#</a>, mas não são tão próximas do hardware quanto <a href="https://en.wikipedia.org/wiki/Assembly_language">Assembly</a>.</p>
-<p>O que as diferencia é a forma como lidam com a memória: em C, o programador tem liberdade total para manipular ponteiros, mas também assume todos os riscos de erros; em Go, existe um coletor de lixo que gerencia a memória automaticamente; já o Rust criou um sistema próprio de &ldquo;posse e empréstimo&rdquo; (ownership e borrowing), que previne muitos problemas de memória já na fase de compilação, antes mesmo do programa rodar.</p>
+    
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+Introdução
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
+<p>
+O Rust é famoso por ser uma linguagem que evita muitos erros de memória sem precisar de um coletor de lixo rodando em segundo plano. Mas como ele faz isso? O segredo está no compilador, que passa seu código por várias etapas até virar um programa que o computador entende. </p>
+<p>
+Neste artigo, explicarei de forma simples cada fase desse processo: desde a leitura do código <em><a href="https://en.wikipedia.org/wiki/Lexical_analysis">lexing</a></em>, passando pela análise da estrutura <em><a href="https://en.wikipedia.org/wiki/Parsing">parsing</a></em>, até a geração do código final pelo <em><a href="https://llvm.org/">LLVM</a></em>. </p>
+<p>
+Mostrarei como o <em><a href="https://doc.rust-lang.org/reference/borrow-checker.html">borrow checker</a></em> (aquele que reclama dos seus empréstimos de variáveis), as representações intermediárias (com nomes esquisitos como <a href="https://en.wikipedia.org/wiki/High-level_intermediate_representation">HIR</a>, <a href="https://en.wikipedia.org/wiki/Typed_high_level_intermediate_representation">THIR</a> e <a href="https://en.wikipedia.org/wiki/Mid-level_intermediate_representation">MIR</a>) e as otimizações finais trabalham juntos para impedir problemas como dois lugares mexendo na mesma memória ao mesmo tempo <em><a href="https://en.wikipedia.org/wiki/Race_condition">data race</a></em> ou acessar algo que já foi apagado <em><a href="https://en.wikipedia.org/wiki/Use-after-free">use-after-free</a></em>. </p>
+<p>
+No fim das contas, a arquitetura em camadas do compilador do Rust permite que ele seja rápido como C, mas com muito mais garantias de que seu programa não vai dar pau por causa de bugs difíceis de achar. Tudo isso graças a essas etapas intermediárias e checagens automáticas que acontecem antes mesmo do programa rodar.</p>
+<div id="outline-container-headline-2" class="outline-3">
+<h3 id="headline-2">
+A ponte entre seu código e o computador
+</h3>
+<div id="outline-text-headline-2" class="outline-text-3">
+<p>
+Linguagens como <a href="https://en.wikipedia.org/wiki/C_(programming_language">C</a>), <a href="https://en.wikipedia.org/wiki/Go_(programming_language">Go</a>) e <a href="https://en.wikipedia.org/wiki/Rust_(programming_language">Rust</a>) ficam em um ponto intermediário: elas oferecem mais controle sobre o funcionamento do computador do que linguagens como <a href="https://en.wikipedia.org/wiki/Java_(programming_language">Java</a>) ou <a href="https://en.wikipedia.org/wiki/C_Sharp_(programming_language">C#</a>), mas não são tão próximas do hardware quanto <a href="https://en.wikipedia.org/wiki/Assembly_language">Assembly</a>. </p>
+<p>
+O que as diferencia é a forma como lidam com a memória: em C, o programador tem liberdade total para manipular ponteiros, mas também assume todos os riscos de erros; em Go, existe um coletor de lixo que gerencia a memória automaticamente; já o Rust criou um sistema próprio de &#34;posse e empréstimo&#34; (ownership e borrowing), que previne muitos problemas de memória já na fase de compilação, antes mesmo do programa rodar.</p>
 <blockquote>
-<p>Quando falamos que linguagens como <a href="https://en.wikipedia.org/wiki/C_(programming_language)">C</a>, <a href="https://en.wikipedia.org/wiki/Go_(programming_language)">Go</a> e <a href="https://en.wikipedia.org/wiki/Rust_(programming_language)">Rust</a> são &ldquo;intermediárias&rdquo;, isso não quer dizer que existe uma escala fixa entre &ldquo;baixo nível&rdquo; (<a href="https://en.wikipedia.org/wiki/Assembly_language">Assembly</a>) e &ldquo;alto nível&rdquo; (<a href="https://en.wikipedia.org/wiki/Java_(programming_language)">Java</a>, <a href="https://en.wikipedia.org/wiki/Python_(programming_language)">Python</a>) e que elas ficam sempre no meio.</p>
+<p>Quando falamos que linguagens como <a href="https://en.wikipedia.org/wiki/C_(programming_language">C</a>), <a href="https://en.wikipedia.org/wiki/Go_(programming_language">Go</a>) e <a href="https://en.wikipedia.org/wiki/Rust_(programming_language">Rust</a>) são &#34;intermediárias&#34;, isso não quer dizer que existe uma escala fixa entre &#34;baixo nível&#34; (<a href="https://en.wikipedia.org/wiki/Assembly_language">Assembly</a>) e &#34;alto nível&#34; (<a href="https://en.wikipedia.org/wiki/Java_(programming_language">Java</a>), <a href="https://en.wikipedia.org/wiki/Python_(programming_language">Python</a>)) e que elas ficam sempre no meio.</p>
 </blockquote>
-<p>Na verdade, é só uma forma de dizer que elas misturam características dos dois lados: dão bastante controle sobre o computador (como <a href="https://en.wikipedia.org/wiki/Assembly_language">Assembly</a>), mas também oferecem recursos que facilitam a vida do programador (como <a href="https://en.wikipedia.org/wiki/Java_(programming_language)">Java</a> ou <a href="https://en.wikipedia.org/wiki/Python_(programming_language)">Python</a>).</p>
+<p>
+Na verdade, é só uma forma de dizer que elas misturam características dos dois lados: dão bastante controle sobre o computador (como <a href="https://en.wikipedia.org/wiki/Assembly_language">Assembly</a>), mas também oferecem recursos que facilitam a vida do programador (como <a href="https://en.wikipedia.org/wiki/Java_(programming_language">Java</a>) ou <a href="https://en.wikipedia.org/wiki/Python_(programming_language">Python</a>)). </p>
 <blockquote>
 <p>Por exemplo, C deixa você mexer direto na memória, mas ainda é mais fácil de usar do que Assembly. Go e Rust vão além: trazem recursos modernos, ajudam a evitar erros de memória e, no caso do Rust, permitem escrever código seguro e rápido sem perder desempenho.</p>
 </blockquote>
-<p>Ou seja, &ldquo;intermediária&rdquo; é só um jeito de dizer que essas linguagens conseguem equilibrar controle e facilidade, ficando entre o mundo das linguagens super próximas do hardware e o das linguagens super abstratas.</p>
-<h2 id="o-compilador-do-rust">O compilador do Rust</h2>
-<p>Quando a gente fala de compilador, normalmente ele é dividido em três partes: <strong>frontend</strong> (a parte que entende o seu código e transforma em uma estrutura de árvore chamada AST), <strong>middle-end</strong> (que faz otimizações que valem pra qualquer computador) e <strong>backend</strong> (que transforma tudo em código de máquina pra rodar no seu PC). O Rust segue esse modelo, mas adiciona umas etapas extras só pra garantir que ninguém vai fazer besteira com a memória.</p>
-<p><img src="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/rustcomp01.png" alt="Rust Compiler"></p>
-<p>A imagem acima mostra que o compilador do Rust funciona como uma linha de montagem em três etapas: primeiro ele lê e entende seu código (frontend), depois faz uma checagem rigorosa das regras de segurança de memória (middle, onde entra o <a href="https://doc.rust-lang.org/reference/borrow-checker.html">borrow checker</a>), e por fim transforma tudo em código de máquina que o computador entende (backend); assim, cada parte cuida de um tipo de problema e, no final, seu programa sai rápido e seguro, sem aquelas dores de cabeça típicas de bugs de memória.</p>
-<p>Quando você manda o Rust compilar seu arquivo <code>.rs</code>, a primeira coisa que acontece é que o compilador lê o texto e separa tudo em &ldquo;palavrinhas&rdquo; chamadas <em>tokens</em> (nomes de variáveis, números, símbolos, etc). Isso é o trabalho do <strong><a href="https://en.wikipedia.org/wiki/Lexical_analysis">analisador léxico</a></strong>.</p>
-<p><img src="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/rustcomp02.png" alt="Lexing"></p>
-<p>A imagem acima mostra, de forma bem simples, como o compilador do Rust começa a entender seu código: primeiro ele lê o texto do programa e separa tudo em &ldquo;palavrinhas&rdquo; chamadas tokens (tipo nomes de variáveis, números, símbolos), e depois organiza esses tokens em uma espécie de árvore que mostra como as partes do seu código se encaixam — como se fosse um esqueleto do programa (a <strong><a href="https://en.wikipedia.org/wiki/Abstract_syntax_tree">AST</a></strong>).</p>
-<p>Ou seja, a figura mostra que o compilador transforma o texto que você escreveu em uma estrutura organizada, facilitando para as próximas etapas encontrarem erros e entenderem o que o programa realmente faz.</p>
-<p><img src="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/rustcomp03.png" alt="AST"></p>
-<p>Nessa etapa, o compilador também já expande as <strong>macros</strong>. Ou seja, se você usou algum &ldquo;atalho&rdquo; ou macro, ele já troca pelo código real, pra facilitar as próximas fases. Agora vem uma etapa crucial: o compilador pega a AST (que ainda tem comandos de alto nível, tipo o <code>for</code>) e faz um &ldquo;rebaixamento&rdquo; <strong><a href="https://en.wikipedia.org/wiki/Code_lowering">lowering</a></strong>: transforma a AST numa versão mais simples chamada <strong><a href="https://en.wikipedia.org/wiki/High-level_intermediate_representation">HIR</a></strong> (High-level IR).</p>
-<p>Essa transformação é fundamental porque a HIR é mais próxima do que a linguagem realmente entende — ela remove a complexidade da sintaxe e deixa tudo mais &ldquo;quadradinho&rdquo; para as próximas análises.</p>
-<p>Em seguida, ele faz a análise de tipos e gera a <strong><a href="https://en.wikipedia.org/wiki/Typed_high_level_intermediate_representation">THIR</a></strong> (Typed HIR), onde cada pedacinho do código já tem um tipo definido (int, string, etc).</p>
-<p>Antes de seguir, o compilador faz uma checagem de segurança chamada <strong>unsafety</strong>: ele olha a THIR pra garantir que coisas perigosas (tipo mexer direto na memória com ponteiros) só aconteçam dentro de blocos marcados como <code>unsafe</code>. Assim, ele já barra muita coisa errada antes mesmo de virar código de verdade.</p>
-<p>A <strong><a href="https://en.wikipedia.org/wiki/Mid-level_intermediate_representation">MIR</a></strong> converte o programa num <strong><a href="https://en.wikipedia.org/wiki/Control-flow_graph">Grafo de Fluxo de Controle (CFG)</a></strong> explícito. Esse grafo permite ao <strong><a href="https://doc.rust-lang.org/reference/borrow-checker.html">borrow checker</a></strong> rastrear, ao longo de todos os caminhos de execução, o estado de cada valor: possuído, emprestado mutável, emprestado imutável ou movido.</p>
-<p><img src="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/rustcomp04.png" alt="CFG"></p>
-<p>A imagem acima ilustra um exemplo simplificado de um <strong>Grafo de Fluxo de Controle (CFG)</strong>. Nela, o círculo azul no topo representa um ponto de decisão ou condição no seu código (como um <code>if</code> ou <code>match</code>). As setas que partem dele mostram os possíveis caminhos que o programa pode seguir: um para o caso <code>True</code> (círculo vermelho à esquerda) e outro para o caso <code>False</code> (círculo vermelho à direita).</p>
-<p>Ambos os caminhos convergem para o círculo verde pontilhado na parte inferior, que simboliza a continuação do programa após a decisão. É essa representação em grafo que permite ao <strong><a href="https://doc.rust-lang.org/reference/borrow-checker.html">borrow checker</a></strong> do Rust analisar todos os fluxos possíveis do seu código e garantir a segurança da memória em cada um deles, independentemente de qual caminho o programa realmente tomar em tempo de execução.</p>
-<h2 id="o-mago-da-memória-entendendo-o-borrow-checker">O Mago da Memória: Entendendo o Borrow Checker</h2>
-<p>O <strong><a href="https://doc.rust-lang.org/reference/borrow-checker.html">borrow checker</a></strong> é o coração do sistema de segurança do Rust. Ele funciona como um inspetor rigoroso que analisa cada pedaço do seu código para garantir que ninguém vai mexer na memória de forma perigosa. Usando a MIR como base, o borrow checker rastreia três estados principais para cada valor:</p>
+<p>
+Ou seja, &#34;intermediária&#34; é só um jeito de dizer que essas linguagens conseguem equilibrar controle e facilidade, ficando entre o mundo das linguagens super próximas do hardware e o das linguagens super abstratas.</p>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-3">
+<h3 id="headline-3">
+O compilador do Rust
+</h3>
+<div id="outline-text-headline-3" class="outline-text-3">
+<p>
+Quando a gente fala de compilador, normalmente ele é dividido em três partes: <em>frontend</em> (a parte que entende o seu código e transforma em uma estrutura de árvore chamada AST), <em>middle-end</em> (que faz otimizações que valem pra qualquer computador) e <em>backend</em> (que transforma tudo em código de máquina pra rodar no seu PC). O Rust segue esse modelo, mas adiciona umas etapas extras só pra garantir que ninguém vai fazer besteira com a memória.</p>
+<p>
+!<a href="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/rustcomp01.png">Rust Compiler</a></p>
+<p>
+A imagem acima mostra que o compilador do Rust funciona como uma linha de montagem em três etapas: primeiro ele lê e entende seu código (frontend), depois faz uma checagem rigorosa das regras de segurança de memória (middle, onde entra o <a href="https://doc.rust-lang.org/reference/borrow-checker.html">borrow checker</a>), e por fim transforma tudo em código de máquina que o computador entende (backend); assim, cada parte cuida de um tipo de problema e, no final, seu programa sai rápido e seguro, sem aquelas dores de cabeça típicas de bugs de memória.</p>
+<p>
+Quando você manda o Rust compilar seu arquivo <code>.rs</code>, a primeira coisa que acontece é que o compilador lê o texto e separa tudo em &#34;palavrinhas&#34; chamadas <em>tokens</em> (nomes de variáveis, números, símbolos, etc). Isso é o trabalho do <em><a href="https://en.wikipedia.org/wiki/Lexical_analysis">analisador léxico</a></em>. </p>
+<p>
+!<a href="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/rustcomp02.png">Lexing</a></p>
+<p>
+A imagem acima mostra, de forma bem simples, como o compilador do Rust começa a entender seu código: primeiro ele lê o texto do programa e separa tudo em &#34;palavrinhas&#34; chamadas tokens (tipo nomes de variáveis, números, símbolos), e depois organiza esses tokens em uma espécie de árvore que mostra como as partes do seu código se encaixam — como se fosse um esqueleto do programa (a <em><a href="https://en.wikipedia.org/wiki/Abstract_syntax_tree">AST</a></em>). </p>
+<p>
+Ou seja, a figura mostra que o compilador transforma o texto que você escreveu em uma estrutura organizada, facilitando para as próximas etapas encontrarem erros e entenderem o que o programa realmente faz.</p>
+<p>
+!<a href="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/rustcomp03.png">AST</a></p>
+<p>
+Nessa etapa, o compilador também já expande as <em>macros</em>. Ou seja, se você usou algum &#34;atalho&#34; ou macro, ele já troca pelo código real, pra facilitar as próximas fases. Agora vem uma etapa crucial: o compilador pega a AST (que ainda tem comandos de alto nível, tipo o <code>for</code>) e faz um &#34;rebaixamento&#34; <em><a href="https://en.wikipedia.org/wiki/Code_lowering">lowering</a></em>: transforma a AST numa versão mais simples chamada <em><a href="https://en.wikipedia.org/wiki/High-level_intermediate_representation">HIR</a></em> (High-level IR). </p>
+<p>
+Essa transformação é fundamental porque a HIR é mais próxima do que a linguagem realmente entende — ela remove a complexidade da sintaxe e deixa tudo mais &#34;quadradinho&#34; para as próximas análises.</p>
+<p>
+Em seguida, ele faz a análise de tipos e gera a <em><a href="https://en.wikipedia.org/wiki/Typed_high_level_intermediate_representation">THIR</a></em> (Typed HIR), onde cada pedacinho do código já tem um tipo definido (int, string, etc). </p>
+<p>
+Antes de seguir, o compilador faz uma checagem de segurança chamada <em>unsafety</em>: ele olha a THIR pra garantir que coisas perigosas (tipo mexer direto na memória com ponteiros) só aconteçam dentro de blocos marcados como <code>unsafe</code>. Assim, ele já barra muita coisa errada antes mesmo de virar código de verdade. </p>
+<p>
+A <em><a href="https://en.wikipedia.org/wiki/Mid-level_intermediate_representation">MIR</a></em> converte o programa num <em><a href="https://en.wikipedia.org/wiki/Control-flow_graph">Grafo de Fluxo de Controle (CFG)</a></em> explícito. Esse grafo permite ao <em><a href="https://doc.rust-lang.org/reference/borrow-checker.html">borrow checker</a></em> rastrear, ao longo de todos os caminhos de execução, o estado de cada valor: possuído, emprestado mutável, emprestado imutável ou movido.</p>
+<p>
+!<a href="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/rustcomp04.png">CFG</a></p>
+<p>
+A imagem acima ilustra um exemplo simplificado de um <em>Grafo de Fluxo de Controle (CFG)</em>. Nela, o círculo azul no topo representa um ponto de decisão ou condição no seu código (como um <code>if</code> ou <code>match</code>). As setas que partem dele mostram os possíveis caminhos que o programa pode seguir: um para o caso <code>True</code> (círculo vermelho à esquerda) e outro para o caso <code>False</code> (círculo vermelho à direita). </p>
+<p>
+Ambos os caminhos convergem para o círculo verde pontilhado na parte inferior, que simboliza a continuação do programa após a decisão. É essa representação em grafo que permite ao <em><a href="https://doc.rust-lang.org/reference/borrow-checker.html">borrow checker</a></em> do Rust analisar todos os fluxos possíveis do seu código e garantir a segurança da memória em cada um deles, independentemente de qual caminho o programa realmente tomar em tempo de execução.</p>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-3">
+<h3 id="headline-4">
+O Mago da Memória: Entendendo o Borrow Checker
+</h3>
+<div id="outline-text-headline-4" class="outline-text-3">
+<p>
+O <em><a href="https://doc.rust-lang.org/reference/borrow-checker.html">borrow checker</a></em> é o coração do sistema de segurança do Rust. Ele funciona como um inspetor rigoroso que analisa cada pedaço do seu código para garantir que ninguém vai mexer na memória de forma perigosa. Usando a MIR como base, o borrow checker rastreia três estados principais para cada valor:</p>
 <ol>
-<li><strong>Possuído (Owned)</strong>: O valor pertence exclusivamente a uma variável</li>
-<li><strong>Emprestado Imutável (Borrowed Immutable)</strong>: Outras partes do código podem ler, mas não modificar</li>
-<li><strong>Emprestado Mutável (Borrowed Mutable)</strong>: Apenas uma parte pode ler e modificar por vez</li>
+<li><em>Possuído (Owned)</em>: O valor pertence exclusivamente a uma variável</li>
+<li><em>Emprestado Imutável (Borrowed Immutable)</em>: Outras partes do código podem ler, mas não modificar</li>
+<li><em>Emprestado Mutável (Borrowed Mutable)</em>: Apenas uma parte pode ler e modificar por vez</li>
 </ol>
-<p>Caso uma violação ocorra (uso de valor após movimento, criação de dados mutáveis e imutáveis simultâneos, etc.), o compilador rejeita o código. Esse mecanismo previne <strong><a href="https://en.wikipedia.org/wiki/Race_condition">data races</a></strong> e <strong><a href="https://en.wikipedia.org/wiki/Use-after-free">use‑after‑free</a></strong> sem custo em tempo de execução. O borrow checker é tão eficiente que muitos programadores Rust brincam que ele é &ldquo;o melhor professor de programação que você já teve&rdquo; — ele te ensina boas práticas de memória antes mesmo do programa rodar!</p>
-<p>Após otimizações em MIR (eliminação de código morto, <strong><a href="https://en.wikipedia.org/wiki/Inline_function">inlining</a></strong> local, etc.), a IR é traduzida para <strong><a href="https://llvm.org/docs/LangRef.html">LLVM IR</a></strong>. A <strong><a href="https://llvm.org/docs/LangRef.html">LLVM IR</a></strong> (Low Level Virtual Machine Intermediate Representation) é uma linguagem intermediária de baixo nível, mas independente da arquitetura do processador.</p>
-<p>É nela que o Rust traduz tudo o que foi checado e otimizado até aqui, para que a LLVM possa realizar o trabalho pesado de otimização de código. A LLVM IR não é literalmente &ldquo;entendida pelo processador&rdquo; — ela serve como uma representação intermediária que o LLVM usa para gerar o código nativo específico da arquitetura de destino (como x86-64, ARM, etc.).</p>
-<p><img src="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/rustcomp05.png" alt="LLVM IR"></p>
-<p>O LLVM aplica otimizações específicas de arquitetura e, por fim, gera código objeto para a plataforma‑alvo, como x86‑64 ou AArch64. Como consequência, um binário Rust é normalmente específico à arquitetura de destino, a menos que se utilize camadas de emulação.</p>
-<h2 id="por-que-tanta-etapa-intermediária">Por que tanta etapa intermediária?</h2>
-<p>Pense assim: cada IR (representação intermediária) é como um filtro diferente que o compilador usa para checar seu código. Primeiro, a HIR guarda bastante informação para que o compilador possa te dar mensagens de erro detalhadas e entender o contexto do seu programa. Depois, a MIR simplifica tudo, deixando o código mais &ldquo;quadradinho&rdquo; e fácil de analisar — é nessa hora que o <strong><a href="https://doc.rust-lang.org/reference/borrow-checker.html">borrow checker</a></strong> entra em ação, garantindo que ninguém vai mexer na memória de um jeito perigoso.</p>
-<p>Essa divisão em camadas faz com que cada parte do compilador só precise se preocupar com um tipo de problema por vez. Isso facilita encontrar erros antes mesmo do programa rodar, sem deixar o código final mais lento.</p>
-<p>E, pra fechar com chave de ouro, o Rust entrega a última etapa (gerar o código de máquina de verdade) pro LLVM, que já é um especialista em otimização e velocidade. Assim, o Rust foca em garantir segurança e o LLVM em deixar tudo rápido.</p>
-<p>No fim das contas, o compilador do Rust funciona como uma linha de montagem cheia de inspeções: cada etapa checa uma coisa diferente, pegando vários erros que em outras linguagens só apareceriam quando o programa já estivesse rodando (ou pior, em produção!). Por isso, muita gente acredita que esse modelo de &ldquo;camadas inteligentes&rdquo; vai ser cada vez mais comum nas linguagens do futuro, juntando robustez e desempenho sem dor de cabeça.</p>
-<p>Por fim, vale destacar: linguagens como C e C++ não adotam esse modelo de múltiplas camadas de checagem automática durante a compilação. Nelas, o compilador faz análises mais simples e deixa a maior parte dos cuidados com memória e segurança por conta do programador.</p>
-<p>Isso significa que muitos erros perigosos — como acessar memória já liberada, criar <strong><a href="https://en.wikipedia.org/wiki/Race_condition">data races</a></strong> ou sobrescrever dados sem querer — só aparecem quando o programa já está rodando, e às vezes nem são detectados. O Rust, ao contrário, pega esses problemas antes mesmo do código virar um executável, tornando o desenvolvimento mais seguro sem sacrificar desempenho.</p>
+<p>Caso uma violação ocorra (uso de valor após movimento, criação de dados mutáveis e imutáveis simultâneos, etc.), o compilador rejeita o código. Esse mecanismo previne <em><a href="https://en.wikipedia.org/wiki/Race_condition">data races</a></em> e <em><a href="https://en.wikipedia.org/wiki/Use-after-free">use‑after‑free</a></em> sem custo em tempo de execução. O borrow checker é tão eficiente que muitos programadores Rust brincam que ele é &#34;o melhor professor de programação que você já teve&#34; — ele te ensina boas práticas de memória antes mesmo do programa rodar!</p>
+<p>
+Após otimizações em MIR (eliminação de código morto, <em><a href="https://en.wikipedia.org/wiki/Inline_function">inlining</a></em> local, etc.), a IR é traduzida para <em><a href="https://llvm.org/docs/LangRef.html">LLVM IR</a></em>. A <em><a href="https://llvm.org/docs/LangRef.html">LLVM IR</a></em> (Low Level Virtual Machine Intermediate Representation) é uma linguagem intermediária de baixo nível, mas independente da arquitetura do processador. </p>
+<p>
+É nela que o Rust traduz tudo o que foi checado e otimizado até aqui, para que a LLVM possa realizar o trabalho pesado de otimização de código. A LLVM IR não é literalmente &#34;entendida pelo processador&#34; — ela serve como uma representação intermediária que o LLVM usa para gerar o código nativo específico da arquitetura de destino (como x86-64, ARM, etc.).</p>
+<p>
+!<a href="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/rustcomp05.png">LLVM IR</a></p>
+<p>
+O LLVM aplica otimizações específicas de arquitetura e, por fim, gera código objeto para a plataforma‑alvo, como x86‑64 ou AArch64. Como consequência, um binário Rust é normalmente específico à arquitetura de destino, a menos que se utilize camadas de emulação.</p>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-3">
+<h3 id="headline-5">
+Por que tanta etapa intermediária?
+</h3>
+<div id="outline-text-headline-5" class="outline-text-3">
+<p>
+Pense assim: cada IR (representação intermediária) é como um filtro diferente que o compilador usa para checar seu código. Primeiro, a HIR guarda bastante informação para que o compilador possa te dar mensagens de erro detalhadas e entender o contexto do seu programa. Depois, a MIR simplifica tudo, deixando o código mais &#34;quadradinho&#34; e fácil de analisar — é nessa hora que o <em><a href="https://doc.rust-lang.org/reference/borrow-checker.html">borrow checker</a></em> entra em ação, garantindo que ninguém vai mexer na memória de um jeito perigoso.</p>
+<p>
+Essa divisão em camadas faz com que cada parte do compilador só precise se preocupar com um tipo de problema por vez. Isso facilita encontrar erros antes mesmo do programa rodar, sem deixar o código final mais lento. </p>
+<p>
+E, pra fechar com chave de ouro, o Rust entrega a última etapa (gerar o código de máquina de verdade) pro LLVM, que já é um especialista em otimização e velocidade. Assim, o Rust foca em garantir segurança e o LLVM em deixar tudo rápido.</p>
+<p>
+No fim das contas, o compilador do Rust funciona como uma linha de montagem cheia de inspeções: cada etapa checa uma coisa diferente, pegando vários erros que em outras linguagens só apareceriam quando o programa já estivesse rodando (ou pior, em produção!). Por isso, muita gente acredita que esse modelo de &#34;camadas inteligentes&#34; vai ser cada vez mais comum nas linguagens do futuro, juntando robustez e desempenho sem dor de cabeça.</p>
+<p>
+Por fim, vale destacar: linguagens como C e C++ não adotam esse modelo de múltiplas camadas de checagem automática durante a compilação. Nelas, o compilador faz análises mais simples e deixa a maior parte dos cuidados com memória e segurança por conta do programador. </p>
+<p>
+Isso significa que muitos erros perigosos — como acessar memória já liberada, criar <em><a href="https://en.wikipedia.org/wiki/Race_condition">data races</a></em> ou sobrescrever dados sem querer — só aparecem quando o programa já está rodando, e às vezes nem são detectados. O Rust, ao contrário, pega esses problemas antes mesmo do código virar um executável, tornando o desenvolvimento mais seguro sem sacrificar desempenho.</p>
 <blockquote>
 <p><a href="https://www.abeacha.com/NIST_press_release_bugs_cost.html">Um estudo de 2002 e publicado em2019 da National Institute of Standards and Technology (NIST)</a> estimou que os erros de software custam à economia dos EUA mais de 59,5 bilhões de dólares anualmente, com uma parcela significativa desses custos vindo de vulnerabilidades de segurança e falhas de memória. A ausência de checagens automáticas em C/C++ contribui para que esses tipos de falhas se tornem uma preocupação constante.</p>
 </blockquote>
-<p>Para não soar como injusto, é necessário dizer que o C++23 trouxe várias novidades para tentar deixar o código mais seguro e moderno, especialmente quando o assunto é evitar bugs de memória — mas sem mudar a linguagem de cabeça pra baixo.</p>
-<p>Agora, por exemplo, dá pra declarar de forma explícita quando um objeto começa a existir na memória (com o <strong><a href="https://en.cppreference.com/w/cpp/language/lifetime#start_lifetime_as">start_lifetime_as</a></strong>), o que ajuda a evitar aqueles bugs cabeludos que nem os detectores automáticos pegavam. Também ficou mais fácil e seguro conversar com APIs em C sem correr o risco de vazar memória, graças a novos adaptadores de ponteiros inteligentes.</p>
-<p>Os containers ganharam versões que evitam acesso fora dos limites (tipo o <strong><a href="https://en.cppreference.com/w/cpp/container/mdspan">mdspan</a></strong> para matrizes), e ficou mais prático lidar com erros usando o <strong><a href="https://en.cppreference.com/w/cpp/utility/expected">std::expected</a></strong>, que incentiva o retorno explícito de falhas em vez de depender de códigos mágicos ou variáveis globais.</p>
-<p>Até a formatação de texto ficou mais fácil, <a href="https://en.cppreference.com/w/cpp/io/c/fprintf">com funções no estilo Python</a>, e agora dá pra gerar <a href="https://en.cppreference.com/w/cpp/error/stacktrace">stacktraces portáveis sem gambiarra</a>. Apesar desses avanços, algumas proteções automáticas que o Rust já oferece — como checagem de uso de ponteiros e detecção de data races — ainda não chegaram no C++ (ficaram pra próxima versão).</p>
+<p>
+Para não soar como injusto, é necessário dizer que o C++23 trouxe várias novidades para tentar deixar o código mais seguro e moderno, especialmente quando o assunto é evitar bugs de memória — mas sem mudar a linguagem de cabeça pra baixo. </p>
+<p>
+Agora, por exemplo, dá pra declarar de forma explícita quando um objeto começa a existir na memória (com o <em><a href="https://en.cppreference.com/w/cpp/language/lifetime#start_lifetime_as">start_lifetime_as</a></em>), o que ajuda a evitar aqueles bugs cabeludos que nem os detectores automáticos pegavam. Também ficou mais fácil e seguro conversar com APIs em C sem correr o risco de vazar memória, graças a novos adaptadores de ponteiros inteligentes. </p>
+<p>
+Os containers ganharam versões que evitam acesso fora dos limites (tipo o <em><a href="https://en.cppreference.com/w/cpp/container/mdspan">mdspan</a></em> para matrizes), e ficou mais prático lidar com erros usando o <em><a href="https://en.cppreference.com/w/cpp/utility/expected">std::expected</a></em>, que incentiva o retorno explícito de falhas em vez de depender de códigos mágicos ou variáveis globais. </p>
+<p>
+Até a formatação de texto ficou mais fácil, <a href="https://en.cppreference.com/w/cpp/io/c/fprintf">com funções no estilo Python</a>, e agora dá pra gerar <a href="https://en.cppreference.com/w/cpp/error/stacktrace">stacktraces portáveis sem gambiarra</a>. Apesar desses avanços, algumas proteções automáticas que o Rust já oferece — como checagem de uso de ponteiros e detecção de data races — ainda não chegaram no C++ (ficaram pra próxima versão). </p>
 <blockquote>
 <p>Ou seja: o C++23 está caminhando para fechar várias brechas históricas e facilitar a vida do programador, mas ainda depende bastante de disciplina e ferramentas externas, enquanto o Rust já faz muita coisa “no automático” para garantir a segurança do seu código.</p>
 </blockquote>
-<p>Enquanto o compilador do Rust atua como um inspetor de qualidade rigoroso, rejeitando qualquer código que possa violar as regras de segurança de memória, o compilador de C/C++ foca em traduzir o código de forma fiel e otimizada. Ele assume que o programador é o responsável por todas as garantias de segurança.</p>
+<p>
+Enquanto o compilador do Rust atua como um inspetor de qualidade rigoroso, rejeitando qualquer código que possa violar as regras de segurança de memória, o compilador de C/C++ foca em traduzir o código de forma fiel e otimizada. Ele assume que o programador é o responsável por todas as garantias de segurança.</p>
 <hr>
-<h2 id="referências">REFERÊNCIAS</h2>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-3">
+<h3 id="headline-6">
+REFERÊNCIAS
+</h3>
+<div id="outline-text-headline-6" class="outline-text-3">
 <ul>
 <li><a href="https://doc.rust-lang.org/reference/">The Rust Reference - The Rust Compiler</a> - A referência oficial do Rust sobre o compilador e a linguagem.</li>
 <li><a href="https://doc.rust-lang.org/rustc/">The Rustc Book</a> - O livro oficial do Rust sobre o compilador.</li>
@@ -106,6 +179,10 @@
 <li><a href="https://aneksteind.github.io/posts/2023-06-12.html#:~:text=Exploring%20Dataflow%20Analysis%20in%20the,control%20flow%20graph%20structure">Exploring Dataflow Analysis in the Rust Compiler</a> - Um artigo sobre a análise de fluxo de dados no compilador do Rust.</li>
 <li><a href="https://www.infoq.com/presentations/rust-borrow-checker/#:~:text=lowers%20it%20into%20the%20mid,also%20known%20as%20the%20MIR">Rust Borrow Checker</a> - Uma apresentação sobre o borrow checker do Rust.</li>
 </ul>
+</div>
+</div>
+</div>
+</div>
 
   </div>
 </article>

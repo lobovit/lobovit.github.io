@@ -20,6 +20,18 @@
     <loc>https://scovl.github.io/rustcomp/</loc>
     <lastmod>2025-07-21T12:00:00+00:00</lastmod>
   </url><url>
+    <loc>https://scovl.github.io/jsast/</loc>
+    <lastmod>2026-05-23T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://scovl.github.io/post/</loc>
+    <lastmod>2026-05-23T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://scovl.github.io/rama/</loc>
+    <lastmod>2026-05-23T00:00:00+00:00</lastmod>
+  </url><url>
+    <loc>https://scovl.github.io/</loc>
+    <lastmod>2026-05-23T00:00:00+00:00</lastmod>
+  </url><url>
     <loc>https://scovl.github.io/tags/cgo/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
@@ -27,12 +39,6 @@
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
     <loc>https://scovl.github.io/tags/ollanta/</loc>
-    <lastmod>2026-05-08T18:40:00-03:00</lastmod>
-  </url><url>
-    <loc>https://scovl.github.io/post/</loc>
-    <lastmod>2026-05-08T18:40:00-03:00</lastmod>
-  </url><url>
-    <loc>https://scovl.github.io/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
     <loc>https://scovl.github.io/tags/static-analysis/</loc>
@@ -130,9 +136,5 @@
   </url><url>
     <loc>https://scovl.github.io/en/</loc>
     <lastmod>2024-01-15T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>https://scovl.github.io/jsast/</loc>
-  </url><url>
-    <loc>https://scovl.github.io/rama/</loc>
   </url>
 </urlset>
