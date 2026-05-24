@@ -1,31 +1,11 @@
 {{ define "main" }}
-<article class="post">
-  <header class="post-header">
-    <h1 class="post-title">{{ .Title }}</h1>
-    {{ if .Date }}
-    <div class="post-meta">
-      <time datetime="{{ .Date.Format "2006-01-02T15:04:05Z07:00" }}">📅 {{ .Date.Format "02/01/2006" }}</time>
-      {{ with .Params.author }}<span>👤 {{ . }}</span>{{ end }}
-      {{ with .Params.readingTime }}<span>⏱️ {{ . }} min de leitura</span>{{ end }}
-      {{ with .Params.tags }}
-      <div class="post-tags">
-        {{ range . }}<a href="{{ "tags/" | relLangURL }}{{ . | urlize }}" class="tag">{{ . }}</a>{{ end }}
-      </div>
-      {{ end }}
-    </div>
-    {{ end }}
+<article>
+  <header>
+    <h1>{{ .Title }}</h1>
+    <p class="meta"><time>{{ .Date.Format "2006-01-02" }}</time>{{ if .Params.tags }} · {{ range .Params.tags }}<span class="tag">{{ . }}</span>{{ end }}{{ end }}</p>
   </header>
-
-  {{ partial "toc.html" . }}
-
-  <div class="post-content">
+  <div class="content">
     {{ .Content }}
   </div>
-
-  {{ partial "related-posts.html" . }}
-
-  {{ if eq .Type "post" }}
-    {{ partial "comments.html" . }}
-  {{ end }}
 </article>
 {{ end }}

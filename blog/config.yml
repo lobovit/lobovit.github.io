@@ -1,153 +1,37 @@
 baseURL: 'https://scovl.github.io/'
-languageCode: 'pt-br'
+locale: 'pt-br'
 title: 'scovl'
 theme: 'scovl'
+publishDir: '..'
 
-# Configuração de Idiomas
-languages:
-  pt:
-    languageName: "Português"
-    weight: 1
-    title: "scovl"
-    contentDir: "content"
-  en:
-    languageName: "English"
-    weight: 2
-    title: "scovl"
-    contentDir: "content/en"
+params:
+  author: Vitor Lobo
+  email: lobocode@gmail.com
+  github: https://github.com/scovl
+  linkedin: https://linkedin.com/in/vitor-lobo
+  description: engenharia de software, compiladores, sistemas e programacao
 
-# Configuração do Menu
 menu:
   main:
     - identifier: about
-      name: About
+      name: about
       url: /page/about/
       weight: 1
     - identifier: contact
-      name: Contact
+      name: contact
       url: /page/contact/
       weight: 2
-    - identifier: books
-      name: Books
-      url: /page/books/
-      weight: 3
-
-# Configurações Gerais/
-pygmentsUseClasses: true
-pygmentsCodeFences: true
-pygmentsStyle: "dracula"
-DefaultContentLanguage: pt
-
-disableSyntaxHighlighting: true  # desliga o Chroma do Hugo
 
 markup:
   goldmark:
     renderer:
       unsafe: true
-
-  highlight:
-    codeFences: true
-    guessSyntax: false
-    lineNos: false
-    lineNumbersInTable: false
-    noClasses: true
-    style: "monokai"
-    tabWidth: 2
-
   tableOfContents:
     startLevel: 2
     endLevel: 4
-    ordered: false
-
-privacy:
-  # Analytics removido
-
-author:
-  name: Vitor Lobo
-  profile: "https://google.com/+XXX"
 
 taxonomies:
   tag: tags
 
-params:
-  mainSections:
-    - post
-  intro: true
-  paginate: 10
-  linkedin: "https://linkedin.com/in/vitor-lobo"
-  github: "https://github.com/scovl"
-  email: lobocode@gmail.com
-  mastodon: "https://hachyderm.io/@lobocode"
-  rss: "https://scovl.github.io/index.xml"
-  opengraph: true
-  shareTwitter: true
-  shareLinkedIn: true
-  dateFormat: "Mon, Jan 2, 2006"
-  readingTime: true
-  readingTimeText: "Estimated reading time:"
-  fathomUrl: ""
-  fathomSiteId: ""
-  math: true
-  navigation:
-    help: Help
-  mermaid:
-    theme: "light"
-    align: "center"
-  
-  # Configuração do Table of Contents (TOC)
-  toc:
-    enabled: true
-    minHeadings: 2
-    maxDepth: 4
-  
-  # Configuração do Giscus (GitHub Discussions)
-  giscus:
-    repo: "scovl/scovl.github.io"
-    repoId: "MDEwOlJlcG9zaXRvcnkxMzg1OTI2ODA="
-    category: "General"
-    categoryId: "DIC_kwDOCELBqM4CthUV"
-    mapping: "pathname"
-    strict: "0"
-    reactionsEnabled: "1"
-    emitMetadata: "0"
-    inputPosition: "bottom"
-    theme: "light"
-    lang: "pt"
-  
-
-  
-  # Configuração de Internacionalização (i18n)
-  i18n:
-    enabled: true
-    defaultLanguage: "pt"
-    supportedLanguages:
-      - code: "pt"
-        name: "Português"
-        weight: 1
-      - code: "en"
-        name: "English"
-        weight: 2
-    rtlLanguages:
-      - "ar"
-      - "he"
-      - "fa"
-      - "ur"
-    dateFormats:
-      default: "long"
-      short: "short"
-      long: "long"
-      relative: "relative"
-    numberFormats:
-      decimal: "decimal"
-      currency: "currency"
-      percent: "percent"
-    translations:
-      autoLoad: true
-      fallbackLanguage: "en"
-  
-  customSCSS:
-    customSCSS:
-      - "css/custom.scss"
-
 permalinks:
-  post: "/:year/:month/:day/:contentbasename/"
+  post: /:contentbasename/

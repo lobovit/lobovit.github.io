@@ -1,655 +1,93 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <title> | scovl</title>
-    <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="">
-
-
-
-<link rel="preload" href="/vendor/fonts/inter/Inter-400.ttf" as="font" type="font/ttf" crossorigin>
-<link rel="preload" href="/vendor/fonts/inter/Inter-600.ttf" as="font" type="font/ttf" crossorigin>
-<link rel="preload" href="/vendor/fonts/jetbrains-mono/JetBrainsMono-400.ttf" as="font" type="font/ttf" crossorigin>
-
-
-
-<link rel="dns-prefetch" href="//giscus.app">
-<link rel="preconnect" href="//giscus.app">
-
-
-
-<meta http-equiv="X-UA-Compatible" content="IE=edge">
-<meta name="format-detection" content="telephone=no"> 
-
-
-<link rel="stylesheet" href="/css/main.css?v=1778794755">
-
-
-<link rel="stylesheet" href="/vendor/fonts/fonts.css?v=1778794755">
-
-
-<link rel="preload" href="/fonts/abril-fatface.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/fonts/rokkitt.woff2" as="font" type="font/woff2" crossorigin>
-
-
-<link rel="stylesheet" href="/vendor/prism/prism-tomorrow.min.css?v=1778794755">
-
-
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css">
-<script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js" defer></script>
-<script src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js" defer></script>
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        renderMathInElement(document.body, {
-            delimiters: [
-                {left: "$$", right: "$$", display: true},
-                {left: "$", right: "$", display: false}
-            ],
-            throwOnError: false
-        });
-    });
-</script>
-
-
-
-
-<script src="/vendor/mermaid/mermaid.min.js?v=1778794755"></script>
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        mermaid.initialize({
-            startOnLoad: true,
-            theme: 'light',
-            align: 'center'
-        });SS
-    });
-</script>
-
-
-
-
-
-
-
-
-
-
-
-
-<script>
-
-const I18n = {
-    currentLang: 'pt',
-    isRTL:  false ,
-    
-    
-    formatDate(date, options = {}) {
-        const defaultOptions = {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        };
-        
-        const locale = this.getLocale();
-        const finalOptions = { ...defaultOptions, ...options };
-        
-        return new Intl.DateTimeFormat(locale, finalOptions).format(date);
-    },
-    
-    
-    formatNumber(number, options = {}) {
-        const defaultOptions = {
-            style: 'decimal',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2
-        };
-        
-        const locale = this.getLocale();
-        const finalOptions = { ...defaultOptions, ...options };
-        
-        return new Intl.NumberFormat(locale, finalOptions).format(number);
-    },
-    
-    
-    formatCurrency(amount, currency = 'USD') {
-        const locale = this.getLocale();
-        return new Intl.NumberFormat(locale, {
-            style: 'currency',
-            currency: currency
-        }).format(amount);
-    },
-    
-    
-    formatRelativeTime(date) {
-        const locale = this.getLocale();
-        const now = new Date();
-        const diff = now - date;
-        const diffInMinutes = Math.floor(diff / (1000 * 60));
-        const diffInHours = Math.floor(diff / (1000 * 60 * 60));
-        const diffInDays = Math.floor(diff / (1000 * 60 * 60 * 24));
-        
-        if (diffInMinutes < 1) {
-            return new Intl.RelativeTimeFormat(locale).format(0, 'minute');
-        } else if (diffInMinutes < 60) {
-            return new Intl.RelativeTimeFormat(locale).format(-diffInMinutes, 'minute');
-        } else if (diffInHours < 24) {
-            return new Intl.RelativeTimeFormat(locale).format(-diffInHours, 'hour');
-        } else {
-            return new Intl.RelativeTimeFormat(locale).format(-diffInDays, 'day');
-        }
-    },
-    
-    
-    getLocale() {
-        const localeMap = {
-            'en': 'en-US',
-            'pt': 'pt-BR',
-            'es': 'es-ES',
-            'fr': 'fr-FR',
-            'de': 'de-DE',
-            'it': 'it-IT',
-            'ar': 'ar-SA',
-            'he': 'he-IL',
-            'fa': 'fa-IR',
-            'ur': 'ur-PK',
-            'zh': 'zh-CN',
-            'ja': 'ja-JP',
-            'ko': 'ko-KR'
-        };
-        
-        return localeMap[this.currentLang] || 'en-US';
-    },
-    
-    
-    t(key, params = {}) {
-        const translations = {
-            'en': {
-                'read_more': 'Read more',
-                'back_to_top': 'Back to top',
-                'loading': 'Loading...',
-                'error': 'Error',
-                'success': 'Success',
-                'warning': 'Warning',
-                'info': 'Information',
-                'comments': 'Comments',
-                'related_posts': 'Related Posts',
-                'tags': 'Tags',
-                'categories': 'Categories',
-                'search': 'Search',
-                'menu': 'Menu',
-                'close': 'Close',
-                'language': 'Language',
-                'theme': 'Theme',
-                'dark_mode': 'Dark Mode',
-                'light_mode': 'Light Mode'
-            },
-            'pt': {
-                'read_more': 'Ler mais',
-                'back_to_top': 'Voltar ao topo',
-                'loading': 'Carregando...',
-                'error': 'Erro',
-                'success': 'Sucesso',
-                'warning': 'Aviso',
-                'info': 'Informação',
-                'comments': 'Comentários',
-                'related_posts': 'Posts Relacionados',
-                'tags': 'Tags',
-                'categories': 'Categorias',
-                'search': 'Pesquisar',
-                'menu': 'Menu',
-                'close': 'Fechar',
-                'language': 'Idioma',
-                'theme': 'Tema',
-                'dark_mode': 'Modo Escuro',
-                'light_mode': 'Modo Claro'
-            },
-            'es': {
-                'read_more': 'Leer más',
-                'back_to_top': 'Volver arriba',
-                'loading': 'Cargando...',
-                'error': 'Error',
-                'success': 'Éxito',
-                'warning': 'Advertencia',
-                'info': 'Información',
-                'comments': 'Comentarios',
-                'related_posts': 'Posts Relacionados',
-                'tags': 'Etiquetas',
-                'categories': 'Categorías',
-                'search': 'Buscar',
-                'menu': 'Menú',
-                'close': 'Cerrar',
-                'language': 'Idioma',
-                'theme': 'Tema',
-                'dark_mode': 'Modo Oscuro',
-                'light_mode': 'Modo Claro'
-            },
-            'ar': {
-                'read_more': 'اقرأ المزيد',
-                'back_to_top': 'العودة إلى الأعلى',
-                'loading': 'جاري التحميل...',
-                'error': 'خطأ',
-                'success': 'نجح',
-                'warning': 'تحذير',
-                'info': 'معلومات',
-                'comments': 'التعليقات',
-                'related_posts': 'المقالات ذات الصلة',
-                'tags': 'العلامات',
-                'categories': 'الفئات',
-                'search': 'بحث',
-                'menu': 'القائمة',
-                'close': 'إغلاق',
-                'language': 'اللغة',
-                'theme': 'المظهر',
-                'dark_mode': 'الوضع المظلم',
-                'light_mode': 'الوضع الفاتح'
-            }
-        };
-        
-        const langTranslations = translations[this.currentLang] || translations['en'];
-        let text = langTranslations[key] || key;
-        
-        
-        Object.keys(params).forEach(param => {
-            text = text.replace(`{${param}}`, params[param]);
-        });
-        
-        return text;
-    },
-    
-    
-    init() {
-        this.updatePageDirection();
-        this.updateDateFormats();
-        this.updateNumberFormats();
-        this.updateTranslations();
-    },
-    
-    
-    updatePageDirection() {
-        if (this.isRTL) {
-            document.documentElement.setAttribute('dir', 'rtl');
-            document.documentElement.setAttribute('lang', this.currentLang);
-        }
-    },
-    
-    
-    updateDateFormats() {
-        const dateElements = document.querySelectorAll('[data-date]');
-        dateElements.forEach(element => {
-            const date = new Date(element.getAttribute('data-date'));
-            const format = element.getAttribute('data-date-format') || 'default';
-            
-            let formattedDate;
-            switch (format) {
-                case 'relative':
-                    formattedDate = this.formatRelativeTime(date);
-                    break;
-                case 'short':
-                    formattedDate = this.formatDate(date, { month: 'short', day: 'numeric' });
-                    break;
-                case 'long':
-                    formattedDate = this.formatDate(date, { 
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                    });
-                    break;
-                default:
-                    formattedDate = this.formatDate(date);
-            }
-            
-            element.textContent = formattedDate;
-        });
-    },
-    
-    
-    updateNumberFormats() {
-        const numberElements = document.querySelectorAll('[data-number]');
-        numberElements.forEach(element => {
-            const number = parseFloat(element.getAttribute('data-number'));
-            const format = element.getAttribute('data-number-format') || 'decimal';
-            
-            let formattedNumber;
-            switch (format) {
-                case 'currency':
-                    const currency = element.getAttribute('data-currency') || 'USD';
-                    formattedNumber = this.formatCurrency(number, currency);
-                    break;
-                case 'percent':
-                    formattedNumber = this.formatNumber(number / 100, { style: 'percent' });
-                    break;
-                default:
-                    formattedNumber = this.formatNumber(number);
-            }
-            
-            element.textContent = formattedNumber;
-        });
-    },
-    
-    
-    updateTranslations() {
-        const translationElements = document.querySelectorAll('[data-i18n]');
-        translationElements.forEach(element => {
-            const key = element.getAttribute('data-i18n');
-            const params = {};
-            
-            
-            const paramAttributes = element.getAttribute('data-i18n-params');
-            if (paramAttributes) {
-                try {
-                    Object.assign(params, JSON.parse(paramAttributes));
-                } catch (e) {
-                    console.warn('Invalid i18n params:', paramAttributes);
-                }
-            }
-            
-            element.textContent = this.t(key, params);
-        });
-    }
-};
-
-
-window.I18n = I18n;
-</script>
-
-
-<script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-            navigator.serviceWorker.register('\/sw.js')
-                .then(function(registration) {
-                    console.log('Service Worker registrado com sucesso:', registration.scope);
-                })
-                .catch(function(error) {
-                    console.log('Falha no registro do Service Worker:', error);
-                });
-        });
-    }
-</script> 
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title> — scovl</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-tomorrow.min.css">
 </head>
 <body>
-    
-    
-    <header class="header">
-    <div class="container">
-        <div class="header-content">
-            <a href="https://scovl.github.io/" class="site-title">scovl</a>
-            
-            <div class="header-actions">
-                
-                <nav class="nav-menu">
-                    <ul>
-                        
-                        <li><a href="/page/about/">About</a></li>
-                        
-                        <li><a href="/page/contact/">Contact</a></li>
-                        
-                        <li><a href="/page/books/">Books</a></li>
-                        
-                    </ul>
-                </nav>
-                
-                
-                
-
-
-
-<div class="language-switcher" id="language-switcher">
-    <button class="language-btn" onclick="toggleLanguageMenu()">
-        <span class="current-lang">Português</span>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="6,9 12,15 18,9"></polyline>
-        </svg>
-    </button>
-    <div class="language-menu" id="language-menu">
-        
-            
-                <a href="https://scovl.github.io/" class="language-option active">
-                    Português
-                </a>
-            
-        
-            
-                <a href="https://scovl.github.io/en/" class="language-option ">
-                    English
-                </a>
-            
-        
-    </div>
-</div>
-                
-                
-                <button id="dark-mode-toggle" class="theme-toggle" aria-label="Toggle dark mode">
-                    <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="5"/>
-                        <line x1="12" y1="1" x2="12" y2="3"/>
-                        <line x1="12" y1="21" x2="12" y2="23"/>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                        <line x1="1" y1="12" x2="3" y2="12"/>
-                        <line x1="21" y1="12" x2="23" y2="12"/>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-                    </svg>
-                    <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
-</header> 
-    
-    
-    
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://scovl.github.io/">scovl</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
     <main>
-        <div class="container">
-            
-<article class="post">
-  <header class="post-header">
-    <h1 class="post-title"></h1>
-    
-    <div class="post-meta">
-      <time datetime="2025-07-28T00:00:00Z">📅 28/07/2025</time>
       
-      
-      
-    </div>
-    
+<article>
+  <header>
+    <h1></h1>
+    <p class="meta"><time>2025-07-28</time></p>
   </header>
-
-  <aside class="toc" id="toc" aria-labelledby="toc-title"
-       data-start="2" data-end="4" data-min="2"
-       data-content-selector=".post-content, article, main">
-  <div class="toc-container">
-    <div class="toc-header">
-      <h3 id="toc-title" class="toc-title">
-        <svg class="toc-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 6h18M3 12h18M3 18h18"/>
-        </svg>
-        Sumário
-      </h3>
-      <button class="toc-toggle" id="toc-toggle" aria-expanded="true"
-              aria-controls="toc-content" aria-label="Mostrar/Ocultar Sumário">
-        <svg class="toc-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m6 9 6 6 6-6"/>
-        </svg>
-      </button>
-    </div>
-
-    <div class="toc-content" id="toc-content">
-      <div class="toc-progress"><div class="toc-progress-bar" id="toc-progress-bar"></div></div>
-      <nav class="toc-nav" id="toc-nav">
-        <nav id="TableOfContents">
-  <ul>
-    <li><a href="#rust">Rust</a></li>
-    <li><a href="#c">C</a></li>
-    <li><a href="#java">Java</a></li>
-    <li><a href="#clojure">Clojure</a></li>
-    <li><a href="#golang">Golang</a></li>
-  </ul>
-</nav></nav>
-    </div>
-  </div>
-
-  <button class="toc-mobile-toggle" id="toc-mobile-toggle"
-          aria-label="Mostrar Sumário">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 6h18M3 12h18M3 18h18"/>
-    </svg>
-  </button>
-</aside>
-
-  <div class="post-content">
-    <p>Sejam bem vindos ao meu blog!</p>
-<p>Olá, eu sou <strong>Vitor Lobo</strong> — ou simplesmente <em>Lobo</em>, como muitos me conhecem.</p>
-<p>Sou <strong>programador em plataformas e infraestrutura</strong>, com mais de 15 anos de experiência construindo sistemas que unem confiabilidade, automação e propósito. Trabalho atualmente com <strong>engenharia de software, plataforma e SRE</strong>, projetando plataformas internas, pipelines de CI/CD, ambientes Kubernetes e soluções de observabilidade para times de desenvolvimento e operações.</p>
-<p>Minha jornada começou em <strong>2009</strong>, dentro de comunidades open source no <a href="https://freenode.net/">IRC</a> da Freenode. Foi ali que aprendi a escrever código colaborativamente, contribuir com projetos reais e, acima de tudo, entender o impacto de boas práticas de engenharia — da automação ao design de sistemas resilientes.</p>
-<p>Sou entusiasta de <strong>infraestrutura como código, engenharia de plataforma e cultura DevX</strong>. Acredito que <strong>empoderar desenvolvedores através de ferramentas e abstrações simples</strong> é uma das formas mais poderosas de escalar tecnologia com qualidade. Além disso, defendo o aprendizado profundo e livre. Nos meus projetos pessoais, procuro sempre unir <strong>software e experimentação prática</strong>. Alguns deles:</p>
-<h2 id="rust">Rust</h2>
+  <div class="content">
+    <p>Olá, eu sou <strong>Vitor Lobo</strong> — ou simplesmente <em>Lobo</em>.</p>
+<p>Sou desenvolvedor com mais de 15 anos de experiência e já passei por infraestrutura, engenharia de plataforma e SRE. Mas é no código que me encontro, construir soluções e entregar valor seja corporativo ou social, é o que me move. Comecei em 2009 nas comunidades open source do IRC (falecida freenode). Foi ali que aprendi sobre colaboração, compartilhamento e a cultura do software-livre e opensource. Mantenho este blog para compartilhar descobertas, aprendizados, conhecimento em geral.</p>
+<p>Alguns projetos que mantenho:</p>
+<p><strong>Go</strong></p>
 <ul>
-<li><a href="https://github.com/rochacbruno/marmite"><strong>Marmite</strong></a> – gerador de sites estáticos em <strong>Rust</strong>, focado em simplicidade e performance. Oferece uma alternativa leve e rápida para compilar conteúdo estático sem a complexidade de ferramentas maiores. A escolha por Rust garante máxima eficiência, sendo ideal para workflows de build em CI/CD e ambientes com recursos limitados.</li>
+<li><a href="https://github.com/scovl/ollanta">Ollanta</a> — análise estática multi-linguagem</li>
+<li><a href="https://github.com/scovl/saitama">Saitama</a> — graceful shutdown para processos Unix</li>
+<li><a href="https://github.com/scovl/gopherlab">GopherLab</a> — laboratório de experimentos em Go</li>
 </ul>
-<h2 id="c">C</h2>
+<p><strong>Clojure</strong></p>
 <ul>
-<li><a href="https://github.com/scovl/checkrc"><strong>checkrc</strong></a> – validador modular de configurações para <strong>FreeBSD</strong>, projetado para automatizar a verificação de arquivos de configuração em sistemas operacionais. Resolve um problema comum em infraestrutura: validar sintaxe e integridade de múltiplos arquivos antes de aplicarem-se em produção, prevenindo downtime causado por erros de configuração.</li>
+<li><a href="https://github.com/scovl/dogai">Dogai</a> — detecção de objetos em vídeo com redes neurais</li>
+<li><a href="https://github.com/scovl/docai">Doca</a> — assistente RAG para documentação técnica</li>
+<li><a href="https://github.com/scovl/pomodoro">pomodoro</a> — técnica Pomodoro integrada ao Emacs</li>
 </ul>
-<h2 id="java">Java</h2>
+<p><strong>C / Rust</strong></p>
 <ul>
-<li><a href="https://github.com/scovl/java-kubernetes"><strong>java-kubernetes</strong></a> – demonstra padrões de integração entre aplicações <strong>Java</strong> e <strong>Kubernetes</strong>, focando em deploys automatizados, service discovery e orquestração de contêineres. Serve como referência prática para engenheiros que trabalham com infraestrutura em Kubernetes, simplificando o ciclo de build, deploy e scaling de aplicações Java em ambientes containerizados.</li>
+<li><a href="https://github.com/scovl/checkrc">checkrc</a> — validador de configurações para FreeBSD</li>
+<li><a href="https://github.com/rochacbruno/marmite">Marmite</a> — contribuições para este gerador de sites estáticos em Rust</li>
 </ul>
-<h2 id="clojure">Clojure</h2>
+<p>Projetos open source que colaboro:</p>
 <ul>
-<li>
-<p><a href="https://github.com/scovl/pomodoro"><strong>pomodoro</strong></a> – gerenciador de tempo integrado a <strong>GNU Emacs</strong>, implementado em <strong>Clojure</strong>. Aplica a técnica Pomodoro diretamente no editor de texto, demonstrando como usar a elegância funcional de Clojure para construir ferramentas de produtividade com foco em workflow integrado e minimalismo.</p>
-</li>
-<li>
-<p><a href="https://github.com/scovl/dogai"><strong>Dogai</strong></a> – sistema de <strong>detecção de objetos em vídeo</strong> escrito em <strong>Clojure</strong>, aproveitando redes neurais pré-treinadas para análise em tempo real. Combina processamento de imagem com programação funcional, provando que linguagens funcionais podem ser eficazes em tarefas computacionalmente intensivas como visão computacional.</p>
-</li>
-<li>
-<p><a href="https://github.com/scovl/docai"><strong>Doca</strong></a> – assistente <strong>RAG (Retrieval-Augmented Generation)</strong> para <strong>documentação técnica</strong>, permitindo consultas inteligentes sobre documentos técnicos combinando busca semântica com geração de respostas contextualizadas. Democratiza o acesso a documentação técnica complexa, permitindo que engenheiros façam perguntas em linguagem natural e recebam respostas precisas baseadas em suas bases de conhecimento.</p>
-</li>
+<li><a href="https://github.com/SpectoLabs/hoverfly">Hoverfly</a> — simulação e mock de APIs</li>
+<li><a href="https://github.com/spf13/cobra">Cobra</a> — biblioteca de CLI em Go</li>
+<li><a href="https://github.com/elazarl/goproxy">Go Proxy</a> — proxy HTTP/HTTPS em Go</li>
 </ul>
-<h2 id="golang">Golang</h2>
-<ul>
-<li>
-<p><a href="https://github.com/scovl/gopherlab">GopherLab</a> – laboratório de experimentação e aprendizado em <strong>Go</strong>, onde exploro conceitos avançados de linguagem, padrões de design e integração com sistemas distribuídos. O objetivo é criar uma coleção de projetos e tutoriais que ajudem outros engenheiros a dominar Go através de exemplos práticos e desafios reais.</p>
-</li>
-<li>
-<p><a href="https://github.com/scovl/ollanta"><strong>Ollanta</strong></a> – plataforma de análise de código estático multi-linguagem, resiliente, escalável e efêmera, escrita em <strong>Go</strong>. Foca em fornecer insights de qualidade de código e segurança para projetos de software, integrando-se facilmente a pipelines de CI/CD. Resolve o desafio de manter a qualidade do código em projetos grandes e dinâmicos, oferecendo feedback rápido e acionável para desenvolvedores.</p>
-</li>
-<li>
-<p><a href="https://github.com/scovl/saitama"><strong>Saitama</strong></a> – ferramenta para <strong>gerenciamento e finalização segura de processos</strong> em sistemas Unix-like, escrita em <strong>Go</strong>. Resolve cenários onde processos precisam ser terminados de forma controlada, respeitando sinais de shutdown graceful e garantindo limpeza adequada de recursos.</p>
-</li>
-<li>
-<p><a href="https://github.com/SpectoLabs/hoverfly"><strong>Hoverfly</strong></a> – ferramenta para <strong>simulação e mock de APIs</strong>, permitindo que times testem suas aplicações contra endpoints virtualizados sem depender de serviços reais. Especialmente útil em ambientes de CI/CD, onde testes precisam rodar rapidamente e de forma isolada, sendo mantida como projeto colaborativo open source.</p>
-</li>
-<li>
-<p><a href="https://github.com/elazarl/goproxy"><strong>Go Proxy</strong></a> – biblioteca para criar <strong>proxies HTTP/HTTPS customizados</strong> em <strong>Go</strong>, oferecendo controle fino sobre requisições e respostas. Demonstra como construir middleware de rede em Go, sendo útil para logging, filtering, compression e modificação de tráfego em tempo real.</p>
-</li>
-<li>
-<p><a href="https://github.com/spf13/cobra"><strong>Cobra</strong></a> – biblioteca para criar <strong>aplicações CLI robustas</strong> em <strong>Go</strong>, com suporte a subcomandos, flags e auto-completion. Amplamente adotada em projetos como Docker, Kubernetes e Prometheus, facilita a construção de ferramentas de linha de comando profissionais com uma API elegante e intuitiva.</p>
-</li>
-</ul>
-<p>Quando não estou programando, me dedico a escrever, estudar arte, literatura, filosofia e cultura — porque acredito que o pensamento crítico e criativo é tão essencial para engenharia quanto o código em si.
-A propósito, coleciono livros da editora DarkSide (inclusive os clássicos).</p>
+<p>Fora do código, gosto de escrever, estudar filosofia e literatura, e coleciono livros da editora DarkSide.</p>
 
   </div>
-
-  
-
-
-
-
-  
 </article>
 
-        </div>
     </main>
-    
-    
-    
-    <footer class="footer">
-    <div class="container">
-        <div class="footer-content">
-            <div class="footer-links">
-                
-                <a href="https://github.com/scovl" target="_blank" rel="noopener noreferrer" class="footer-link">
-                    GitHub
-                </a>
-                
-                
-                
-                <a href="https://linkedin.com/in/vitor-lobo" target="_blank" rel="noopener noreferrer" class="footer-link">
-                    LinkedIn
-                </a>
-                
-                
-                
-                <a href="mailto:lobocode@gmail.com" class="footer-link">
-                    Email
-                </a>
-                
-
-                
-                <a href="https://hachyderm.io/@lobocode" target="_blank" rel="noopener noreferrer" class="footer-link">
-                    Mastodon
-                </a>
-                
-
-                
-                <a href="https://scovl.github.io/index.xml" target="_blank" rel="noopener noreferrer" class="footer-link">
-                    RSS
-                </a>
-                
-            </div>
-            
-            
-            <div class="back-to-top-container">
-                <button id="back-to-top" class="back-to-top-btn" aria-label="Voltar ao topo">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m18 15-6-6-6 6"/>
-                    </svg>
-                    <span data-i18n="back_to_top">Voltar ao topo</span>
-                </button>
-            </div>
-            
-            <div class="copyright">
-                &copy; 2026 scovl
-            </div>
-        </div>
-    </div>
-</footer> 
-    
-    
-    
-    <script src="/vendor/prism/prism-core.min.js?v=1778794755"></script>
-    <script src="/vendor/prism/prism-clike.min.js?v=1778794755"></script>
-    <script src="/vendor/prism/prism-c.min.js?v=1778794755"></script>
-    <script src="/vendor/prism/prism-cpp.min.js?v=1778794755"></script>
-    <script src="/vendor/prism/prism-rust.min.js?v=1778794755"></script>
-    <script src="/vendor/prism/prism-clojure.min.js?v=1778794755"></script>
-    <script src="/vendor/prism/prism-lisp.min.js?v=1778794755"></script>
-    <script src="/vendor/prism/prism-swift.min.js?v=1778794755"></script>
-    <script src="/vendor/prism/prism-bash.min.js?v=1778794755"></script>
-    <script src="/vendor/prism/prism-javascript.min.js?v=1778794755"></script>
-    <script src="/vendor/prism/prism-typescript.min.js?v=1778794755"></script>
-    <script src="/vendor/prism/prism-go.min.js?v=1778794755"></script>
-    <script src="/vendor/prism/prism-sql.min.js?v=1778794755"></script>
-    <script src="/vendor/prism/prism-zig.min.js?v=1778794755"></script>
-    <script src="/vendor/prism/prism-autoloader.min.js?v=1778794755"></script>
-    
-    
-    <script src="/js/main-minimal.js?v=1778794755"></script>
-    <script src="/js/lazy-loading.js?v=1778794755"></script>
-    <script src="/js/toc.js?v=1778794755"></script>
-    
-    
-    
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#bb86fc', primaryTextColor: '#e8e0f0', primaryBorderColor: '#6b58a0', lineColor: '#c792ea', secondaryColor: '#2d1b4e', tertiaryColor: '#362258' } });</script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
 </body>
-</html> 
+</html>

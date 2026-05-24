@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title> — scovl</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-tomorrow.min.css">
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://scovl.github.io/">scovl</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
+    <main>
+      
+<article>
+  <header>
+    <h1></h1>
+    <p class="meta"><time>0001-01-01</time></p>
+  </header>
+  <div class="content">
+    <h1 id="next-level-backends-with-rama-storing-and-traversing-graphs-in-60-loc">Next-level Backends with Rama: Storing and Traversing Graphs in 60 LOC</h1>
+<h2 id="introdução-ao-rama">Introdução ao Rama</h2>
+<p>Rama é uma plataforma que permite a criação de backends escaláveis com uma quantidade mínima de código. Sistemas que normalmente exigiriam milhares de linhas de código podem ser implementados em algumas dezenas de linhas, oferecendo:</p>
+<ul>
+<li>Escalabilidade para milhões de leituras/escritas por segundo</li>
+<li>Conformidade ACID</li>
+<li>Alto desempenho</li>
+<li>Tolerância a falhas através de replicação incremental</li>
+<li>Implantação, atualização e escalonamento via simples comandos CLI</li>
+<li>Monitoramento abrangente integrado</li>
+</ul>
+<h2 id="exemplo-armazenamento-e-travessia-de-grafos">Exemplo: Armazenamento e Travessia de Grafos</h2>
+<p>Para demonstrar a potência do Rama, vamos analisar a implementação de um backend para armazenamento de grafos e execução de consultas rápidas de travessia. O exemplo específico é uma árvore genealógica, onde cada nó (pessoa) tem dois pais e qualquer número de filhos.</p>
+<h3 id="definindo-o-modelo-de-dados">Definindo o Modelo de Dados</h3>
+<p>No Rama, os datastores indexados são chamados de <a href="https://docs.redplanetlabs.com/concepts/pstates.html">PStates</a> (&ldquo;partitioned state&rdquo;). Ao contrário de bancos de dados tradicionais com modelos fixos, os PStates permitem infinitos modelos de dados através da composição de estruturas simples:</p>
+
+
+  <pre><code class="language-clojure">(declare-pstate
+  topology
+  $$family-tree
+  {UUID (fixed-keys-schema
+          {:parent1 UUID
+           :parent2 UUID
+           :name String
+           :children #{UUID}})})</code></pre>
+ <p>Na versão Java:</p>
+
+
+  <pre><code class="language-java">topology.pstate(
+  &#34;$$family-tree&#34;,
+  PState.mapSchema(UUID.class,
+                   PState.fixedKeysSchema(
+                     &#34;parent1&#34;, UUID.class,
+                     &#34;parent2&#34;, UUID.class,
+                     &#34;name&#34;, String.class,
+                     &#34;children&#34;, PState.setSchema(UUID.class)
+                     )));</code></pre>
+ <p>Este <a href="https://docs.redplanetlabs.com/concepts/pstates.html">PState</a> representa uma árvore genealógica onde cada pessoa é identificada por um UUID e possui campos para seus pais, nome e filhos.</p>
+<h3 id="conceitos-do-rama">Conceitos do Rama</h3>
+<p>Um aplicativo Rama é chamado de &ldquo;módulo&rdquo; e segue uma arquitetura baseada em eventos:</p>
+<ol>
+<li>Todos os dados entram através de um log distribuído chamado &ldquo;depot&rdquo;</li>
+<li>Topologias ETL consomem dados desses depots para materializar PStates</li>
+<li>Clientes interagem com o módulo anexando novos dados ao depot ou consultando PStates</li>
+</ol>
+<p>Um módulo é dividido em &ldquo;tarefas&rdquo; que rodam em vários processos e nós, permitindo escalonamento horizontal.</p>
+<h3 id="materializando-o-pstate">Materializando o PState</h3>
+<p>Primeiro, definimos o depot que receberá as informações de novas pessoas:</p>
+
+
+  <pre><code class="language-clojure">(declare-depot setup *people-depot (hash-by :id))</code></pre>
+ <p>Em seguida, implementamos a topologia para consumir dados do depot e materializar o PState:</p>
+
+
+  <pre><code class="language-clojure">(&lt;&lt;sources topology
+  (source&gt; *people-depot :&gt; {:keys [*id *parent1 *parent2] :as *person})
+  (local-transform&gt;
+    [(keypath *id) (termval (dissoc *person :id))]
+    $$family-tree)
+  (ops/explode [*parent1 *parent2] :&gt; *parent)
+  (|hash *parent)
+  (local-transform&gt;
+    [(keypath *parent) :children NONE-ELEM (termval *id)]
+    $$family-tree))</code></pre>
+ <p>Este código:</p>
+<ol>
+<li>Cria um novo nó para a pessoa com seus atributos</li>
+<li>Atualiza cada pai para listar a nova pessoa como filho</li>
+<li>Utiliza particionamento para garantir eficiência e paralelismo</li>
+</ol>
+<h3 id="implementando-consultas-de-travessia-de-grafo">Implementando Consultas de Travessia de Grafo</h3>
+<p>As duas consultas implementadas são:</p>
+<ol>
+<li>Encontrar todos os ancestrais de uma pessoa dentro de N gerações</li>
+<li>Contar quantos descendentes diretos uma pessoa tem em cada geração sucessiva</li>
+</ol>
+<h4 id="consulta-de-ancestrais">Consulta de Ancestrais</h4>
+<p>A implementação usa um loop que examina iterativamente os pais de um nó:</p>
+
+
+  <pre><code class="language-clojure">(&lt;&lt;query-topology topologies &#34;ancestors&#34;
+  [*start-id *num-generations :&gt; *ancestors]
+  (loop&lt;- [*id *start-id
+           *generation 0
+           :&gt; *ancestor]
+    (filter&gt; (&lt;= *generation *num-generations))
+    (|hash *id)
+    (local-select&gt; [(keypath *id) (multi-path :parent1 :parent2) some?]
+      $$family-tree
+      :&gt; *parent)
+    (:&gt; *parent)
+    (continue&gt; *parent (inc *generation)))
+  (|origin)
+  (aggs/&#43;set-agg *ancestor :&gt; *ancestors))</code></pre>
+ <p>Esta implementação:</p>
+<ol>
+<li>Inicia com o ID fornecido e geração 0</li>
+<li>Verifica se ainda está dentro do limite de gerações</li>
+<li>Recupera os pais do nó atual</li>
+<li>Continua a travessia com cada pai, incrementando a contagem de gerações</li>
+<li>Agrega todos os ancestrais encontrados em um conjunto</li>
+</ol>
+<h4 id="consulta-de-contagem-de-descendentes">Consulta de Contagem de Descendentes</h4>
+<p>Similar à consulta anterior, mas percorre os filhos e conta por geração:</p>
+
+
+  <pre><code class="language-clojure">(&lt;&lt;query-topology topologies &#34;descendants-count&#34;
+  [*start-id *num-generations :&gt; *result]
+  (loop&lt;- [*id *start-id
+           *generation 0 :&gt; *gen *count]
+    (filter&gt; (&lt; *generation *num-generations))
+    (|hash *id)
+    (local-select&gt; [(keypath *id) :children] $$family-tree :&gt; *children)
+    (:&gt; *generation (count *children))
+    (ops/explode *children :&gt; *c)
+    (continue&gt; *c (inc *generation)))
+  (|origin)
+  (&#43;compound {*gen (aggs/&#43;sum *count)} :&gt; *result))</code></pre>
+ <p>O resultado é um mapa de números de geração para contagens de descendentes.</p>
+<h2 id="conclusão">Conclusão</h2>
+<p>Com Rama, é possível construir o equivalente a um banco de dados de grafos personalizado em apenas 60 linhas de código. Não há trabalho adicional necessário para implantação, atualização e escalonamento, pois tudo está integrado.</p>
+<p>A arquitetura baseada em eventos do Rama proporciona:</p>
+<ul>
+<li>Log de auditoria de todas as mudanças</li>
+<li>Capacidade de recomputar PStates (útil em caso de bugs que corrompam dados)</li>
+<li>Tolerância a falhas superior a abordagens alternativas</li>
+</ul>
+<p>O Rama é gratuito para clusters de produção com até dois nós e pode ser baixado no site da Red Planet Labs.</p>
+
+  </div>
+</article>
+
+    </main>
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#bb86fc', primaryTextColor: '#e8e0f0', primaryBorderColor: '#6b58a0', lineColor: '#c792ea', secondaryColor: '#2d1b4e', tertiaryColor: '#362258' } });</script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
+</body>
+</html>

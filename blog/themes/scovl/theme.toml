@@ -1,17 +1,3 @@
 name = "scovl"
 license = "MIT"
-licenselink = "https://github.com/scovl/scovl.github.io/blob/master/LICENSE"
-description = "A modern and elegant theme for Hugo with syntax highlighting and dark mode"
-homepage = "https://github.com/scovl/scovl.github.io"
-tags = ["blog", "modern", "responsive", "syntax-highlighting", "dark-mode", "clean", "elegant"]
-features = ["responsive", "blog", "syntax highlighting", "dark mode", "modern design", "copy code", "animations"]
-min_version = "0.80.0"
-
-[author]
-  name = "Vitor Lobo"
-  homepage = "https://scovl.github.io"
-
-[original]
-  name = "scovl"
-  homepage = "https://scovl.github.io"
-  repo = "https://github.com/scovl/scovl.github.io" 
+description = "Minimal Emacs-inspired theme"

@@ -48,10 +48,10 @@ flowchart LR
     QUEUE --> W16["🔧 worker 16"]:::worker
     W1 & W2 & WN & W16 --> OUT["📊 resultados"]:::out
     
-    classDef files fill:#e1f5fe,stroke:#0288d1
-    classDef sem fill:#fff3e0,stroke:#e65100
-    classDef worker fill:#e8f5e9,stroke:#2e7d32
-    classDef out fill:#f3e5f5,stroke:#7b1fa2
+    classDef files fill:#2d1b6e,stroke:#7c6bc0,color:#e0d8f8
+    classDef sem fill:#4d1b3e,stroke:#c06b90,color:#f0d8e8
+    classDef worker fill:#2d4e2d,stroke:#7ab86b,color:#d0f0c8
+    classDef out fill:#3d1b5e,stroke:#8b6bc0,color:#e8d8f8
 ```
 
 Esse desenho é bom: colocar 200 goroutines para disputar CPU ao mesmo tempo seria pior do que serializar tudo, porque o sistema gastaria mais tempo trocando de contexto do que analisando código. O semáforo resolve isso. O problema é que ele também introduz um ponto cego e é nele que o bug se esconde.

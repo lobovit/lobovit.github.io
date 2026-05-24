@@ -186,15 +186,15 @@ graph TD
     F ==>|"🚫 Não"| G["✅ Match Descartado"]:::pass
     F ==>|"✅ Sim"| H(("🎯 Verdadeiro Positivo")):::tp
 
-    classDef code fill:#e1f5fe,stroke:#0288d1
-    classDef parser fill:#f3e5f5,stroke:#7b1fa2
-    classDef decision fill:#fff3e0,stroke:#e65100
-    classDef raw fill:#f5f5f5,stroke:#9e9e9e
-    classDef ignore fill:#eeeeee,stroke:#bdbdbd
-    classDef fp fill:#ffebee,stroke:#c62828
-    classDef filter fill:#fff8e1,stroke:#f57f17
-    classDef pass fill:#e8f5e9,stroke:#2e7d32
-    classDef tp fill:#e8f5e9,stroke:#2e7d32
+    classDef code fill:#2d1b6e,stroke:#7c6bc0,color:#e0d8f8
+    classDef parser fill:#3d1b5e,stroke:#8b6bc0,color:#e8d8f8
+    classDef decision fill:#4d1b3e,stroke:#c06b90,color:#f0d8e8
+    classDef raw fill:#362258,stroke:#6b58a0,color:#d0c0f0
+    classDef ignore fill:#2a1f40,stroke:#4a3a6a,color:#a090c0
+    classDef fp fill:#4e1b2e,stroke:#c06b7a,color:#f0c8d0
+    classDef filter fill:#3d2b1e,stroke:#c08b50,color:#f0dcc8
+    classDef pass fill:#2d4e2d,stroke:#7ab86b,color:#d0f0c8
+    classDef tp fill:#2d4e3d,stroke:#6bc08b,color:#c8f0d8
 ```
 
 Quatro linhas, um `continue`:

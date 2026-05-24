@@ -1,11 +1,7 @@
 {{ $lang := .Attributes.lang | default .Type }}
-{{ $filename := .Attributes.filename | default "" }}
-{{ $highlight := .Attributes.highlight | default false }}
 
-<div class="code-block-wrapper">
-    {{ if $filename }}
-    <div class="code-filename">{{ $filename }}</div>
-    {{ end }}
-    
-    <pre class="language-{{ $lang }}"><code class="language-{{ $lang }}">{{ .Inner }}</code></pre>
-</div> 
+{{ if eq $lang "mermaid" }}
+<pre class="mermaid">{{ .Inner }}</pre>
+{{ else }}
+<pre class="language-{{ $lang }}"><code class="language-{{ $lang }}">{{ .Inner }}</code></pre>
+{{ end }}

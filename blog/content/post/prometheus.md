@@ -3,7 +3,7 @@ title = "Prometheus e PromQL"
 description = "Guia completo"
 date = 2025-07-27T23:10:18-03:00
 tags = ["Prometheus", "Grafana", "Monitoring", "TSDB", "DevOps", "Observability", "PromQL"]
-draft = false
+draft = true
 weight = 3
 author = "Vitor Lobo Ramos"
 +++

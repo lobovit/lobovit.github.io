@@ -1,52 +1,56 @@
 <!DOCTYPE html>
-<html lang="{{ .Site.LanguageCode }}">
+<html lang="pt-br">
 <head>
-    <title>{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ .Title }} | {{ .Site.Title }}{{ end }}</title>
-    {{ partial "head.html" . }}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ .Title }} — {{ .Site.Title }}{{ end }}</title>
+  <link rel="stylesheet" href="{{ "css/main.css" | relURL }}">
+  <link rel="stylesheet" href="{{ "vendor/fonts/fonts.css" | relURL }}">
+  <link rel="stylesheet" href="{{ "vendor/prism/prism-tomorrow.min.css" | relURL }}">
 </head>
 <body>
-    <!-- Header -->
-    {{ block "header" . }}
-    {{ partial "header.html" . }}
-    {{ end }}
-    
-    <!-- Main content -->
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="{{ .Site.BaseURL }}">{{ .Site.Title }}</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
     <main>
-        <div class="container">
-            {{ block "main" . }}{{ end }}
-        </div>
+      {{ block "main" . }}{{ end }}
     </main>
-    
-    <!-- Footer -->
-    {{ block "footer" . }}
-    {{ partial "footer.html" . }}
-    {{ end }}
-    
-    <!-- Prism.js Scripts -->
-    <script src="{{ "vendor/prism/prism-core.min.js" | relURL }}?v={{ now.Unix }}"></script>
-    <script src="{{ "vendor/prism/prism-clike.min.js" | relURL }}?v={{ now.Unix }}"></script>
-    <script src="{{ "vendor/prism/prism-c.min.js" | relURL }}?v={{ now.Unix }}"></script>
-    <script src="{{ "vendor/prism/prism-cpp.min.js" | relURL }}?v={{ now.Unix }}"></script>
-    <script src="{{ "vendor/prism/prism-rust.min.js" | relURL }}?v={{ now.Unix }}"></script>
-    <script src="{{ "vendor/prism/prism-clojure.min.js" | relURL }}?v={{ now.Unix }}"></script>
-    <script src="{{ "vendor/prism/prism-lisp.min.js" | relURL }}?v={{ now.Unix }}"></script>
-    <script src="{{ "vendor/prism/prism-swift.min.js" | relURL }}?v={{ now.Unix }}"></script>
-    <script src="{{ "vendor/prism/prism-bash.min.js" | relURL }}?v={{ now.Unix }}"></script>
-    <script src="{{ "vendor/prism/prism-javascript.min.js" | relURL }}?v={{ now.Unix }}"></script>
-    <script src="{{ "vendor/prism/prism-typescript.min.js" | relURL }}?v={{ now.Unix }}"></script>
-    <script src="{{ "vendor/prism/prism-go.min.js" | relURL }}?v={{ now.Unix }}"></script>
-    <script src="{{ "vendor/prism/prism-sql.min.js" | relURL }}?v={{ now.Unix }}"></script>
-    <script src="{{ "vendor/prism/prism-zig.min.js" | relURL }}?v={{ now.Unix }}"></script>
-    <script src="{{ "vendor/prism/prism-autoloader.min.js" | relURL }}?v={{ now.Unix }}"></script>
-    
-    <!-- JavaScript -->
-    <script src="{{ "js/main-minimal.js" | relURL }}?v={{ now.Unix }}"></script>
-    <script src="{{ "js/lazy-loading.js" | relURL }}?v={{ now.Unix }}"></script>
-    <script src="{{ "js/toc.js" | relURL }}?v={{ now.Unix }}"></script>
-    
-    <!-- Custom JS from config if any -->
-    {{ range .Site.Params.customJS }}
-    <script src="{{ . | relURL }}?v={{ now.Unix }}"></script>
-    {{ end }}
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script src="{{ "vendor/prism/prism-core.min.js" | relURL }}"></script>
+<script src="{{ "vendor/prism/prism-clike.min.js" | relURL }}"></script>
+<script src="{{ "vendor/prism/prism-bash.min.js" | relURL }}"></script>
+<script src="{{ "vendor/prism/prism-c.min.js" | relURL }}"></script>
+<script src="{{ "vendor/prism/prism-cpp.min.js" | relURL }}"></script>
+<script src="{{ "vendor/prism/prism-rust.min.js" | relURL }}"></script>
+<script src="{{ "vendor/prism/prism-go.min.js" | relURL }}"></script>
+<script src="{{ "vendor/prism/prism-javascript.min.js" | relURL }}"></script>
+<script src="{{ "vendor/prism/prism-typescript.min.js" | relURL }}"></script>
+<script src="{{ "vendor/prism/prism-clojure.min.js" | relURL }}"></script>
+<script src="{{ "vendor/prism/prism-lisp.min.js" | relURL }}"></script>
+<script src="{{ "vendor/prism/prism-swift.min.js" | relURL }}"></script>
+<script src="{{ "vendor/prism/prism-zig.min.js" | relURL }}"></script>
+<script src="{{ "vendor/prism/prism-sql.min.js" | relURL }}"></script>
+<script src="{{ "vendor/prism/prism-autoloader.min.js" | relURL }}"></script>
+  <script src="{{ "vendor/mermaid/mermaid.min.js" | relURL }}"></script>
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#bb86fc', primaryTextColor: '#e8e0f0', primaryBorderColor: '#6b58a0', lineColor: '#c792ea', secondaryColor: '#2d1b4e', tertiaryColor: '#362258' } });</script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
 </body>
-</html> 
+</html>

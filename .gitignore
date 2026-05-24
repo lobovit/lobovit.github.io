@@ -1,0 +1,13 @@
+# org-publish cache
+.org-timestamps/
+
+# Emacs backup files
+*~
+\#*\#
+.\#*
+
+# Hugo leftover (just in case)
+.hugo_build.lock
+
+# OS files
+Thumbs.db

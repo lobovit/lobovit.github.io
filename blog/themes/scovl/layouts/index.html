@@ -1,0 +1,12 @@
+{{ define "main" }}
+  <ul class="post-list">
+    {{ range where .Site.RegularPages "Section" "post" }}
+    {{ if ne (.Date.Format "2006-01-02") "0001-01-01" }}
+    <li>
+      <time>{{ .Date.Format "2006-01-02" }}</time>
+      <a href="{{ .RelPermalink }}">{{ .Title }}</a>
+    </li>
+    {{ end }}
+    {{ end }}
+  </ul>
+{{ end }}
