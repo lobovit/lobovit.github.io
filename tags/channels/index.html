@@ -70,6 +70,15 @@
   </script>
   <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
   <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
+  <script>
     var btn = document.querySelector('.back-to-top');
     window.addEventListener('scroll', function() {
       btn.classList.toggle('visible', window.scrollY > 400);
