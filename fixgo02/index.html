@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:,">
   <title>O predicado que ninguém chamou — scovl</title>
-  <link rel="stylesheet" href="/css/main.css?v=2">
+  <link rel="stylesheet" href="/css/main.css?v=3">
   <link rel="stylesheet" href="/vendor/fonts/fonts.css">
-  <link rel="stylesheet" href="/vendor/prism/prism-tomorrow.min.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
 </head>
 <body>
   <div class="frame">
@@ -35,11 +35,11 @@ O <a href="https://tree-sitter.github.io/tree-sitter/">Tree-sitter</a> é uma bi
 <p>
 O <a href="https://github.com/scovl/ollanta">Ollanta</a> usa tree-sitter de uma forma diferente: para <em>análise estática</em>. Em vez de realçar sintaxe, ele usa S-expressions para detectar padrões problemáticos no código-fonte:</p>
 <div class="src src-scheme">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-scheme" data-lang="scheme"><span style="display:flex;"><span><span style="color:#75715e">;; Encontra chamadas a eval() em JavaScript</span>
-</span></span><span style="display:flex;"><span>(<span style="color:#a6e22e">call_expression</span>
-</span></span><span style="display:flex;"><span>  function: (<span style="color:#a6e22e">identifier</span>) @eval
-</span></span><span style="display:flex;"><span>  (<span style="color:#f92672">#</span>eq? @eval <span style="color:#e6db74">&#34;eval&#34;</span>)
-</span></span><span style="display:flex;"><span>) @expr</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-scheme" data-lang="scheme"><span class="line"><span class="cl"><span class="c1">;; Encontra chamadas a eval() em JavaScript</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nf">call_expression</span>
+</span></span><span class="line"><span class="cl">  <span class="nv">function:</span> <span class="p">(</span><span class="nf">identifier</span><span class="p">)</span> <span class="nv">@eval</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="o">#</span><span class="nv">eq?</span> <span class="nv">@eval</span> <span class="s">&#34;eval&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span> <span class="nv">@expr</span></span></span></code></pre></div>
 </div>
 <p>
 Essa query diz: &#34;encontre toda <code>call_expression</code> cuja função seja um identificador de nome <code>eval</code>&#34;. O <code>(#eq? @eval &#34;eval&#34;)</code> é um <em>predicado</em>. Isto é, uma condição extra que filtra matches estruturais pelo texto do nó capturado. Sem ele, qualquer chamada de função (de <code>console.log</code> a <code>fetch</code>) seria um match.</p>
@@ -50,43 +50,42 @@ Essa query diz: &#34;encontre toda <code>call_expression</code> cuja função se
 O termo aparece nas S-expressions do tree-sitter com a sintaxe <code>(#eq? ...)</code>, <code>(#match? ...)</code>, etc.. são predicados que o motor de queries avalia para decidir se um match estrutural deve ser mantido ou descartado.</p>
 <p>
 E foi exatamente isso que aconteceu. O Ollanta estava reportando <code>eval()</code> em cada linha de código JavaScript que continha uma chamada de função. Centenas delas. O <code>configureProjectFlowFeature({ render })</code>, <code>bootBrowserApp()</code>, <code>renderView()</code>, tudo era &#34;eval&#34; para o scanner. Este artigo conta a história de como uma única linha de código ausente transformou 20 regras tree-sitter em geradores de ruído e falsos positivos.</p>
-<p>
-&lt;img src=&#34;<img src="https://tree-sitter.github.io/tree-sitter/assets/images/tree-sitter-small.png" alt="https://tree-sitter.github.io/tree-sitter/assets/images/tree-sitter-small.png" title="https://tree-sitter.github.io/tree-sitter/assets/images/tree-sitter-small.png" />&#34; alt=&#34;ollanta&#34; width=&#34;250&#34; style=&#34;display: block; margin: 1em auto; opacity: 1; transition: opacity 0.3s;&#34;&gt;</p>
+<img src="https://tree-sitter.github.io/tree-sitter/assets/images/tree-sitter-small.png" alt="ollanta" title="https://tree-sitter.github.io/tree-sitter/assets/images/tree-sitter-small.png" width="250" style="display:block;margin:1em auto;opacity:1;transition:opacity 0.3s;"/>
 <blockquote>
 <p><em>Saiba mais:</em> tree-sitter foi criado por <a href="https://github.com/maxbrunsfeld">Max Brunsfeld</a> enquanto trabalhava no <a href="https://atom.io/">Atom Editor</a>. A ideia era substituir o sistema de syntax highlighting baseado em regex do TextMate por um parser real que entendesse a estrutura do código. O resultado foi tão bom que o GitHub adotou para o syntax highlighting do próprio site. A versão em Go que o Ollanta usa é o <a href="https://github.com/smacker/go-tree-sitter">go-tree-sitter</a>, um binding CGo que expõe a API em C da tree-sitter para Go.</p>
 </blockquote>
-<div id="outline-container-headline-1" class="outline-3">
-<h3 id="headline-1">
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
 A descoberta
-</h3>
-<div id="outline-text-headline-1" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
 <p>
 Tudo começou com um usuário (eu mesmo, escaneando o próprio frontend do Ollanta) reportando um número absurdo de issues do tipo <code>js:detect-eval</code>:</p>
 <div class="src src-bash">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>critical  Vulnerability
-</span></span><span style="display:flex;"><span>eval<span style="color:#f92672">()</span> executes arbitrary code and must not be used with untrusted input
-</span></span><span style="display:flex;"><span>app/main.js:L13     js:detect-eval
-</span></span><span style="display:flex;"><span>app/main.js:L14     js:detect-eval
-</span></span><span style="display:flex;"><span>app/main.js:L15     js:detect-eval
-</span></span><span style="display:flex;"><span>...mais <span style="color:#ae81ff">150</span> linhas...</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">critical  Vulnerability
+</span></span><span class="line"><span class="cl">eval<span class="o">()</span> executes arbitrary code and must not be used with untrusted input
+</span></span><span class="line"><span class="cl">app/main.js:L13     js:detect-eval
+</span></span><span class="line"><span class="cl">app/main.js:L14     js:detect-eval
+</span></span><span class="line"><span class="cl">app/main.js:L15     js:detect-eval
+</span></span><span class="line"><span class="cl">...mais <span class="m">150</span> linhas...</span></span></code></pre></div>
 </div>
 <p>
 Toda chamada de função em cada arquivo <code>.js</code> aparecia como <code>eval()</code>. A primeira reação foi verificar o código: será que o frontend realmente tem 150 chamadas a <code>eval()</code> escondidas?</p>
 <div class="src src-javascript">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-javascript" data-lang="javascript"><span style="display:flex;"><span><span style="color:#75715e">// app/main.js
-</span></span></span><span style="display:flex;"><span><span style="color:#a6e22e">configureProjectFlowFeature</span>({ <span style="color:#a6e22e">render</span> });
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">configureActivityFeature</span>({ <span style="color:#a6e22e">render</span> });
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">configureCodeFeature</span>({ <span style="color:#a6e22e">render</span> });</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-javascript" data-lang="javascript"><span class="line"><span class="cl"><span class="c1">// app/main.js
+</span></span></span><span class="line"><span class="cl"><span class="nx">configureProjectFlowFeature</span><span class="p">({</span> <span class="nx">render</span> <span class="p">});</span>
+</span></span><span class="line"><span class="cl"><span class="nx">configureActivityFeature</span><span class="p">({</span> <span class="nx">render</span> <span class="p">});</span>
+</span></span><span class="line"><span class="cl"><span class="nx">configureCodeFeature</span><span class="p">({</span> <span class="nx">render</span> <span class="p">});</span></span></span></code></pre></div>
 </div>
 <p>
 Zero <code>eval()</code> em 682 linhas de código. Falso positivo. Mas o scanner sempre retornando os mesmos resultados. A regra <code>js:detect-eval</code> usa a seguinte query tree-sitter:</p>
 <div class="src src-go">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// detect_eval_javascript.go</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">query</span> <span style="color:#f92672">:=</span> <span style="color:#e6db74">`(call_expression
-</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">  function: (identifier) @eval
-</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">  (#eq? @eval &#34;eval&#34;)
-</span></span></span><span style="display:flex;"><span><span style="color:#e6db74">) @expr`</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">matches</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">ctx</span>.<span style="color:#a6e22e">Query</span>.<span style="color:#a6e22e">Run</span>(<span style="color:#a6e22e">ctx</span>.<span style="color:#a6e22e">ParsedFile</span>, <span style="color:#a6e22e">query</span>, <span style="color:#a6e22e">ctx</span>.<span style="color:#a6e22e">Grammar</span>)</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// detect_eval_javascript.go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="nx">query</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="s">`(call_expression
+</span></span></span><span class="line"><span class="cl"><span class="s">  function: (identifier) @eval
+</span></span></span><span class="line"><span class="cl"><span class="s">  (#eq? @eval &#34;eval&#34;)
+</span></span></span><span class="line"><span class="cl"><span class="s">) @expr`</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="nx">matches</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">Query</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="nx">ctx</span><span class="p">.</span><span class="nx">ParsedFile</span><span class="p">,</span><span class="w"> </span><span class="nx">query</span><span class="p">,</span><span class="w"> </span><span class="nx">ctx</span><span class="p">.</span><span class="nx">Grammar</span><span class="p">)</span></span></span></code></pre></div>
 </div>
 <p>
 O predicado <code>(#eq? @eval &#34;eval&#34;)</code> deveria garantir que só matches com texto literal <code>&#34;eval&#34;</code> fossem retornados. Mas o scanner retornava <em>todas</em> as <code>call_expression</code>. Duas hipóteses:</p>
@@ -100,93 +99,93 @@ O predicado <code>(#eq? @eval &#34;eval&#34;)</code> deveria garantir que só ma
 </blockquote>
 </div>
 </div>
-<div id="outline-container-headline-2" class="outline-3">
-<h3 id="headline-2">
+<div id="outline-container-headline-2" class="outline-2">
+<h2 id="headline-2">
 A biblioteca
-</h3>
-<div id="outline-text-headline-2" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-2" class="outline-text-2">
 <p>
 O <code>go-tree-sitter</code> expõe a API tree-sitter através dessas funções principais:</p>
 <div class="src src-go">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// bindings.go — smacker/go-tree-sitter</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">NewQuery</span>(<span style="color:#a6e22e">pattern</span> []<span style="color:#66d9ef">byte</span>, <span style="color:#a6e22e">lang</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">Language</span>) (<span style="color:#f92672">*</span><span style="color:#a6e22e">Query</span>, <span style="color:#66d9ef">error</span>)  <span style="color:#75715e">// compila a query</span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">qc</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">QueryCursor</span>) <span style="color:#a6e22e">Exec</span>(<span style="color:#a6e22e">q</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">Query</span>, <span style="color:#a6e22e">n</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">Node</span>)                 <span style="color:#75715e">// executa no nó raiz</span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">qc</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">QueryCursor</span>) <span style="color:#a6e22e">NextMatch</span>() (<span style="color:#f92672">*</span><span style="color:#a6e22e">QueryMatch</span>, <span style="color:#66d9ef">bool</span>)          <span style="color:#75715e">// itera sobre matches</span></span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// bindings.go — smacker/go-tree-sitter</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="kd">func</span><span class="w"> </span><span class="nf">NewQuery</span><span class="p">(</span><span class="nx">pattern</span><span class="w"> </span><span class="p">[]</span><span class="kt">byte</span><span class="p">,</span><span class="w"> </span><span class="nx">lang</span><span class="w"> </span><span class="o">*</span><span class="nx">Language</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">Query</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span><span class="w">  </span><span class="c1">// compila a query</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">qc</span><span class="w"> </span><span class="o">*</span><span class="nx">QueryCursor</span><span class="p">)</span><span class="w"> </span><span class="nf">Exec</span><span class="p">(</span><span class="nx">q</span><span class="w"> </span><span class="o">*</span><span class="nx">Query</span><span class="p">,</span><span class="w"> </span><span class="nx">n</span><span class="w"> </span><span class="o">*</span><span class="nx">Node</span><span class="p">)</span><span class="w">                 </span><span class="c1">// executa no nó raiz</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">qc</span><span class="w"> </span><span class="o">*</span><span class="nx">QueryCursor</span><span class="p">)</span><span class="w"> </span><span class="nf">NextMatch</span><span class="p">()</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="nx">QueryMatch</span><span class="p">,</span><span class="w"> </span><span class="kt">bool</span><span class="p">)</span><span class="w">          </span><span class="c1">// itera sobre matches</span></span></span></code></pre></div>
 </div>
 <p>
 Olhando a documentação, encontrei o método que faltava:</p>
 <div class="src src-go">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">qc</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">QueryCursor</span>) <span style="color:#a6e22e">FilterPredicates</span>(<span style="color:#a6e22e">m</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">QueryMatch</span>, <span style="color:#a6e22e">input</span> []<span style="color:#66d9ef">byte</span>) <span style="color:#f92672">*</span><span style="color:#a6e22e">QueryMatch</span></span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">qc</span><span class="w"> </span><span class="o">*</span><span class="nx">QueryCursor</span><span class="p">)</span><span class="w"> </span><span class="nf">FilterPredicates</span><span class="p">(</span><span class="nx">m</span><span class="w"> </span><span class="o">*</span><span class="nx">QueryMatch</span><span class="p">,</span><span class="w"> </span><span class="nx">input</span><span class="w"> </span><span class="p">[]</span><span class="kt">byte</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">QueryMatch</span></span></span></code></pre></div>
 </div>
 <p>
 Ele existe. Foi implementado com suporte completo a <code>#eq?</code>, <code>#not-eq?</code>, <code>#match?</code>, <code>#not-match?</code>. Tem testes e funciona. Mas e o problema? <em>Ninguém o chamava.</em></p>
 </div>
 </div>
-<div id="outline-container-headline-3" class="outline-3">
-<h3 id="headline-3">
+<div id="outline-container-headline-3" class="outline-2">
+<h2 id="headline-3">
 O ponto cego
-</h3>
-<div id="outline-text-headline-3" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-3" class="outline-text-2">
 <p>
 O <code>QueryRunner</code> do Ollanta em <code>ollantaparser/query.go</code>:</p>
 <div class="src src-go">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">qr</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">QueryRunner</span>) <span style="color:#a6e22e">Run</span>(<span style="color:#a6e22e">f</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">ParsedFile</span>, <span style="color:#a6e22e">query</span> <span style="color:#66d9ef">string</span>, <span style="color:#a6e22e">lang</span> <span style="color:#a6e22e">Language</span>) ([]<span style="color:#a6e22e">QueryMatch</span>, <span style="color:#66d9ef">error</span>) {
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">q</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">sitter</span>.<span style="color:#a6e22e">NewQuery</span>([]byte(<span style="color:#a6e22e">query</span>), <span style="color:#a6e22e">lang</span>.<span style="color:#a6e22e">tsLanguage</span>())
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ...</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">cursor</span>.<span style="color:#a6e22e">Exec</span>(<span style="color:#a6e22e">q</span>, <span style="color:#a6e22e">f</span>.<span style="color:#a6e22e">RootNode</span>())
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">matches</span> []<span style="color:#a6e22e">QueryMatch</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> {
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">m</span>, <span style="color:#a6e22e">ok</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">cursor</span>.<span style="color:#a6e22e">NextMatch</span>()
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> !<span style="color:#a6e22e">ok</span> {
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">break</span>
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">qm</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">QueryMatch</span>{<span style="color:#a6e22e">Captures</span>: make(<span style="color:#66d9ef">map</span>[<span style="color:#66d9ef">string</span>]<span style="color:#f92672">*</span><span style="color:#a6e22e">sitter</span>.<span style="color:#a6e22e">Node</span>, len(<span style="color:#a6e22e">m</span>.<span style="color:#a6e22e">Captures</span>))}
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">cap</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">m</span>.<span style="color:#a6e22e">Captures</span> {
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">name</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">q</span>.<span style="color:#a6e22e">CaptureNameForId</span>(<span style="color:#a6e22e">cap</span>.<span style="color:#a6e22e">Index</span>)
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">qm</span>.<span style="color:#a6e22e">Captures</span>[<span style="color:#a6e22e">name</span>] = <span style="color:#a6e22e">cap</span>.<span style="color:#a6e22e">Node</span>
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">matches</span> = append(<span style="color:#a6e22e">matches</span>, <span style="color:#a6e22e">qm</span>)
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">matches</span>, <span style="color:#66d9ef">nil</span>
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">qr</span><span class="w"> </span><span class="o">*</span><span class="nx">QueryRunner</span><span class="p">)</span><span class="w"> </span><span class="nf">Run</span><span class="p">(</span><span class="nx">f</span><span class="w"> </span><span class="o">*</span><span class="nx">ParsedFile</span><span class="p">,</span><span class="w"> </span><span class="nx">query</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="nx">lang</span><span class="w"> </span><span class="nx">Language</span><span class="p">)</span><span class="w"> </span><span class="p">([]</span><span class="nx">QueryMatch</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">q</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">sitter</span><span class="p">.</span><span class="nf">NewQuery</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="nx">query</span><span class="p">),</span><span class="w"> </span><span class="nx">lang</span><span class="p">.</span><span class="nf">tsLanguage</span><span class="p">())</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c1">// ...</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">cursor</span><span class="p">.</span><span class="nf">Exec</span><span class="p">(</span><span class="nx">q</span><span class="p">,</span><span class="w"> </span><span class="nx">f</span><span class="p">.</span><span class="nf">RootNode</span><span class="p">())</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nx">matches</span><span class="w"> </span><span class="p">[]</span><span class="nx">QueryMatch</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nx">m</span><span class="p">,</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cursor</span><span class="p">.</span><span class="nf">NextMatch</span><span class="p">()</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">ok</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">break</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nx">qm</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">QueryMatch</span><span class="p">{</span><span class="nx">Captures</span><span class="p">:</span><span class="w"> </span><span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="o">*</span><span class="nx">sitter</span><span class="p">.</span><span class="nx">Node</span><span class="p">,</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">m</span><span class="p">.</span><span class="nx">Captures</span><span class="p">))}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">cap</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">m</span><span class="p">.</span><span class="nx">Captures</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nx">name</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">q</span><span class="p">.</span><span class="nf">CaptureNameForId</span><span class="p">(</span><span class="nx">cap</span><span class="p">.</span><span class="nx">Index</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nx">qm</span><span class="p">.</span><span class="nx">Captures</span><span class="p">[</span><span class="nx">name</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">cap</span><span class="p">.</span><span class="nx">Node</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nx">matches</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">append</span><span class="p">(</span><span class="nx">matches</span><span class="p">,</span><span class="w"> </span><span class="nx">qm</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">matches</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
 Perceba que o <code>NextMatch()</code> retorna matches estruturais. <code>FilterPredicates()</code> filtra pelos predicados. O <code>Run()</code> chamava o primeiro e ignorava o segundo. Um <code>for</code> que devolve <em>tudo que estruturalmente casa</em>, sem aplicar o filtro semântico. Isso afetava <em>20 regras</em> que usavam <code>#eq?</code> ou <code>#match?</code>:</p>
 <div class="src src-go">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// Detectar eval()</span>
-</span></span><span style="display:flex;"><span>(<span style="color:#960050;background-color:#1e0010">#</span><span style="color:#a6e22e">eq</span><span style="color:#960050;background-color:#1e0010">?</span> <span style="color:#960050;background-color:#1e0010">@</span><span style="color:#a6e22e">eval</span> <span style="color:#e6db74">&#34;eval&#34;</span>)
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// Detectar WebSocket</span>
-</span></span><span style="display:flex;"><span>(<span style="color:#960050;background-color:#1e0010">#</span><span style="color:#a6e22e">eq</span><span style="color:#960050;background-color:#1e0010">?</span> <span style="color:#960050;background-color:#1e0010">@</span><span style="color:#a6e22e">ctor</span> <span style="color:#e6db74">&#34;WebSocket&#34;</span>)
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// Detectar pickle.load</span>
-</span></span><span style="display:flex;"><span>(<span style="color:#960050;background-color:#1e0010">#</span><span style="color:#a6e22e">eq</span><span style="color:#960050;background-color:#1e0010">?</span> <span style="color:#960050;background-color:#1e0010">@</span><span style="color:#a6e22e">mod</span> <span style="color:#e6db74">&#34;pickle&#34;</span>)
-</span></span><span style="display:flex;"><span>(<span style="color:#960050;background-color:#1e0010">#</span><span style="color:#a6e22e">match</span><span style="color:#960050;background-color:#1e0010">?</span> <span style="color:#960050;background-color:#1e0010">@</span><span style="color:#66d9ef">func</span> <span style="color:#e6db74">&#34;^(load|loads)$&#34;</span>)
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// Detectar hashlib.md5</span>
-</span></span><span style="display:flex;"><span>(<span style="color:#960050;background-color:#1e0010">#</span><span style="color:#a6e22e">eq</span><span style="color:#960050;background-color:#1e0010">?</span> <span style="color:#960050;background-color:#1e0010">@</span><span style="color:#a6e22e">mod</span> <span style="color:#e6db74">&#34;hashlib&#34;</span>)
-</span></span><span style="display:flex;"><span>(<span style="color:#960050;background-color:#1e0010">#</span><span style="color:#a6e22e">match</span><span style="color:#960050;background-color:#1e0010">?</span> <span style="color:#960050;background-color:#1e0010">@</span><span style="color:#66d9ef">func</span> <span style="color:#e6db74">&#34;^(md5|sha1)$&#34;</span>)</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// Detectar eval()</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">(</span><span class="err">#</span><span class="nx">eq</span><span class="err">?</span><span class="w"> </span><span class="err">@</span><span class="nx">eval</span><span class="w"> </span><span class="s">&#34;eval&#34;</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="c1">// Detectar WebSocket</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">(</span><span class="err">#</span><span class="nx">eq</span><span class="err">?</span><span class="w"> </span><span class="err">@</span><span class="nx">ctor</span><span class="w"> </span><span class="s">&#34;WebSocket&#34;</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="c1">// Detectar pickle.load</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">(</span><span class="err">#</span><span class="nx">eq</span><span class="err">?</span><span class="w"> </span><span class="err">@</span><span class="nx">mod</span><span class="w"> </span><span class="s">&#34;pickle&#34;</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">(</span><span class="err">#</span><span class="nx">match</span><span class="err">?</span><span class="w"> </span><span class="err">@</span><span class="kd">func</span><span class="w"> </span><span class="s">&#34;^(load|loads)$&#34;</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="c1">// Detectar hashlib.md5</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">(</span><span class="err">#</span><span class="nx">eq</span><span class="err">?</span><span class="w"> </span><span class="err">@</span><span class="nx">mod</span><span class="w"> </span><span class="s">&#34;hashlib&#34;</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">(</span><span class="err">#</span><span class="nx">match</span><span class="err">?</span><span class="w"> </span><span class="err">@</span><span class="kd">func</span><span class="w"> </span><span class="s">&#34;^(md5|sha1)$&#34;</span><span class="p">)</span></span></span></code></pre></div>
 </div>
 <p>
 Todas retornando falsos positivos em todas as linguagens. As regras Python (pickle, hashlib, subprocess) e JavaScript (eval, WebSocket, child_process) compartilhavam o mesmo destino: qualquer chamada de função que casasse com a S-expression era reportada, porque o predicado <code>#eq?</code> ou <code>#match?</code> nunca era avaliado. O binding Go expõe <code>FilterPredicates</code> desde que o klothoplatform contribuiu com a implementação, mas o <code>QueryRunner.Run()</code> do Ollanta nunca foi atualizado para usá-lo.</p>
 </div>
 </div>
-<div id="outline-container-headline-4" class="outline-3">
-<h3 id="headline-4">
+<div id="outline-container-headline-4" class="outline-2">
+<h2 id="headline-4">
 Por que demorei para perceber?
-</h3>
-<div id="outline-text-headline-4" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-4" class="outline-text-2">
 <p>
 O teste existente para <code>js:detect-eval</code>:</p>
 <div class="src src-go">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">TestTreeSitterSensor_JS_DetectEval</span>(<span style="color:#a6e22e">t</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">testing</span>.<span style="color:#a6e22e">T</span>) {
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">src</span> <span style="color:#f92672">:=</span> []byte(<span style="color:#e6db74">&#34;const r = eval(input);\n&#34;</span>)
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">s</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">defaultSensor</span>()
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">issues</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">s</span>.<span style="color:#a6e22e">Analyze</span>(<span style="color:#e6db74">&#34;test.js&#34;</span>, <span style="color:#a6e22e">src</span>, <span style="color:#e6db74">&#34;javascript&#34;</span>, <span style="color:#66d9ef">nil</span>)
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ... verifica se encontrou js:detect-eval</span>
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span><span class="w"> </span><span class="nf">TestTreeSitterSensor_JS_DetectEval</span><span class="p">(</span><span class="nx">t</span><span class="w"> </span><span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">src</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="p">[]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&#34;const r = eval(input);\n&#34;</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">s</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nf">defaultSensor</span><span class="p">()</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">issues</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">s</span><span class="p">.</span><span class="nf">Analyze</span><span class="p">(</span><span class="s">&#34;test.js&#34;</span><span class="p">,</span><span class="w"> </span><span class="nx">src</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;javascript&#34;</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c1">// ... verifica se encontrou js:detect-eval</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
 Testa o caso <em>positivo</em> — existe um <code>eval(input)</code>, ele é detectado. Mas não testa o caso <em>negativo</em> — chamadas que <em>não</em> são <code>eval()</code> não deveriam ser detectadas.</p>
@@ -197,17 +196,15 @@ Sem teste negativo, o bug passou despercebido. Os 35 testes da suíte continuava
 </blockquote>
 </div>
 </div>
-<div id="outline-container-headline-5" class="outline-3">
-<h3 id="headline-5">
+<div id="outline-container-headline-5" class="outline-2">
+<h2 id="headline-5">
 O contraste
-</h3>
-<div id="outline-text-headline-5" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-5" class="outline-text-2">
 <p>
 O que torna esse bug particularmente insidioso é que, à primeira vista, o código parece correto. A query tree-sitter está certa <code>(#eq? @eval &#34;eval&#34;)</code> é a sintaxe padrão e compila sem erro. O <code>QueryRunner</code> também parece correto — ele recebe uma query, executa contra a árvore sintática e retorna matches. Nada grita &#34;estou faltando um filtro&#34;.</p>
 <p>
 A verdade é que o design da API tree-sitter separa <em>matches estruturais</em> de <em>predicados semânticos</em>. O C da tree-sitter retorna matches brutos o binding é que decide se aplica predicados ou não. Em Python, isso é automático. Em Rust, também. Em Go, depende de você chamar <code>FilterPredicates</code> explicitamente. Se você não sabe disso, seu código compila, seus testes passam, e seus usuários recebem 150 falsos positivos.</p>
-</div>
-</div>
 <div id="outline-container-headline-6" class="outline-3">
 <h3 id="headline-6">
 A correção
@@ -219,14 +216,14 @@ O fluxograma abaixo mostra o caminho que o código percorre desde o arquivo font
 <pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph TD
     A[&#34;📄 Código Fonte&lt;br&gt;ex: configure({render})&#34;]:::code --&gt; B[&#34;🔧 Tree-sitter Parser&#34;]:::parser
     B --&gt; C{&#34;🔍 NextMatch()&lt;br&gt;Match Estrutural&#34;}:::decision
-    
+
     C --&gt;|&#34;✅ é call_expression? Sim&#34;| D[&#34;📦 Match Bruto&#34;]:::raw
     C --&gt;|&#34;❌ Não&#34;| Z[&#34;🚫 Ignorado&#34;]:::ignore
-    
+
     D -.-&gt;|&#34;⚠️ Sem FilterPredicates&lt;br&gt;O BUG&#34;| E((&#34;❌ Falso Positivo&lt;br&gt;js:detect-eval&#34;)):::fp
-    
+
     D ==&gt;|&#34;✅ Com FilterPredicates&lt;br&gt;A CORREÇÃO&#34;| F{&#34;🧪 O predicado é válido?&lt;br&gt;#eq? @eval &#39;eval&#39;&#34;}:::filter
-    
+
     F ==&gt;|&#34;🚫 Não&#34;| G[&#34;✅ Match Descartado&#34;]:::pass
     F ==&gt;|&#34;✅ Sim&#34;| H((&#34;🎯 Verdadeiro Positivo&#34;)):::tp
 
@@ -243,19 +240,19 @@ O fluxograma abaixo mostra o caminho que o código percorre desde o arquivo font
 <p>
 Quatro linhas, um <code>continue</code>:</p>
 <div class="src src-go">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">for</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">m</span>, <span style="color:#a6e22e">ok</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">cursor</span>.<span style="color:#a6e22e">NextMatch</span>()
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> !<span style="color:#a6e22e">ok</span> {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">break</span>
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">m</span> = <span style="color:#a6e22e">cursor</span>.<span style="color:#a6e22e">FilterPredicates</span>(<span style="color:#a6e22e">m</span>, <span style="color:#a6e22e">f</span>.<span style="color:#a6e22e">Source</span>)  <span style="color:#75715e">// ← linha adicionada</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> len(<span style="color:#a6e22e">m</span>.<span style="color:#a6e22e">Captures</span>) <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> {                  <span style="color:#75715e">// ← linha adicionada</span>
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">continue</span>                                <span style="color:#75715e">// ← linha adicionada</span>
-</span></span><span style="display:flex;"><span>    }                                           <span style="color:#75715e">// ← linha adicionada (chave)</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">qm</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">QueryMatch</span>{<span style="color:#f92672">...</span>}
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">cap</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">m</span>.<span style="color:#a6e22e">Captures</span> { <span style="color:#f92672">...</span> }
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">matches</span> = append(<span style="color:#a6e22e">matches</span>, <span style="color:#a6e22e">qm</span>)
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="k">for</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">m</span><span class="p">,</span><span class="w"> </span><span class="nx">ok</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">cursor</span><span class="p">.</span><span class="nf">NextMatch</span><span class="p">()</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">ok</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">break</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">m</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">cursor</span><span class="p">.</span><span class="nf">FilterPredicates</span><span class="p">(</span><span class="nx">m</span><span class="p">,</span><span class="w"> </span><span class="nx">f</span><span class="p">.</span><span class="nx">Source</span><span class="p">)</span><span class="w">  </span><span class="c1">// ← linha adicionada</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">m</span><span class="p">.</span><span class="nx">Captures</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">{</span><span class="w">                  </span><span class="c1">// ← linha adicionada</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">continue</span><span class="w">                                </span><span class="c1">// ← linha adicionada</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">                                           </span><span class="c1">// ← linha adicionada (chave)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">qm</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">QueryMatch</span><span class="p">{</span><span class="o">...</span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">cap</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">m</span><span class="p">.</span><span class="nx">Captures</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="o">...</span><span class="w"> </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">matches</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nb">append</span><span class="p">(</span><span class="nx">matches</span><span class="p">,</span><span class="w"> </span><span class="nx">qm</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
 O <code>FilterPredicates</code> recebe o match bruto e os bytes do arquivo fonte. Ele basicamente faz o seguinte:</p>
@@ -268,45 +265,47 @@ O <code>FilterPredicates</code> recebe o match bruto e os bytes do arquivo fonte
 <p>Se nenhuma captura passar, <code>FilterPredicates</code> retorna um match vazio (<code>len(Captures) == 0</code>), e o loop simplesmente pula para o próximo match. Sem a correção, cada regra com predicado devolvia N matches (N = número de nós que casam estruturalmente). Com a correção, devolve apenas os matches que passam nos predicados — exatamente o que a query pede.</p>
 </div>
 </div>
-<div id="outline-container-headline-7" class="outline-3">
-<h3 id="headline-7">
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-2">
+<h2 id="headline-7">
 O diff completo
-</h3>
-<div id="outline-text-headline-7" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-7" class="outline-text-2">
 <div class="src src-bash">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>// ollantaparser/query.go — Run<span style="color:#f92672">()</span>
-</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> <span style="color:#f92672">{</span>
-</span></span><span style="display:flex;"><span>      m, ok :<span style="color:#f92672">=</span> cursor.NextMatch<span style="color:#f92672">()</span>
-</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">if</span> !ok <span style="color:#f92672">{</span>
-</span></span><span style="display:flex;"><span>          break
-</span></span><span style="display:flex;"><span>      <span style="color:#f92672">}</span>
-</span></span><span style="display:flex;"><span>+     m <span style="color:#f92672">=</span> cursor.FilterPredicates<span style="color:#f92672">(</span>m, f.Source<span style="color:#f92672">)</span>
-</span></span><span style="display:flex;"><span>+     <span style="color:#66d9ef">if</span> len<span style="color:#f92672">(</span>m.Captures<span style="color:#f92672">)</span> <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">{</span>
-</span></span><span style="display:flex;"><span>+         <span style="color:#66d9ef">continue</span>
-</span></span><span style="display:flex;"><span>+     <span style="color:#f92672">}</span>
-</span></span><span style="display:flex;"><span>      qm :<span style="color:#f92672">=</span> QueryMatch<span style="color:#f92672">{</span>...<span style="color:#f92672">}</span>
-</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">for</span> _, cap :<span style="color:#f92672">=</span> range m.Captures <span style="color:#f92672">{</span>
-</span></span><span style="display:flex;"><span>          name :<span style="color:#f92672">=</span> q.CaptureNameForId<span style="color:#f92672">(</span>cap.Index<span style="color:#f92672">)</span>
-</span></span><span style="display:flex;"><span>          qm.Captures<span style="color:#f92672">[</span>name<span style="color:#f92672">]</span> <span style="color:#f92672">=</span> cap.Node
-</span></span><span style="display:flex;"><span>      <span style="color:#f92672">}</span>
-</span></span><span style="display:flex;"><span>      matches <span style="color:#f92672">=</span> append<span style="color:#f92672">(</span>matches, qm<span style="color:#f92672">)</span>
-</span></span><span style="display:flex;"><span>  <span style="color:#f92672">}</span></span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">// ollantaparser/query.go — Run<span class="o">()</span>
+</span></span><span class="line"><span class="cl">  <span class="k">for</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">      m, ok :<span class="o">=</span> cursor.NextMatch<span class="o">()</span>
+</span></span><span class="line"><span class="cl">      <span class="k">if</span> !ok <span class="o">{</span>
+</span></span><span class="line"><span class="cl">          <span class="nb">break</span>
+</span></span><span class="line"><span class="cl">      <span class="o">}</span>
+</span></span><span class="line"><span class="cl">+     <span class="nv">m</span> <span class="o">=</span> cursor.FilterPredicates<span class="o">(</span>m, f.Source<span class="o">)</span>
+</span></span><span class="line"><span class="cl">+     <span class="k">if</span> len<span class="o">(</span>m.Captures<span class="o">)</span> <span class="o">==</span> <span class="m">0</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">+         <span class="k">continue</span>
+</span></span><span class="line"><span class="cl">+     <span class="o">}</span>
+</span></span><span class="line"><span class="cl">      qm :<span class="o">=</span> QueryMatch<span class="o">{</span>...<span class="o">}</span>
+</span></span><span class="line"><span class="cl">      <span class="k">for</span> _, cap :<span class="o">=</span> range m.Captures <span class="o">{</span>
+</span></span><span class="line"><span class="cl">          name :<span class="o">=</span> q.CaptureNameForId<span class="o">(</span>cap.Index<span class="o">)</span>
+</span></span><span class="line"><span class="cl">          qm.Captures<span class="o">[</span>name<span class="o">]</span> <span class="o">=</span> cap.Node
+</span></span><span class="line"><span class="cl">      <span class="o">}</span>
+</span></span><span class="line"><span class="cl">      <span class="nv">matches</span> <span class="o">=</span> append<span class="o">(</span>matches, qm<span class="o">)</span>
+</span></span><span class="line"><span class="cl">  <span class="o">}</span></span></span></code></pre></div>
 </div>
 <div class="src src-bash">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>// ollantarules/languages/treesitter/sensor_test.go
-</span></span><span style="display:flex;"><span>+ func TestTreeSitterSensor_JS_DetectEval_NoFalsePositive<span style="color:#f92672">(</span>t *testing.T<span style="color:#f92672">)</span>
-</span></span><span style="display:flex;"><span>+ func TestTreeSitterSensor_JS_DetectEval_NoFalsePositiveOtherCalls<span style="color:#f92672">(</span>t *testing.T<span style="color:#f92672">)</span>
-</span></span><span style="display:flex;"><span>+ func TestTreeSitterSensor_PY_DangerousSubprocess_NoFalsePositive<span style="color:#f92672">(</span>t *testing.T<span style="color:#f92672">)</span></span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">// ollantarules/languages/treesitter/sensor_test.go
+</span></span><span class="line"><span class="cl">+ func TestTreeSitterSensor_JS_DetectEval_NoFalsePositive<span class="o">(</span>t *testing.T<span class="o">)</span>
+</span></span><span class="line"><span class="cl">+ func TestTreeSitterSensor_JS_DetectEval_NoFalsePositiveOtherCalls<span class="o">(</span>t *testing.T<span class="o">)</span>
+</span></span><span class="line"><span class="cl">+ func TestTreeSitterSensor_PY_DangerousSubprocess_NoFalsePositive<span class="o">(</span>t *testing.T<span class="o">)</span></span></span></code></pre></div>
 </div>
 <p>
 Três testes negativos que verificam que as regras <em>não</em> disparam onde não devem. Isso garante que, se alguém no futuro remover ou quebrar o <code>FilterPredicates</code>, os testes vão falhar imediatamente — não mais na mão do usuário.</p>
 </div>
 </div>
-<div id="outline-container-headline-8" class="outline-3">
-<h3 id="headline-8">
+<div id="outline-container-headline-8" class="outline-2">
+<h2 id="headline-8">
 Por que isso é um padrão de erro comum?
-</h3>
-<div id="outline-text-headline-8" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-8" class="outline-text-2">
 <p>
 Esse bug não é um bug específico do Ollanta. É um sintoma de um problema clássico de design conhecido como <em><a href="https://medium.com/itautech/hands-on-o-que-%C3%A9-acoplamento-temporal-e-como-solucion%C3%A1-lo-5ef31d37ca0d">acoplamento temporal</a></em> (temporal coupling).</p>
 <p>
@@ -319,7 +318,7 @@ O diagrama de sequência abaixo mostra a conversa entre as três camadas envolvi
 
     Dev-&gt;&gt;Bind: Run(query)
     Bind-&gt;&gt;C: ts_query_cursor_exec()
-    
+
     loop 🔄 Todo match estrutural
         Dev-&gt;&gt;Bind: NextMatch()
         Bind-&gt;&gt;C: ts_query_cursor_next_match()
@@ -341,13 +340,13 @@ A operação principal (<code>NextMatch</code>) retorna resultados incompletos, 
 <p>
 Um teste positivo comprova que a regra detecta código ruim. Um teste negativo comprova que ela não incomoda código bom. Ambos são necessários:</p>
 <div class="src src-go">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// Testa detecção</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">src</span> <span style="color:#f92672">:=</span> []byte(<span style="color:#e6db74">&#34;eval(input)&#34;</span>)
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// → deve retornar issue</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// Testa silêncio</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">src</span> <span style="color:#f92672">:=</span> []byte(<span style="color:#e6db74">&#34;configureFeature({ render })&#34;</span>)
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// → NÃO deve retornar issue</span></span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// Testa detecção</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="nx">src</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="p">[]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&#34;eval(input)&#34;</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="c1">// → deve retornar issue</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="c1">// Testa silêncio</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="nx">src</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="p">[]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&#34;configureFeature({ render })&#34;</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="c1">// → NÃO deve retornar issue</span></span></span></code></pre></div>
 </div>
 <p>
 <em>2. APIs que exigem um passo extra deveriam ser um <code>must</code></em></p>
@@ -359,11 +358,11 @@ Se <code>NextMatch()</code> sempre precisa ser seguido de <code>FilterPredicates
 A documentação do tree-sitter C diz &#34;predicates are not evaluated by default&#34;. Mas quem lê a documentação do tree-sitter C quando está programando em Go? O binding <code>go-tree-sitter</code> tem uma implementação completa de <code>FilterPredicates</code>, mas ela só funciona se você souber que ela existe. Quando você usa uma biblioteca via CGo, o contrato da API é o que o binding Go expõe, não o que o C original faz. Leia a fonte do binding.</p>
 </div>
 </div>
-<div id="outline-container-headline-9" class="outline-3">
-<h3 id="headline-9">
+<div id="outline-container-headline-9" class="outline-2">
+<h2 id="headline-9">
 O que aprendi com isso
-</h3>
-<div id="outline-text-headline-9" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-9" class="outline-text-2">
 <ul>
 <li><em><code>QueryRunner.Run()</code></em> — antes retornava matches estruturais; depois retorna matches <em>filtrados por predicados</em>.</li>
 <li><em>150 falsos positivos de <code>detect-eval</code> por scan</em> — depois 0 (o código não tem <code>eval()</code>).</li>
@@ -385,6 +384,7 @@ O que aprendi com isso
     <footer>
     </footer>
   </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
 <script src="/vendor/prism/prism-core.min.js"></script>
 <script src="/vendor/prism/prism-clike.min.js"></script>
 <script src="/vendor/prism/prism-bash.min.js"></script>
@@ -401,7 +401,19 @@ O que aprendi com isso
 <script src="/vendor/prism/prism-sql.min.js"></script>
 <script src="/vendor/prism/prism-autoloader.min.js"></script>
   <script src="/vendor/mermaid/mermaid.min.js"></script>
-  <script>mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#bb86fc', primaryTextColor: '#e8e0f0', primaryBorderColor: '#6b58a0', lineColor: '#c792ea', secondaryColor: '#2d1b4e', tertiaryColor: '#362258' } });</script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
   <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
   <script>
     var btn = document.querySelector('.back-to-top');

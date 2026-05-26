@@ -3,7 +3,7 @@ title = "Tratamento Funcional de Erros em TypeScript"
 description = "Usando fp-ts para gerenciar erros de forma robusta e tipada"
 date = 2025-05-12T18:31:45-03:00
 tags = ["javascript", "typescript", "fp-ts", "programação funcional", "tratamento de erros", "desenvolvimento"]
-draft = false
+draft = true
 weight = 1
 author = "Vitor Lobo Ramos"
 +++
@@ -50,7 +50,7 @@ try {
 #+END_QUOTE
 
 
-O uso de exceções apresenta sérios problemas de design: a assinatura da função ~dividirLegado~ não revela ao compilador a possibilidade de exceções, criando um contrato implícito onde o chamador precisa adivinhar a necessidade de um ~try/catch~. 
+O uso de exceções apresenta sérios problemas de design: a assinatura da função ~dividirLegado~ não revela ao compilador a possibilidade de exceções, criando um contrato implícito onde o chamador precisa adivinhar a necessidade de um ~try/catch~.
 
 Além disso, o ~throw~ interrompe abruptamente o fluxo de execução, dificultando o rastreamento e comprometendo a pureza funcional, enquanto a facilidade de esquecer blocos ~try/catch~ pode resultar em erros não capturados que derrubam aplicações inteiras. Uma alternativa comum é retornar valores especiais como ~null~, ~undefined~ ou objetos de erro para sinalizar falhas, embora essa abordagem também apresente suas próprias limitações. Por exemplo:
 
@@ -84,7 +84,7 @@ if (resultadoNull === null) console.error("Divisão por zero!");
 #+END_SRC
 
 
-Essa abordagem infelizmente também apresenta problemas significativos de usabilidade e segurança. O código se torna verboso e menos legível devido às constantes verificações manuais como ~if (resultado.erro)~ ou ~if (resultado === null)~, enquanto a perda de contexto é inevitável, especialmente com valores ~null~ que não informam o motivo da falha - mesmo objetos de erro exigem disciplina manual consistente. 
+Essa abordagem infelizmente também apresenta problemas significativos de usabilidade e segurança. O código se torna verboso e menos legível devido às constantes verificações manuais como ~if (resultado.erro)~ ou ~if (resultado === null)~, enquanto a perda de contexto é inevitável, especialmente com valores ~null~ que não informam o motivo da falha - mesmo objetos de erro exigem disciplina manual consistente.
 
 Além disso, há um risco constante de erros silenciosos no sistema, pois esquecer de verificar o ~null~ ou a propriedade ~erro~ pode facilmente resultar em erros do tipo ~TypeError: Cannot read property '...' of null~ em partes subsequentes do código, comprometendo a robustez da aplicação como um todo.
 
@@ -137,7 +137,7 @@ pipe(
 ); // Saída: Usuário não encontrado.
 #+END_SRC
 
-Note que ~Option~ é perfeito para casos onde a ausência não é necessariamente um "erro", mas um estado esperado. Ele nos permite modelar de forma elegante situações como buscas que podem não retornar resultados, valores opcionais em formulários, ou acessos a propriedades que podem não existir. 
+Note que ~Option~ é perfeito para casos onde a ausência não é necessariamente um "erro", mas um estado esperado. Ele nos permite modelar de forma elegante situações como buscas que podem não retornar resultados, valores opcionais em formulários, ou acessos a propriedades que podem não existir.
 
 Ao usar ~Option~, tornamos explícito no sistema de tipos que um valor pode estar ausente, forçando o desenvolvedor a lidar com ambos os casos. Isso elimina erros comuns como referências nulas inesperadas e torna o código mais robusto, previsível e auto-documentado, sem a necessidade de verificações defensivas espalhadas pelo código.
 
@@ -177,7 +177,7 @@ Neste exemplo, ~buscarNoticia~ retorna um ~Option<Noticia>~, que pode ser ~Some~
 
 ** Sucesso Explícito ou Falha Detalhada
 
-Já o ~Either~ é o tipo protagonista no paradigma funcional quando precisamos modelar operações que podem falhar, oferecendo uma estrutura elegante que não apenas sinaliza o erro, mas também fornece detalhes específicos sobre a falha. 
+Já o ~Either~ é o tipo protagonista no paradigma funcional quando precisamos modelar operações que podem falhar, oferecendo uma estrutura elegante que não apenas sinaliza o erro, mas também fornece detalhes específicos sobre a falha.
 
 Diferente de exceções tradicionais que interrompem o fluxo de execução, ~Either~ encapsula tanto o sucesso quanto o erro como valores de primeira classe, permitindo composição e transformação de operações falíveis de forma segura e previsível. Basicamente, ~Either~ é uma união de dois tipos: ~Right~ e ~Left~:
 
@@ -223,14 +223,14 @@ graph LR
     A[valorInicial] --> B[fn1]
     B --> C[fn2]
     C --> D[fn3]
-    
+
     subgraph "pipe(valorInicial, fn1, fn2, fn3)"
     A
     B
     C
     D
     end
-    
+
     style A fill:#f9f9f9,stroke:#666
     style D fill:#d5f5e3,stroke:#2ecc71,stroke-width:2px
 #+END_SRC
@@ -240,7 +240,7 @@ O diagrama acima mostra como funciona a função ~pipe~ de uma forma simples. Em
 #+BEGIN_SRC typescript
    // Sem pipe (difícil de ler):
    const resultado = multiplicarPorDois(somarCinco(converterParaNumero("10")));
-   
+
    // Com pipe (fácil de seguir):
    const resultado = pipe(
      "10",               // Valor inicial
@@ -296,7 +296,7 @@ Estas propriedades tornam o ~Either~ extremamente poderoso para composição de 
 
 Agora que entendemos o conceito de ~pipe~, vamos explorar a função ~match~, que é fundamental para extrair valores de um ~Either~. Esta função permite definir duas funções: uma para o caso ~Left~ (erro) e outra para o caso ~Right~ (sucesso), funcionando essencialmente como um ~if/else~ especializado para o tipo ~Either~. Com ~match~, podemos transformar nosso ~Either~ em qualquer outro tipo, garantindo que ambos os casos sejam tratados explicitamente.
 
-O ~match~ é uma forma de "pattern matching" funcional - um conceito poderoso de linguagens funcionais que permite lidar com diferentes "casos" ou "formas" que um valor pode ter. No caso do ~Either~, temos dois padrões possíveis: ~Left~ e ~Right~. 
+O ~match~ é uma forma de "pattern matching" funcional - um conceito poderoso de linguagens funcionais que permite lidar com diferentes "casos" ou "formas" que um valor pode ter. No caso do ~Either~, temos dois padrões possíveis: ~Left~ e ~Right~.
 
 O pattern matching nos força a tratar todos os casos possíveis de forma explícita, eliminando a possibilidade de esquecermos algum caminho. Isso é especialmente valioso em TypeScript, onde o sistema de tipos garante que não podemos acessar o valor interno de um ~Either~ sem primeiro "desempacotá-lo" usando ~match~ ou funções similares. Agora que você já entendeu o conceito de ~pipe~, vamos ver como usar ~match~ para extrair valores de um ~Either~ acompanhando o gráfico abaixo:
 
@@ -352,7 +352,7 @@ console.log(result); // "Erro: Divisão por zero!"
 
 O método ~match~ é particularmente útil quando você precisa /transformar/ o resultado final de uma operação em um formato específico, como preparar dados para exibição na interface do usuário ou formatar mensagens para logging. Esta função é essencial para unificar os caminhos de sucesso e erro em um único tipo de retorno.
 
-Além disso, ~match~ serve como uma excelente maneira de /encerrar/ uma cadeia de operações com um valor concreto, permitindo que você conclua o processamento de um ~Either~ e obtenha um resultado final que não é mais um tipo monádico. 
+Além disso, ~match~ serve como uma excelente maneira de /encerrar/ uma cadeia de operações com um valor concreto, permitindo que você conclua o processamento de um ~Either~ e obtenha um resultado final que não é mais um tipo monádico.
 
 ** Usando ~map~ para Transformar o Valor de Sucesso
 
@@ -364,7 +364,7 @@ graph LR
     B --> C[map: n → n * 2]
     C --> D[Right<84>]
     D --> E[match: exibe resultado]
-    
+
     A2["parseNumber('abc')"] --> B2[Left<'Erro'>]
     B2 --> C2[map: ignorado]
     C2 --> D2[Left<'Erro'>]
@@ -420,7 +420,7 @@ graph TD
     K --> M[Left<E>]
         L --> N[match: C → D]
     M --> N[match: E → D]
-    
+
     subgraph "pipe + chain + map + match"
     A
     B
@@ -448,7 +448,7 @@ graph TD
     style N fill:#d6eaf8,stroke:#3498db,stroke-width:2px
 #+END_SRC
 
-O diagrama acima ilustra o fluxo de processamento usando a combinação de operadores ~pipe~, ~chain~, ~map~ e ~match~ com o tipo ~Either~. Ele demonstra como um valor inicial ~E.Either<E, A>~ é processado através de uma série de transformações condicionais. Se o valor for um ~Right<A>~, ele passa pela função ~chain~ que pode produzir um novo ~E.Either<E, B>~. Se esse resultado for um ~Right<B>~, ele é transformado pela função ~map~ em um ~Right<C>~. Em qualquer ponto onde um ~Left<E>~ é encontrado, o fluxo de transformações é curto-circuitado, propagando o erro até o final. 
+O diagrama acima ilustra o fluxo de processamento usando a combinação de operadores ~pipe~, ~chain~, ~map~ e ~match~ com o tipo ~Either~. Ele demonstra como um valor inicial ~E.Either<E, A>~ é processado através de uma série de transformações condicionais. Se o valor for um ~Right<A>~, ele passa pela função ~chain~ que pode produzir um novo ~E.Either<E, B>~. Se esse resultado for um ~Right<B>~, ele é transformado pela função ~map~ em um ~Right<C>~. Em qualquer ponto onde um ~Left<E>~ é encontrado, o fluxo de transformações é curto-circuitado, propagando o erro até o final.
 
 Finalmente, a função ~match~ é aplicada para extrair o valor final, seja ele um sucesso (~C~) ou um erro (~E~), convertendo-os para um tipo comum ~D~. Este padrão de composição permite criar pipelines de processamento robustos onde os erros são tratados de forma elegante e explícita. Vamos ver um exemplo prático de como usar ~chain~ com ~Either~ no código abaixo:
 
@@ -500,7 +500,7 @@ E quando nossas operações são assíncronas, como chamadas de API ou interaç�
 
 3. O ~TaskEither<E, A>~ combina o conceito de ~Task~ com ~Either~. Formalmente, é um ~Task<Either<E, A>>~, ou seja, uma função que retorna uma promessa que resolverá para um ~Either<E, A>~.
 
-Isso nos dá o melhor dos dois mundos: a capacidade de lidar com operações assíncronas (como o ~Promise~) e um tratamento de erros explícito e tipado (como o ~Either~). 
+Isso nos dá o melhor dos dois mundos: a capacidade de lidar com operações assíncronas (como o ~Promise~) e um tratamento de erros explícito e tipado (como o ~Either~).
 
 Na prática, o ~TaskEither~ é perfeito para operações que demoram para completar e podem falhar, como buscar dados de um servidor ou ler um arquivo. Em vez de usar ~try/catch~ espalhados pelo código ou verificar erros manualmente, você encadeia operações de forma elegante e o sistema de tipos garante que você não esqueça de tratar os erros.
 
@@ -672,7 +672,7 @@ Tradicionalmente, esses efeitos são "invisíveis" na assinatura das funções e
 
 ** Compondo Múltiplas Requisições Assíncronas
 
-O ~fp-ts~ brilha na composição. Se precisarmos de dados de múltiplas fontes, podemos encadear operações de forma elegante e segura, como demonstrado nos exemplos acima. Por fim, a biblioteca fp-ts oferece uma abordagem robusta para lidar com erros em TypeScript, transformando o tratamento de exceções tradicional em um fluxo de dados previsível e tipado. 
+O ~fp-ts~ brilha na composição. Se precisarmos de dados de múltiplas fontes, podemos encadear operações de forma elegante e segura, como demonstrado nos exemplos acima. Por fim, a biblioteca fp-ts oferece uma abordagem robusta para lidar com erros em TypeScript, transformando o tratamento de exceções tradicional em um fluxo de dados previsível e tipado.
 
 Ao adotar esses padrões funcionais, conseguimos criar código mais confiável, testável e manutenível, onde os erros são tratados como cidadãos de primeira classe em vez de casos excepcionais.
 
@@ -782,4 +782,4 @@ Embora as abstrações funcionais como ~Either~ e ~TaskEither~ ofereçam benefí
 ** Referências
 
 - [[https://github.com/gcanti/fp-ts][fp-ts]] - Documentação oficial
-- [[https://a.co/d/3LxV0CO][Hands-On Functional Programming with Typescript]] - Livro do Remo H. Jansen publicado pela Packt. O livro aborda conceitos fundamentais para o tratamento funcional de erros, discutindo na seção "side-effects" como podemos usar técnicas de programação funcional para tornar explícitos os efeitos colaterais em TypeScript. 
+- [[https://a.co/d/3LxV0CO][Hands-On Functional Programming with Typescript]] - Livro do Remo H. Jansen publicado pela Packt. O livro aborda conceitos fundamentais para o tratamento funcional de erros, discutindo na seção "side-effects" como podemos usar técnicas de programação funcional para tornar explícitos os efeitos colaterais em TypeScript.

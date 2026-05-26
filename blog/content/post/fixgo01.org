@@ -20,7 +20,7 @@ Este artigo conta a história de um bug silencioso que encontrei durante uma rev
 /saiba mais:/ /graceful shutdown/ é quando um programa para de aceitar trabalho novo e conclui o que já está em andamento antes de desligar. O contrário seria matar o processo abruptamente, perdendo trabalho pela metade. Em Go, isso geralmente se faz com [[https://pkg.go.dev/context][~context.Context~]] e [[https://pkg.go.dev/os/signal#NotifyContext][~signal.NotifyContext~]].
 #+END_QUOTE
 
-** O contexto
+* O contexto
 
 O Ollanta precisa analisar centenas de arquivos fonte em paralelo. Para isso, usa um [[https://gobyexample.com/worker-pools][worker pool]], um conjunto fixo de goroutines que processam tarefas de uma fila com semáforo implementado via [[https://go.dev/tour/concurrency/2][channel]]:
 
@@ -49,7 +49,7 @@ flowchart LR
     QUEUE --> WN["🔧 ..."]:::worker
     QUEUE --> W16["🔧 worker 16"]:::worker
     W1 & W2 & WN & W16 --> OUT["📊 resultados"]:::out
-    
+
     classDef files fill:#2d1b6e,stroke:#7c6bc0,color:#e0d8f8
     classDef sem fill:#4d1b3e,stroke:#c06b90,color:#f0d8e8
     classDef worker fill:#2d4e2d,stroke:#7ab86b,color:#d0f0c8
@@ -62,7 +62,7 @@ Esse desenho é bom: colocar 200 goroutines para disputar CPU ao mesmo tempo ser
 /saiba mais:/ um /semáforo/ é um mecanismo de controle de concorrência que limita quantas goroutines podem acessar um recurso ao mesmo tempo. Pense nele como um estacionamento: se tem 16 vagas e 200 carros querem estacionar, os 184 excedentes esperam na entrada. Em Go, um channel bufferizado (~make(chan struct{}, vagas)~) faz esse papel: cada goroutine "estaciona" enviando um token vazio (~sem <- struct{}{}~) e "sai" retirando-o (~<-sem~). Enquanto o canal estiver cheio, o [[https://go.dev/tour/concurrency/2][send bloqueia]].
 #+END_QUOTE
 
-** O semáforo ingênuo
+* O semáforo ingênuo
 
 O padrão é conhecido:
 
@@ -118,7 +118,7 @@ As APIs que esse código usa ~WaitGroup~, ~defer~, ~recover~ são corretas e bem
 /saiba mais:/ [[https://pkg.go.dev/sync#WaitGroup][~sync.WaitGroup~]] é um contador atômico usado para esperar que várias goroutines terminem. Cada ~wg.Add(1)~ incrementa, cada ~defer wg.Done()~ decrementa ao sair da goroutine, e ~wg.Wait()~ bloqueia até o contador zerar. O [[https://go.dev/tour/flowcontrol/12][~defer~]] garante que ~wg.Done()~ seja chamado mesmo se a goroutine retornar por erro ou [[https://go.dev/blog/defer-panic-and-recover][~panic~]]. Já ~recover()~ captura um panic e evita que ele derrube o programa inteiro, aqui ele serve para isolar a falha a um único arquivo sem abortar a análise dos demais.
 #+END_QUOTE
 
-** O problema
+* O problema
 
 Repare nos passos marcados como ~(1)~ e ~(2)~. A sequência que cada goroutine executa é:
 
@@ -161,7 +161,7 @@ Veja o que acontece no último quadro: a goroutine finalmente chega ao ~select~ 
 /saiba mais:/ [[https://pkg.go.dev/context][~context.Context~]] é o mecanismo padrão de Go para propagar cancelamento, deadlines e valores entre goroutines. Quando você cria um contexto com [[https://pkg.go.dev/context#WithTimeout][~WithTimeout~]] ou [[https://pkg.go.dev/context#WithCancel][~WithCancel~]], o canal ~ctx.Done()~ é fechado quando o prazo expira ou quando ~cancel()~ é chamado. Um ~select~ com ~case <-ctx.Done()~ detecta isso. O problema aqui é que o ~select~ está /depois/ de uma operação bloqueante — ele nunca chega a rodar se a goroutine travar antes.
 #+END_QUOTE
 
-** O contraste com o que parece "certo"
+* O contraste com o que parece "certo"
 
 O código tem ~ctx.Done()~. O [[https://go.dev/tour/concurrency/5][~select~]] com ~default~ também existe. A intenção estava lá, e eu sabia que precisava verificar o cancelamento. Mas a ordem errada transforma um graceful shutdown numa espera potencialmente longa. Esse é um padrão enganoso porque ataca em três frentes que nenhuma ferramenta pega:
 
@@ -173,7 +173,7 @@ O código tem ~ctx.Done()~. O [[https://go.dev/tour/concurrency/5][~select~]] co
 /saiba mais:/ ~select~ em Go funciona como um multiplexador de canais. Ele espera até que /um/ dos ~case~ esteja pronto e executa esse bloco. Se vários estiverem prontos, escolhe um aleatoriamente. O ~default~ faz o ~select~ ser não-bloqueante: se nenhum canal estiver pronto, executa o ~default~ imediatamente. Isso é útil para "tentar" sem travar, mas não substitui um ~select~ bloqueante que de fato aguarda o canal ficar disponível.
 #+END_QUOTE
 
-** A correção
+* A correção
 
 A solução é fundir os dois passos — adquirir slot e verificar cancelamento — num único ~select~:
 
@@ -219,7 +219,7 @@ sequenceDiagram
     Note over G2: 🎉 sai sem bloquear
 #+END_SRC
 
-Compare com o diagrama do bug: lá a goroutine da fila ficava 30 segundos olhando para o semáforo; aqui ela olha para os dois ao mesmo tempo e o cancelamento vence. As 184 goroutines da fila saem imediatamente — liberam memória e param de disputar o semáforo à toa. Os 16 workers ativos, porém, continuam processando: ~analyzeFile~ não verifica ~ctx.Done()~ em cada etapa (~os.ReadFile~, ~parseGoFile~, e o ~AnalyzerBridge.Check~ também ignora o contexto recebido). 
+Compare com o diagrama do bug: lá a goroutine da fila ficava 30 segundos olhando para o semáforo; aqui ela olha para os dois ao mesmo tempo e o cancelamento vence. As 184 goroutines da fila saem imediatamente — liberam memória e param de disputar o semáforo à toa. Os 16 workers ativos, porém, continuam processando: ~analyzeFile~ não verifica ~ctx.Done()~ em cada etapa (~os.ReadFile~, ~parseGoFile~, e o ~AnalyzerBridge.Check~ também ignora o contexto recebido).
 
 O ~wg.Wait()~ espera os ativos terminarem. O tempo total de shutdown continua nos mesmos ~30 segundos. O que muda é o /custo/ da espera: sem a correção, além dos 16 workers ativos, mais 184 goroutines ficavam presas no semáforo, ocupando stacks no /runtime/ sem fazer nada útil.
 
@@ -229,7 +229,7 @@ Por que o runtime escolhe ~ctx.Done()~ e não o semáforo? Porque quando o conte
 /saiba mais:/ a ordem dos ~case~ em um ~select~ /não/ determina prioridade — o runtime escolhe pseudo-aleatoriamente entre os canais prontos. Mas quando ~ctx.Done()~ já está fechado, ele está permanentemente pronto, enquanto o semáforo cheio está permanentemente bloqueado. Isso garante que o cancelamento /sempre/ vence a espera.
 #+END_QUOTE
 
-** O diff completo
+* O diff completo
 
 #+BEGIN_SRC bash
 - sem <- struct{}{}
@@ -258,7 +258,7 @@ Duas mudanças, ambas no mesmo arquivo, zero linhas de lógica de negócio alter
 
 O ~defer func() { <-sem }()~ continua no caminho feliz: a goroutine que adquiriu o slot ainda precisa liberá-lo. E, crucialmente, ele está /dentro/ do ~case sem <- struct{}{}:~ só executa se o slot foi de fato adquirido. Se a goroutine caiu no ~case <-ctx.Done()~, não há token para devolver, e o ~defer~ dentro do ~case~ simplesmente não roda.
 
-** Por que isso é um padrão (e como evitar)
+* Por que isso é um padrão (e como evitar)
 
 Esse tipo de bug não é exclusivo do Ollanta. É comum em Go porque a linguagem te dá blocos de construção poderosos com goroutines, channels, ~select~, ~context~ mas não te protege da ordem em que você os combina. Você pode escrever código que compila, passa nos testes e funciona há meses, mas que esconde uma bomba-relógio de concorrência. Algumas heurísticas que adotei depois dessa descoberta:
 
@@ -305,11 +305,11 @@ Sem a correção, esse teste /trava por 10 segundos/, tempo suficiente para ning
 
 -----
 
-** O que aprendi com isso
+* O que aprendi com isso
 
 Canais em Go parecem simples, mas o diabo está na ordem. O padrão de semáforo com channel é ensinado em todos os tutoriais de [[https://go.dev/tour/concurrency/1][concorrência em Go]], mas poucos mencionam a interação com [[https://pkg.go.dev/context][contextos canceláveis]]. A maioria dos exemplos assume que a operação vai completar rápido, mas em produção não vai!
 
-O resumo em números: duas linhas de diff, zero mudanças de lógica. A diferença não está no tempo total de shutdown — que continua limitado pelos workers ativos (~30 segundos nos piores casos) — mas em /quem/ ocupa recursos durante a espera. 
+O resumo em números: duas linhas de diff, zero mudanças de lógica. A diferença não está no tempo total de shutdown — que continua limitado pelos workers ativos (~30 segundos nos piores casos) — mas em /quem/ ocupa recursos durante a espera.
 
 Antes, 184 goroutines ociosas ficavam empilhadas no semáforo; depois, elas saem de cena no primeiro milissegundo, deixando apenas o trabalho realmente útil consumindo CPU e memória. Os workers que já estão processando continuam até terminar, e isso é exatamente o comportamento esperado de um graceful shutdown.
 

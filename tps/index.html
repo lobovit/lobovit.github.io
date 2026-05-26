@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:,">
   <title>A Batalha dos Milissegundos — scovl</title>
-  <link rel="stylesheet" href="/css/main.css?v=2">
+  <link rel="stylesheet" href="/css/main.css?v=3">
   <link rel="stylesheet" href="/vendor/fonts/fonts.css">
-  <link rel="stylesheet" href="/vendor/prism/prism-tomorrow.min.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
 </head>
 <body>
   <div class="frame">
@@ -30,28 +30,27 @@
   </header>
   <div class="content">
     
-<div id="outline-container-headline-1" class="outline-3">
-<h3 id="headline-1">
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
 Como reduzi 62 consultas ao banco para 4 e ganhei 8× de throughput
-</h3>
-<div id="outline-text-headline-1" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
 <p>
 Quando você atinge dezenas de milhares de transações por segundo, a pergunta mais perigosa que você pode fazer é <span style="text-decoration: underline;">&#34;qual formato de serialização devo usar?&#34;</span>. Não porque a resposta seja irrelevante, mas porque ela quase nunca é o gargalo real. Esta é a história de como, durante o desenvolvimento do <em><a href="https://github.com/scovl/Ollanta">Ollanta</a></em>, uma plataforma de análise estática multilinguagem escrita em Go, eu quase caí na armadilha de otimizar o problema errado.</p>
-<p>
-&lt;img src=&#34;<img src="https://github.com/scovl/Ollanta/raw/main/docs/imgs/logo-dark.png" alt="https://github.com/scovl/Ollanta/raw/main/docs/imgs/logo-dark.png" title="https://github.com/scovl/Ollanta/raw/main/docs/imgs/logo-dark.png" />&#34; alt=&#34;ollanta&#34; width=&#34;250&#34; style=&#34;display: block; margin: 1em auto;&#34; /&gt;</p>
+<img src="https://github.com/scovl/Ollanta/raw/main/docs/imgs/logo-dark.png" alt="ollanta" title="https://github.com/scovl/Ollanta/raw/main/docs/imgs/logo-dark.png" width="250" style="display:block;margin:1em auto;"/>
 <p>
 O cenário: milhares de scanners enviando relatórios de análise para um servidor central. Cada relatório contém métricas, issues e snapshots de código. O servidor precisa ingerir, avaliar quality gates, persistir e indexar — tudo em segundos, com centenas de milhares de projetos acumulados ao longo do tempo. A primeira reação de qualquer engenheiro diante de &#34;payloads JSON de 8 MB chegando via HTTP&#34; é: <em>&#34;preciso comprimir isso&#34;</em>. E está certo. Mas essa é a porta de entrada para a armadilha.</p>
 </div>
 </div>
-<div id="outline-container-headline-2" class="outline-3">
-<h3 id="headline-2">
+<div id="outline-container-headline-2" class="outline-2">
+<h2 id="headline-2">
 A armadilha: otimizar o problema visível
-</h3>
-<div id="outline-text-headline-2" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-2" class="outline-text-2">
 <p>
 O fluxo de ingestão de um scan no Ollanta tinha este pipeline:</p>
 <div class="src src-bash">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>Scanner → POST JSON <span style="color:#f92672">(</span><span style="color:#ae81ff">8</span> MB<span style="color:#f92672">)</span> → Servidor → <span style="color:#ae81ff">9</span> passos de ingestão → PostgreSQL</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">Scanner → POST JSON <span class="o">(</span><span class="m">8</span> MB<span class="o">)</span> → Servidor → <span class="m">9</span> passos de ingestão → PostgreSQL</span></span></code></pre></div>
 </div>
 <p>
 Medi o tempo de cada etapa. O upload do JSON levava ~640ms em uma rede 100 Mbps. Habilitei Gzip condicional (payloads &gt; 1KB) e o upload caiu para ~64ms. Ganho de <em>576ms</em>. Satisfatório. Mas a latência total do pipeline ainda estava em ~800ms. Onde estavam os outros 736ms?</p>
@@ -101,39 +100,39 @@ Medi o tempo de cada etapa. O upload do JSON levava ~640ms em uma rede 100 Mbps.
 O Gzip resolveu o problema de rede. Mas <em>62 consultas ao PostgreSQL por scan</em> estavam consumindo 560ms, quase 10× mais que o upload comprimido. O verdadeiro gargalo não era a rede. Era o banco de dados.</p>
 </div>
 </div>
-<div id="outline-container-headline-3" class="outline-3">
-<h3 id="headline-3">
+<div id="outline-container-headline-3" class="outline-2">
+<h2 id="headline-3">
 A solução: COPY protocol e batch UPSERT
-</h3>
-<div id="outline-text-headline-3" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-3" class="outline-text-2">
 <p>
 O PostgreSQL tem um protocolo de bulk insert chamado <em>COPY</em> que é até 50× mais rápido que INSERTs individuais. Em vez de 20 INSERTs dentro de uma transação, um único comando <code>COPY</code> envia todas as linhas de uma vez:</p>
 <div class="src src-go">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// Antes: 20 round-trips</span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">m</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">measures</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">tx</span>.<span style="color:#a6e22e">Exec</span>(<span style="color:#a6e22e">ctx</span>, <span style="color:#e6db74">`INSERT INTO measures (...) VALUES ($1, $2, ...)`</span>, <span style="color:#f92672">...</span>)
-</span></span><span style="display:flex;"><span>}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// Depois: 1 round-trip</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">conn</span>.<span style="color:#a6e22e">CopyFrom</span>(<span style="color:#a6e22e">ctx</span>,
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">pgx</span>.<span style="color:#a6e22e">Identifier</span>{<span style="color:#e6db74">&#34;measures&#34;</span>},
-</span></span><span style="display:flex;"><span>    []<span style="color:#66d9ef">string</span>{<span style="color:#e6db74">&#34;scan_id&#34;</span>, <span style="color:#e6db74">&#34;project_id&#34;</span>, <span style="color:#e6db74">&#34;metric_key&#34;</span>, <span style="color:#e6db74">&#34;component_path&#34;</span>, <span style="color:#e6db74">&#34;value&#34;</span>},
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">pgx</span>.<span style="color:#a6e22e">CopyFromRows</span>(<span style="color:#a6e22e">rows</span>),
-</span></span><span style="display:flex;"><span>)</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// Antes: 20 round-trips</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">m</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">measures</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">tx</span><span class="p">.</span><span class="nf">Exec</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="s">`INSERT INTO measures (...) VALUES ($1, $2, ...)`</span><span class="p">,</span><span class="w"> </span><span class="o">...</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="c1">// Depois: 1 round-trip</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="nx">conn</span><span class="p">.</span><span class="nf">CopyFrom</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">pgx</span><span class="p">.</span><span class="nx">Identifier</span><span class="p">{</span><span class="s">&#34;measures&#34;</span><span class="p">},</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;scan_id&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;project_id&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;metric_key&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;component_path&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;value&#34;</span><span class="p">},</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">pgx</span><span class="p">.</span><span class="nf">CopyFromRows</span><span class="p">(</span><span class="nx">rows</span><span class="p">),</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">)</span></span></span></code></pre></div>
 </div>
 <p>
 Para os UPSERTs de <code>live_measures</code> e <code>measure_daily_aggregates</code>, troquei 20 queries individuais por uma única consulta com <code>unnest()</code>:</p>
 <div class="src src-sql">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span><span style="color:#75715e">-- Antes: 20 queries, uma por métrica
-</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> live_measures (...) <span style="color:#66d9ef">VALUES</span> (<span style="color:#960050;background-color:#1e0010">$</span><span style="color:#ae81ff">1</span>, <span style="color:#960050;background-color:#1e0010">$</span><span style="color:#ae81ff">2</span>, <span style="color:#960050;background-color:#1e0010">$</span><span style="color:#ae81ff">3</span>, ...) <span style="color:#66d9ef">ON</span> CONFLICT ...;
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> live_measures (...) <span style="color:#66d9ef">VALUES</span> (<span style="color:#960050;background-color:#1e0010">$</span><span style="color:#ae81ff">1</span>, <span style="color:#960050;background-color:#1e0010">$</span><span style="color:#ae81ff">2</span>, <span style="color:#960050;background-color:#1e0010">$</span><span style="color:#ae81ff">3</span>, ...) <span style="color:#66d9ef">ON</span> CONFLICT ...;
-</span></span><span style="display:flex;"><span>...
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e">-- Depois: 1 query para todas as 20 métricas
-</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> live_measures (project_id, component_path, metric_key, value, scan_id)
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">SELECT</span> <span style="color:#960050;background-color:#1e0010">$</span><span style="color:#ae81ff">1</span>, <span style="color:#e6db74">&#39;&#39;</span>, <span style="color:#66d9ef">unnest</span>(<span style="color:#960050;background-color:#1e0010">$</span><span style="color:#ae81ff">2</span>::text[]), <span style="color:#66d9ef">unnest</span>(<span style="color:#960050;background-color:#1e0010">$</span><span style="color:#ae81ff">3</span>::numeric[]), <span style="color:#960050;background-color:#1e0010">$</span><span style="color:#ae81ff">4</span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">ON</span> CONFLICT (project_id, component_path, metric_key)
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">DO</span> <span style="color:#66d9ef">UPDATE</span> <span style="color:#66d9ef">SET</span> value <span style="color:#f92672">=</span> EXCLUDED.value, scan_id <span style="color:#f92672">=</span> EXCLUDED.scan_id, updated_at <span style="color:#f92672">=</span> now()</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-sql" data-lang="sql"><span class="line"><span class="cl"><span class="c1">-- Antes: 20 queries, uma por métrica
+</span></span></span><span class="line"><span class="cl"><span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">live_measures</span><span class="w"> </span><span class="p">(...)</span><span class="w"> </span><span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="err">$</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="err">$</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="err">$</span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="p">...)</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">CONFLICT</span><span class="w"> </span><span class="p">...;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">live_measures</span><span class="w"> </span><span class="p">(...)</span><span class="w"> </span><span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="err">$</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="err">$</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="err">$</span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="p">...)</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">CONFLICT</span><span class="w"> </span><span class="p">...;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">...</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="c1">-- Depois: 1 query para todas as 20 métricas
+</span></span></span><span class="line"><span class="cl"><span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">live_measures</span><span class="w"> </span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span><span class="w"> </span><span class="n">component_path</span><span class="p">,</span><span class="w"> </span><span class="n">metric_key</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="p">,</span><span class="w"> </span><span class="n">scan_id</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="k">SELECT</span><span class="w"> </span><span class="err">$</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">,</span><span class="w"> </span><span class="k">unnest</span><span class="p">(</span><span class="err">$</span><span class="mi">2</span><span class="p">::</span><span class="nb">text</span><span class="p">[]),</span><span class="w"> </span><span class="k">unnest</span><span class="p">(</span><span class="err">$</span><span class="mi">3</span><span class="p">::</span><span class="nb">numeric</span><span class="p">[]),</span><span class="w"> </span><span class="err">$</span><span class="mi">4</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="k">ON</span><span class="w"> </span><span class="n">CONFLICT</span><span class="w"> </span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span><span class="w"> </span><span class="n">component_path</span><span class="p">,</span><span class="w"> </span><span class="n">metric_key</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="k">DO</span><span class="w"> </span><span class="k">UPDATE</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EXCLUDED</span><span class="p">.</span><span class="n">value</span><span class="p">,</span><span class="w"> </span><span class="n">scan_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">EXCLUDED</span><span class="p">.</span><span class="n">scan_id</span><span class="p">,</span><span class="w"> </span><span class="n">updated_at</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">now</span><span class="p">()</span></span></span></code></pre></div>
 </div>
 <p>
 Resultado:</p>
@@ -220,8 +219,6 @@ Resultado:</p>
 </table>
 <p>
 Somando tudo, o pipeline passou de ~800ms para <em>~99ms por scan</em> — uma redução de <em>8×</em>. E 80% desse ganho veio da otimização do banco de dados, não do formato de serialização.</p>
-</div>
-</div>
 <div id="outline-container-headline-4" class="outline-3">
 <h3 id="headline-4">
 A cereja do bolo: goroutine pool
@@ -230,25 +227,27 @@ A cereja do bolo: goroutine pool
 <p>
 Com o pipeline mais rápido, o próximo gargalo era o <em>throughput</em>: um único worker processando scans sequencialmente. A solução foi um pool de goroutines com claim atômico no PostgreSQL:</p>
 <div class="src src-go">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">wp</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">4</span> <span style="color:#75715e">// configurável via OLLANTA_WORKER_POOL</span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> <span style="color:#a6e22e">i</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span>; <span style="color:#a6e22e">i</span> &lt; <span style="color:#a6e22e">wp</span>; <span style="color:#a6e22e">i</span><span style="color:#f92672">++</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">go</span> <span style="color:#66d9ef">func</span>(<span style="color:#a6e22e">id</span> <span style="color:#66d9ef">int</span>) {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> {
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">job</span>, <span style="color:#a6e22e">_</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">repo</span>.<span style="color:#a6e22e">ClaimNext</span>(<span style="color:#a6e22e">ctx</span>, <span style="color:#a6e22e">workerID</span>) <span style="color:#75715e">// FOR UPDATE SKIP LOCKED</span>
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">processJob</span>(<span style="color:#a6e22e">ctx</span>, <span style="color:#a6e22e">job</span>)
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>    }(<span style="color:#a6e22e">i</span>)
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">wp</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="mi">4</span><span class="w"> </span><span class="c1">// configurável via OLLANTA_WORKER_POOL</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="k">for</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="w"> </span><span class="p">&lt;</span><span class="w"> </span><span class="nx">wp</span><span class="p">;</span><span class="w"> </span><span class="nx">i</span><span class="o">++</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">go</span><span class="w"> </span><span class="kd">func</span><span class="p">(</span><span class="nx">id</span><span class="w"> </span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nx">job</span><span class="p">,</span><span class="w"> </span><span class="nx">_</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">repo</span><span class="p">.</span><span class="nf">ClaimNext</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">workerID</span><span class="p">)</span><span class="w"> </span><span class="c1">// FOR UPDATE SKIP LOCKED</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nf">processJob</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">job</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}(</span><span class="nx">i</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
 Cada goroutine faz <code>SELECT ... FOR UPDATE SKIP LOCKED</code> — o PostgreSQL garante que duas goroutines nunca peguem o mesmo job. O pool é configurável: de 1 (desenvolvimento) a 32 (produção com 200k+ projetos). Com 8 goroutines, o throughput multiplicou por <em>8×</em>. Combinado com a redução de 8× na latência por scan, o sistema passou a processar <em>~64× mais scans por minuto</em> do que a versão original.</p>
 </div>
 </div>
-<div id="outline-container-headline-5" class="outline-3">
-<h3 id="headline-5">
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-2">
+<h2 id="headline-5">
 O que eu NÃO fiz — e por quê
-</h3>
-<div id="outline-text-headline-5" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-5" class="outline-text-2">
 <div id="outline-container-headline-6" class="outline-4">
 <h4 id="headline-6">
 Não usei Protobuf
@@ -290,11 +289,11 @@ O SonarQube embute Elasticsearch como sub-processo JVM. Isso impede escalonament
 </div>
 </div>
 </div>
-<div id="outline-container-headline-9" class="outline-3">
-<h3 id="headline-9">
+<div id="outline-container-headline-9" class="outline-2">
+<h2 id="headline-9">
 A lição
-</h3>
-<div id="outline-text-headline-9" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-9" class="outline-text-2">
 <p>
 A tabela que resume tudo:</p>
 <table>
@@ -373,6 +372,7 @@ Referências
     <footer>
     </footer>
   </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
 <script src="/vendor/prism/prism-core.min.js"></script>
 <script src="/vendor/prism/prism-clike.min.js"></script>
 <script src="/vendor/prism/prism-bash.min.js"></script>
@@ -389,7 +389,19 @@ Referências
 <script src="/vendor/prism/prism-sql.min.js"></script>
 <script src="/vendor/prism/prism-autoloader.min.js"></script>
   <script src="/vendor/mermaid/mermaid.min.js"></script>
-  <script>mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#bb86fc', primaryTextColor: '#e8e0f0', primaryBorderColor: '#6b58a0', lineColor: '#c792ea', secondaryColor: '#2d1b4e', tertiaryColor: '#362258' } });</script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
   <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
   <script>
     var btn = document.querySelector('.back-to-top');

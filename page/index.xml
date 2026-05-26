@@ -9,11 +9,11 @@
     <lastBuildDate>Mon, 28 Jul 2025 00:00:00 +0000</lastBuildDate>
     <atom:link href="https://scovl.github.io/page/index.xml" rel="self" type="application/rss+xml" />
     <item>
-      <title></title>
+      <title>Sobre</title>
       <link>https://scovl.github.io/page/about/</link>
       <pubDate>Mon, 28 Jul 2025 00:00:00 +0000</pubDate>
       <guid>https://scovl.github.io/page/about/</guid>
-      <description>&lt;p&gt;Olá, eu sou &lt;strong&gt;Vitor Lobo&lt;/strong&gt; — ou simplesmente &lt;em&gt;Lobo&lt;/em&gt;.&lt;/p&gt;&#xA;&lt;p&gt;Sou desenvolvedor com mais de 15 anos de experiência e já passei por infraestrutura, engenharia de plataforma e SRE. Mas é no código que me encontro, construir soluções e entregar valor seja corporativo ou social, é o que me move. Comecei em 2009 nas comunidades open source do IRC (falecida freenode). Foi ali que aprendi sobre colaboração, compartilhamento e a cultura do software-livre e opensource. Mantenho este blog para compartilhar descobertas, aprendizados, conhecimento em geral.&lt;/p&gt;</description>
+      <description>&lt;p&gt;&#xA;Olá, eu sou &lt;strong&gt;Vitor Lobo&lt;/strong&gt;, ou simplesmente Lobo.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Sou desenvolvedor com mais de 15 anos de experiência e já passei por infraestrutura, engenharia de plataforma e SRE. Mas é no código que me encontro: construir soluções e entregar valor, seja corporativo ou social, é o que me move. Comecei em 2009 nas comunidades open source do IRC (falecida freenode). Foi ali que aprendi sobre colaboração, compartilhamento e a cultura do software livre e open source. Mantenho este blog para compartilhar descobertas, aprendizados e conhecimento em geral.&lt;/p&gt;</description>
     </item>
     <item>
       <title></title>

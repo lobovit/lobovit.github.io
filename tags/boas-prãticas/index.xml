@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Boas PrÃ¡ticas on scovl</title>
+    <link>http://localhost:1313/tags/boas-pr%C3%A3ticas/</link>
+    <description>Recent content in Boas PrÃ¡ticas on scovl</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Fri, 23 May 2025 19:41:45 -0300</lastBuildDate>
+    <atom:link href="http://localhost:1313/tags/boas-pr%C3%A3ticas/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Try/Catch: Origem, PropÃ³sito e o Erro de UsÃ¡-lo como Fluxo LÃ³gico</title>
+      <link>http://localhost:1313/trycatch/</link>
+      <pubDate>Fri, 23 May 2025 19:41:45 -0300</pubDate>
+      <guid>http://localhost:1313/trycatch/</guid>
+      <description>&lt;p&gt;&#xA;O tratamento de exceÃ§Ãµes surgiu para separar o fluxo normal do programa do tratamento de situaÃ§Ãµes inesperadas, como falhas de hardware ou erros de entrada/saÃ­da. Inicialmente, programas usavam cÃ³digos de retorno para lidar com erros, mas isso era propenso a falhas e difÃ­cil de manter.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;O modelo de tratamento estruturado de exceÃ§Ãµes evoluiu desde os anos 60, ganhando formas mais concretas em linguagens como &lt;a href=&#34;https://en.wikipedia.org/wiki/PL/I&#34;&gt;PL/I&lt;/a&gt;, &lt;a href=&#34;https://en.wikipedia.org/wiki/Ada_(programming_language)&#34;&gt;Ada&lt;/a&gt;), &lt;a href=&#34;https://en.wikipedia.org/wiki/C%2B%2B&#34;&gt;C++&lt;/a&gt; e &lt;a href=&#34;https://en.wikipedia.org/wiki/Java_(programming_language)&#34;&gt;Java&lt;/a&gt;), e depois sendo adotado por outras como &lt;a href=&#34;https://en.wikipedia.org/wiki/JavaScript&#34;&gt;JavaScript&lt;/a&gt;. O objetivo sempre foi permitir que programas lidassem de forma controlada com erros imprevisÃ­veis, sem travar o sistema. As exceÃ§Ãµes nÃ£o foram criadas para controlar o fluxo normal do programa, mas sim para tratar casos realmente excepcionais. Neste artigo, vamos ver por que usar &lt;code&gt;try/catch&lt;/code&gt; como controle de fluxo Ã© um erro e qual Ã© o seu propÃ³sito real.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

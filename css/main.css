@@ -40,15 +40,26 @@ hr { border: none; border-top: 1px solid var(--border); margin: 10px 0 24px; }
 /* ── Headings ── */
 h1,h2,h3,h4 { font-weight: normal; margin: 28px 0 10px; color: #fff; }
 h1 { font-size: 24px; color: var(--accent); }
-h2 { font-size: 20px; color: #d4b8ff; }
+h2 {
+  font-size: 23px; color: #d4b8ff; font-weight: bold;
+  display: flex; align-items: center;
+}
+h2::after {
+  content: "";
+  background-color: var(--border);
+  min-width: 20px; height: 2px;
+  box-shadow: 0 0 6px var(--accent);
+  flex-grow: 1;
+  margin-left: 1.5rem;
+}
 h3 { font-size: 17px; color: #c8a8f0; }
 h4 { font-size: 15px; color: var(--fg-dim); }
 
 /* ── Post list ── */
 .post-list { list-style: none; margin-top: 20px; }
-.post-list li { padding: 6px 0; }
-.post-list time { color: var(--fg-dim); font-size: 13px; margin-right: 10px; }
-.post-list a { color: var(--link); text-decoration: none; }
+.post-list li { padding: 10px 0; }
+.post-list time { color: var(--fg-dim); font-size: 14px; margin-right: 10px; }
+.post-list a { color: var(--link); text-decoration: none; font-size: 17px; }
 .post-list a:hover { color: var(--link-hover); text-decoration: underline; }
 
 /* ── Meta ── */
@@ -71,7 +82,7 @@ h4 { font-size: 15px; color: var(--fg-dim); }
 
 .content ul, .content ol { margin: 10px 0 10px 28px; }
 .content li { margin: 4px 0; }
-.content img { max-width: 100%; height: auto; border: 1px solid var(--border); display: block; margin: 16px auto; }
+.content img { max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 6px; display: block; margin: 16px auto; }
 
 /* ── Mermaid ── */
 .content pre.mermaid { text-align: center; }
@@ -91,33 +102,42 @@ h4 { font-size: 15px; color: var(--fg-dim); }
 .content figcaption { color: var(--fg-dim); font-size: 13px; margin-top: 4px; }
 
 /* ── Code ── */
-.content code, .content pre { font-family: "JetBrains Mono", "Consolas", "Courier New", monospace; }
+.content code, .content pre { font-family: "Hack", "JetBrains Mono", "Consolas", "Courier New", monospace; }
 .content :not(pre) > code {
   background: var(--code-bg); padding: 2px 6px; color: var(--code-fg);
   border: 1px solid var(--border);
 }
 .content pre {
   background: var(--code-bg); padding: 16px; overflow-x: auto;
-  margin: 16px 0; border: 1px solid var(--border); font-size: 13px; line-height: 1.6;
+  margin: 16px 0; border: 1px solid var(--border); font-size: 14px; line-height: 1.6;
+  border-radius: 1rem;
 }
 .content pre code { background: none; padding: 0; border: none; }
 
-/* Prism overrides — purple background */
-pre[class*="language-"] { background: var(--code-bg) !important; }
+.highlight { border-radius: 1rem !important; }
+.highlight pre { border-radius: 1rem !important; }
+
+/* Code block background */
+pre[class*="language-"] { background: var(--code-bg) !important; border-radius: 1rem !important; }
 :not(pre) > code[class*="language-"] { background: var(--code-bg) !important; color: var(--code-fg) !important; }
 
 /* ── Footer ── */
 footer { font-size: 13px; color: var(--fg-dim); margin-top: 40px; }
 footer a { color: var(--link); }
 
-/* ── Chroma syntax highlighting ── */
-.chroma { color: var(--code-fg); background: var(--code-bg); }
-.chroma .k, .chroma .kd, .chroma .kr { color: #c792ea; }
-.chroma .s, .chroma .s1, .chroma .s2 { color: #a0d0a0; }
-.chroma .c, .chroma .c1 { color: #685888; font-style: italic; }
-.chroma .nf, .chroma .nx { color: #82aaff; }
-.chroma .mi, .chroma .mf { color: #f78c6c; }
-.chroma .nb, .chroma .bp { color: #ffcb6b; }
+/* ── Chroma syntax highlighting (blog purple theme) ── */
+.chroma { color: var(--code-fg); background: var(--code-bg); border-radius: 1rem; }
+.chroma .k, .chroma .kd, .chroma .kr, .chroma .kt { color: #d4b8ff; }
+.chroma .s, .chroma .s1, .chroma .s2, .chroma .sh, .chroma .sb { color: #a6e3a1; }
+.chroma .c, .chroma .c1, .chroma .cm { color: #6b58a0; font-style: italic; }
+.chroma .nf, .chroma .nb, .chroma .bp { color: var(--accent); }
+.chroma .mi, .chroma .mf, .chroma .mh { color: #fab387; }
+.chroma .nx { color: var(--code-fg); }
+.chroma .o { color: #a090c0; }
+.chroma .na, .chroma .nc { color: #e8c8ff; }
+.chroma .nt { color: var(--link); }
+.chroma .nv { color: #fab387; }
+.chroma .err { color: #f38ba8; }
 
 /* ── Responsive ── */
 @media (max-width: 600px) {

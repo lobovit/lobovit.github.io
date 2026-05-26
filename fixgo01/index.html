@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:,">
   <title>Resolução de um bug silencioso em Go — scovl</title>
-  <link rel="stylesheet" href="/css/main.css?v=2">
+  <link rel="stylesheet" href="/css/main.css?v=3">
   <link rel="stylesheet" href="/vendor/fonts/fonts.css">
-  <link rel="stylesheet" href="/vendor/prism/prism-tomorrow.min.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
 </head>
 <body>
   <div class="frame">
@@ -44,26 +44,28 @@ Este artigo conta a história de um bug silencioso que encontrei durante uma rev
 <blockquote>
 <p><em>saiba mais:</em> <em>graceful shutdown</em> é quando um programa para de aceitar trabalho novo e conclui o que já está em andamento antes de desligar. O contrário seria matar o processo abruptamente, perdendo trabalho pela metade. Em Go, isso geralmente se faz com <a href="https://pkg.go.dev/context"><code>context.Context</code></a> e <a href="https://pkg.go.dev/os/signal#NotifyContext"><code>signal.NotifyContext</code></a>.</p>
 </blockquote>
-<div id="outline-container-headline-2" class="outline-3">
-<h3 id="headline-2">
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-2">
+<h2 id="headline-2">
 O contexto
-</h3>
-<div id="outline-text-headline-2" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-2" class="outline-text-2">
 <p>
 O Ollanta precisa analisar centenas de arquivos fonte em paralelo. Para isso, usa um <a href="https://gobyexample.com/worker-pools">worker pool</a>, um conjunto fixo de goroutines que processam tarefas de uma fila com semáforo implementado via <a href="https://go.dev/tour/concurrency/2">channel</a>:</p>
 <div class="src src-go">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// application/scan/executor.go</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">Executor</span> <span style="color:#66d9ef">struct</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">parser</span>    <span style="color:#a6e22e">port</span>.<span style="color:#a6e22e">IParser</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">analyzers</span> []<span style="color:#a6e22e">port</span>.<span style="color:#a6e22e">IAnalyzer</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">workers</span>   <span style="color:#66d9ef">int</span>
-</span></span><span style="display:flex;"><span>}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">NewExecutor</span>(<span style="color:#a6e22e">p</span> <span style="color:#a6e22e">port</span>.<span style="color:#a6e22e">IParser</span>, <span style="color:#a6e22e">analyzers</span> []<span style="color:#a6e22e">port</span>.<span style="color:#a6e22e">IAnalyzer</span>) <span style="color:#f92672">*</span><span style="color:#a6e22e">Executor</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">w</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">runtime</span>.<span style="color:#a6e22e">NumCPU</span>() <span style="color:#f92672">*</span> <span style="color:#ae81ff">2</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">Executor</span>{<span style="color:#a6e22e">parser</span>: <span style="color:#a6e22e">p</span>, <span style="color:#a6e22e">analyzers</span>: <span style="color:#a6e22e">analyzers</span>, <span style="color:#a6e22e">workers</span>: <span style="color:#a6e22e">w</span>}
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// application/scan/executor.go</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="kd">type</span><span class="w"> </span><span class="nx">Executor</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">parser</span><span class="w">    </span><span class="nx">port</span><span class="p">.</span><span class="nx">IParser</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">analyzers</span><span class="w"> </span><span class="p">[]</span><span class="nx">port</span><span class="p">.</span><span class="nx">IAnalyzer</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">workers</span><span class="w">   </span><span class="kt">int</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="kd">func</span><span class="w"> </span><span class="nf">NewExecutor</span><span class="p">(</span><span class="nx">p</span><span class="w"> </span><span class="nx">port</span><span class="p">.</span><span class="nx">IParser</span><span class="p">,</span><span class="w"> </span><span class="nx">analyzers</span><span class="w"> </span><span class="p">[]</span><span class="nx">port</span><span class="p">.</span><span class="nx">IAnalyzer</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="nx">Executor</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">w</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">runtime</span><span class="p">.</span><span class="nf">NumCPU</span><span class="p">()</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">2</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">Executor</span><span class="p">{</span><span class="nx">parser</span><span class="p">:</span><span class="w"> </span><span class="nx">p</span><span class="p">,</span><span class="w"> </span><span class="nx">analyzers</span><span class="p">:</span><span class="w"> </span><span class="nx">analyzers</span><span class="p">,</span><span class="w"> </span><span class="nx">workers</span><span class="p">:</span><span class="w"> </span><span class="nx">w</span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
 O número de workers é <a href="https://pkg.go.dev/runtime#NumCPU"><code>runtime.NumCPU()</code></a> <code>* 2</code>. Numa máquina com 8 cores, 16 goroutines processam arquivos simultaneamente. O semáforo controla esse limite. Visualmente, o fluxo é uma fila com gargalo controlado: os 200 arquivos descobertos em disco são empurrados para o semáforo, que só deixa passar 16 de cada vez. Cada worker que pega um arquivo o analisa e devolve o resultado. Os outros 184 ficam esperando na porta.</p>
@@ -75,7 +77,7 @@ O número de workers é <a href="https://pkg.go.dev/runtime#NumCPU"><code>runtim
     QUEUE --&gt; WN[&#34;🔧 ...&#34;]:::worker
     QUEUE --&gt; W16[&#34;🔧 worker 16&#34;]:::worker
     W1 &amp; W2 &amp; WN &amp; W16 --&gt; OUT[&#34;📊 resultados&#34;]:::out
-    
+
     classDef files fill:#2d1b6e,stroke:#7c6bc0,color:#e0d8f8
     classDef sem fill:#4d1b3e,stroke:#c06b90,color:#f0d8e8
     classDef worker fill:#2d4e2d,stroke:#7ab86b,color:#d0f0c8
@@ -88,56 +90,56 @@ Esse desenho é bom: colocar 200 goroutines para disputar CPU ao mesmo tempo ser
 </blockquote>
 </div>
 </div>
-<div id="outline-container-headline-3" class="outline-3">
-<h3 id="headline-3">
+<div id="outline-container-headline-3" class="outline-2">
+<h2 id="headline-3">
 O semáforo ingênuo
-</h3>
-<div id="outline-text-headline-3" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-3" class="outline-text-2">
 <p>
 O padrão é conhecido:</p>
 <div class="src src-go">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">sem</span> <span style="color:#f92672">:=</span> make(<span style="color:#66d9ef">chan</span> <span style="color:#66d9ef">struct</span>{}, <span style="color:#a6e22e">e</span>.<span style="color:#a6e22e">workers</span>)</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">sem</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">make</span><span class="p">(</span><span class="kd">chan</span><span class="w"> </span><span class="kd">struct</span><span class="p">{},</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nx">workers</span><span class="p">)</span></span></span></code></pre></div>
 </div>
 <p>
 Um channel bufferizado de structs vazias. Cada goroutine envia um token antes de começar e retira ao terminar. Até aqui, nenhum problema. A questão está em <em>onde</em> o código verifica se o usuário pediu para cancelar tudo. O código original do executor era assim:</p>
 <div class="src src-go">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">e</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">Executor</span>) <span style="color:#a6e22e">Run</span>(<span style="color:#a6e22e">ctx</span> <span style="color:#a6e22e">context</span>.<span style="color:#a6e22e">Context</span>, <span style="color:#a6e22e">files</span> []<span style="color:#a6e22e">DiscoveredFile</span>) ([]<span style="color:#f92672">*</span><span style="color:#a6e22e">model</span>.<span style="color:#a6e22e">Issue</span>, <span style="color:#66d9ef">error</span>) {
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sem</span> <span style="color:#f92672">:=</span> make(<span style="color:#66d9ef">chan</span> <span style="color:#66d9ef">struct</span>{}, <span style="color:#a6e22e">e</span>.<span style="color:#a6e22e">workers</span>)       <span style="color:#75715e">// semáforo: limite de concorrência</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">out</span> <span style="color:#f92672">:=</span> make(<span style="color:#66d9ef">chan</span> <span style="color:#a6e22e">result</span>, len(<span style="color:#a6e22e">files</span>))        <span style="color:#75715e">// canal de saída com buffer</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">wg</span> <span style="color:#a6e22e">sync</span>.<span style="color:#a6e22e">WaitGroup</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">f</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">files</span> {
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">f</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">f</span>                                  <span style="color:#75715e">// captura pro loop</span>
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">wg</span>.<span style="color:#a6e22e">Add</span>(<span style="color:#ae81ff">1</span>)
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">go</span> <span style="color:#66d9ef">func</span>() {
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">defer</span> <span style="color:#a6e22e">wg</span>.<span style="color:#a6e22e">Done</span>()
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">sem</span> <span style="color:#f92672">&lt;-</span> <span style="color:#66d9ef">struct</span>{}{}                   <span style="color:#75715e">// (1) espera slot livre</span>
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">defer</span> <span style="color:#66d9ef">func</span>() { <span style="color:#f92672">&lt;-</span><span style="color:#a6e22e">sem</span> }()            <span style="color:#75715e">//    libera ao final</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">defer</span> <span style="color:#66d9ef">func</span>() {
-</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">r</span> <span style="color:#f92672">:=</span> recover(); <span style="color:#a6e22e">r</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {   <span style="color:#75715e">// recupera de panic</span>
-</span></span><span style="display:flex;"><span>                    <span style="color:#a6e22e">out</span> <span style="color:#f92672">&lt;-</span> <span style="color:#a6e22e">result</span>{}
-</span></span><span style="display:flex;"><span>                }
-</span></span><span style="display:flex;"><span>            }()
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">select</span> {
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">case</span> <span style="color:#f92672">&lt;-</span><span style="color:#a6e22e">ctx</span>.<span style="color:#a6e22e">Done</span>():                  <span style="color:#75715e">// (2) verifica cancelamento após acquire</span>
-</span></span><span style="display:flex;"><span>                <span style="color:#a6e22e">out</span> <span style="color:#f92672">&lt;-</span> <span style="color:#a6e22e">result</span>{}
-</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">return</span>
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">default</span>:
-</span></span><span style="display:flex;"><span>            }
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">out</span> <span style="color:#f92672">&lt;-</span> <span style="color:#a6e22e">result</span>{<span style="color:#a6e22e">issues</span>: <span style="color:#a6e22e">e</span>.<span style="color:#a6e22e">analyzeFile</span>(<span style="color:#a6e22e">ctx</span>, <span style="color:#a6e22e">f</span>, <span style="color:#a6e22e">policy</span>)}
-</span></span><span style="display:flex;"><span>        }()
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">go</span> <span style="color:#66d9ef">func</span>() {
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">wg</span>.<span style="color:#a6e22e">Wait</span>()
-</span></span><span style="display:flex;"><span>        close(<span style="color:#a6e22e">out</span>)
-</span></span><span style="display:flex;"><span>    }()
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">r</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">out</span> { <span style="color:#75715e">/* coleta resultados */</span> }
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">Executor</span><span class="p">)</span><span class="w"> </span><span class="nf">Run</span><span class="p">(</span><span class="nx">ctx</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span><span class="w"> </span><span class="nx">files</span><span class="w"> </span><span class="p">[]</span><span class="nx">DiscoveredFile</span><span class="p">)</span><span class="w"> </span><span class="p">([]</span><span class="o">*</span><span class="nx">model</span><span class="p">.</span><span class="nx">Issue</span><span class="p">,</span><span class="w"> </span><span class="kt">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">sem</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">make</span><span class="p">(</span><span class="kd">chan</span><span class="w"> </span><span class="kd">struct</span><span class="p">{},</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nx">workers</span><span class="p">)</span><span class="w">       </span><span class="c1">// semáforo: limite de concorrência</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">out</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">make</span><span class="p">(</span><span class="kd">chan</span><span class="w"> </span><span class="nx">result</span><span class="p">,</span><span class="w"> </span><span class="nb">len</span><span class="p">(</span><span class="nx">files</span><span class="p">))</span><span class="w">        </span><span class="c1">// canal de saída com buffer</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="kd">var</span><span class="w"> </span><span class="nx">wg</span><span class="w"> </span><span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">f</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">files</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nx">f</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">f</span><span class="w">                                  </span><span class="c1">// captura pro loop</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nx">wg</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">go</span><span class="w"> </span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">defer</span><span class="w"> </span><span class="nx">wg</span><span class="p">.</span><span class="nf">Done</span><span class="p">()</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nx">sem</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="kd">struct</span><span class="p">{}{}</span><span class="w">                   </span><span class="c1">// (1) espera slot livre</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">defer</span><span class="w"> </span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="o">&lt;-</span><span class="nx">sem</span><span class="w"> </span><span class="p">}()</span><span class="w">            </span><span class="c1">//    libera ao final</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">defer</span><span class="w"> </span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">recover</span><span class="p">();</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w">   </span><span class="c1">// recupera de panic</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                    </span><span class="nx">out</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nx">result</span><span class="p">{}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="p">}()</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">select</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="o">&lt;-</span><span class="nx">ctx</span><span class="p">.</span><span class="nf">Done</span><span class="p">():</span><span class="w">                  </span><span class="c1">// (2) verifica cancelamento após acquire</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="nx">out</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nx">result</span><span class="p">{}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                </span><span class="k">return</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="k">default</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nx">out</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nx">result</span><span class="p">{</span><span class="nx">issues</span><span class="p">:</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nf">analyzeFile</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">f</span><span class="p">,</span><span class="w"> </span><span class="nx">policy</span><span class="p">)}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}()</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">go</span><span class="w"> </span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nx">wg</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nb">close</span><span class="p">(</span><span class="nx">out</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}()</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">out</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* coleta resultados */</span><span class="w"> </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
 As APIs que esse código usa <code>WaitGroup</code>, <code>defer</code>, <code>recover</code> são corretas e bem aplicadas. O isolamento de falha por arquivo impede que um panic derrube a análise inteira. A sincronização com <code>wg.Wait()</code> e <code>close(out)</code> garante que o coletor de resultados nunca leia de um canal fechado antes da hora. Do ponto de vista de threading tradicional, está tudo certo. O problema é de <em>ordenação</em>: o cancelamento é verificado no passo errado.</p>
@@ -146,11 +148,11 @@ As APIs que esse código usa <code>WaitGroup</code>, <code>defer</code>, <code>r
 </blockquote>
 </div>
 </div>
-<div id="outline-container-headline-4" class="outline-3">
-<h3 id="headline-4">
+<div id="outline-container-headline-4" class="outline-2">
+<h2 id="headline-4">
 O problema
-</h3>
-<div id="outline-text-headline-4" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-4" class="outline-text-2">
 <p>
 Repare nos passos marcados como <code>(1)</code> e <code>(2)</code>. A sequência que cada goroutine executa é:</p>
 <ol>
@@ -193,11 +195,11 @@ Veja o que acontece no último quadro: a goroutine finalmente chega ao <code>sel
 </blockquote>
 </div>
 </div>
-<div id="outline-container-headline-5" class="outline-3">
-<h3 id="headline-5">
+<div id="outline-container-headline-5" class="outline-2">
+<h2 id="headline-5">
 O contraste com o que parece &#34;certo&#34;
-</h3>
-<div id="outline-text-headline-5" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-5" class="outline-text-2">
 <p>
 O código tem <code>ctx.Done()</code>. O <a href="https://go.dev/tour/concurrency/5"><code>select</code></a> com <code>default</code> também existe. A intenção estava lá, e eu sabia que precisava verificar o cancelamento. Mas a ordem errada transforma um graceful shutdown numa espera potencialmente longa. Esse é um padrão enganoso porque ataca em três frentes que nenhuma ferramenta pega:</p>
 <ul>
@@ -210,33 +212,33 @@ O código tem <code>ctx.Done()</code>. O <a href="https://go.dev/tour/concurrenc
 </blockquote>
 </div>
 </div>
-<div id="outline-container-headline-6" class="outline-3">
-<h3 id="headline-6">
+<div id="outline-container-headline-6" class="outline-2">
+<h2 id="headline-6">
 A correção
-</h3>
-<div id="outline-text-headline-6" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-6" class="outline-text-2">
 <p>
 A solução é fundir os dois passos — adquirir slot e verificar cancelamento — num único <code>select</code>:</p>
 <div class="src src-go">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">go</span> <span style="color:#66d9ef">func</span>() {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">defer</span> <span style="color:#a6e22e">wg</span>.<span style="color:#a6e22e">Done</span>()
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">select</span> {                                   <span style="color:#75715e">// (1) TENTA adquirir OU cancela</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">case</span> <span style="color:#a6e22e">sem</span> <span style="color:#f92672">&lt;-</span> <span style="color:#66d9ef">struct</span>{}{}:
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">defer</span> <span style="color:#66d9ef">func</span>() { <span style="color:#f92672">&lt;-</span><span style="color:#a6e22e">sem</span> }()               <span style="color:#75715e">// adquiriu slot, libera ao final</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">case</span> <span style="color:#f92672">&lt;-</span><span style="color:#a6e22e">ctx</span>.<span style="color:#a6e22e">Done</span>():
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">out</span> <span style="color:#f92672">&lt;-</span> <span style="color:#a6e22e">result</span>{}
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span>                                 <span style="color:#75715e">// cancelado: sai sem adquirir</span>
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">defer</span> <span style="color:#66d9ef">func</span>() {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">r</span> <span style="color:#f92672">:=</span> recover(); <span style="color:#a6e22e">r</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">slog</span>.<span style="color:#a6e22e">Warn</span>(<span style="color:#e6db74">&#34;panic analyzing file&#34;</span>, <span style="color:#e6db74">&#34;path&#34;</span>, <span style="color:#a6e22e">f</span>.<span style="color:#a6e22e">Path</span>, <span style="color:#e6db74">&#34;panic&#34;</span>, <span style="color:#a6e22e">r</span>)
-</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">out</span> <span style="color:#f92672">&lt;-</span> <span style="color:#a6e22e">result</span>{}
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>    }()
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">out</span> <span style="color:#f92672">&lt;-</span> <span style="color:#a6e22e">result</span>{<span style="color:#a6e22e">issues</span>: <span style="color:#a6e22e">e</span>.<span style="color:#a6e22e">analyzeFile</span>(<span style="color:#a6e22e">ctx</span>, <span style="color:#a6e22e">f</span>, <span style="color:#a6e22e">policy</span>)}
-</span></span><span style="display:flex;"><span>}()</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="k">go</span><span class="w"> </span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">defer</span><span class="w"> </span><span class="nx">wg</span><span class="p">.</span><span class="nf">Done</span><span class="p">()</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">select</span><span class="w"> </span><span class="p">{</span><span class="w">                                   </span><span class="c1">// (1) TENTA adquirir OU cancela</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="nx">sem</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="kd">struct</span><span class="p">{}{}:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">defer</span><span class="w"> </span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="o">&lt;-</span><span class="nx">sem</span><span class="w"> </span><span class="p">}()</span><span class="w">               </span><span class="c1">// adquiriu slot, libera ao final</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="o">&lt;-</span><span class="nx">ctx</span><span class="p">.</span><span class="nf">Done</span><span class="p">():</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nx">out</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nx">result</span><span class="p">{}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">return</span><span class="w">                                 </span><span class="c1">// cancelado: sai sem adquirir</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">defer</span><span class="w"> </span><span class="kd">func</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">recover</span><span class="p">();</span><span class="w"> </span><span class="nx">r</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nx">slog</span><span class="p">.</span><span class="nf">Warn</span><span class="p">(</span><span class="s">&#34;panic analyzing file&#34;</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;path&#34;</span><span class="p">,</span><span class="w"> </span><span class="nx">f</span><span class="p">.</span><span class="nx">Path</span><span class="p">,</span><span class="w"> </span><span class="s">&#34;panic&#34;</span><span class="p">,</span><span class="w"> </span><span class="nx">r</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span><span class="nx">out</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nx">result</span><span class="p">{}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}()</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">out</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nx">result</span><span class="p">{</span><span class="nx">issues</span><span class="p">:</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nf">analyzeFile</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">f</span><span class="p">,</span><span class="w"> </span><span class="nx">policy</span><span class="p">)}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">}()</span></span></span></code></pre></div>
 </div>
 <p>
 A diferença parece cosmética, mas é profunda. Antes, a goroutine fazia <code>sem &lt;- struct{}{}</code> e <em>depois</em> olhava para <code>ctx.Done()</code>. Agora, ela pergunta para o runtime: &#34;tem vaga no semáforo OU o contexto foi cancelado?&#34; e obedece quem responder primeiro. O diagrama abaixo mostra a mesma cena de antes, mas com a correção aplicada. Dessa vez, quando o <code>Ctrl+C</code> chega, as goroutines da fila percebem na hora:</p>
@@ -258,7 +260,7 @@ A diferença parece cosmética, mas é profunda. Antes, a goroutine fazia <code>
     Note over G2: 🎉 sai sem bloquear</code></pre>
 </div>
 <p>
-Compare com o diagrama do bug: lá a goroutine da fila ficava 30 segundos olhando para o semáforo; aqui ela olha para os dois ao mesmo tempo e o cancelamento vence. As 184 goroutines da fila saem imediatamente — liberam memória e param de disputar o semáforo à toa. Os 16 workers ativos, porém, continuam processando: <code>analyzeFile</code> não verifica <code>ctx.Done()</code> em cada etapa (<code>os.ReadFile</code>, <code>parseGoFile</code>, e o <code>AnalyzerBridge.Check</code> também ignora o contexto recebido). </p>
+Compare com o diagrama do bug: lá a goroutine da fila ficava 30 segundos olhando para o semáforo; aqui ela olha para os dois ao mesmo tempo e o cancelamento vence. As 184 goroutines da fila saem imediatamente — liberam memória e param de disputar o semáforo à toa. Os 16 workers ativos, porém, continuam processando: <code>analyzeFile</code> não verifica <code>ctx.Done()</code> em cada etapa (<code>os.ReadFile</code>, <code>parseGoFile</code>, e o <code>AnalyzerBridge.Check</code> também ignora o contexto recebido).</p>
 <p>
 O <code>wg.Wait()</code> espera os ativos terminarem. O tempo total de shutdown continua nos mesmos ~30 segundos. O que muda é o <em>custo</em> da espera: sem a correção, além dos 16 workers ativos, mais 184 goroutines ficavam presas no semáforo, ocupando stacks no <em>runtime</em> sem fazer nada útil.</p>
 <p>
@@ -268,29 +270,29 @@ Por que o runtime escolhe <code>ctx.Done()</code> e não o semáforo? Porque qua
 </blockquote>
 </div>
 </div>
-<div id="outline-container-headline-7" class="outline-3">
-<h3 id="headline-7">
+<div id="outline-container-headline-7" class="outline-2">
+<h2 id="headline-7">
 O diff completo
-</h3>
-<div id="outline-text-headline-7" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-7" class="outline-text-2">
 <div class="src src-bash">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>- sem &lt;- struct<span style="color:#f92672">{}{}</span>
-</span></span><span style="display:flex;"><span>- defer func<span style="color:#f92672">()</span> <span style="color:#f92672">{</span> &lt;-sem <span style="color:#f92672">}()</span>
-</span></span><span style="display:flex;"><span>+ <span style="color:#66d9ef">select</span> <span style="color:#f92672">{</span>
-</span></span><span style="display:flex;"><span>+ <span style="color:#66d9ef">case</span> sem &lt;- struct<span style="color:#f92672">{}{}</span>:
-</span></span><span style="display:flex;"><span>+     defer func<span style="color:#f92672">()</span> <span style="color:#f92672">{</span> &lt;-sem <span style="color:#f92672">}()</span>
-</span></span><span style="display:flex;"><span>+ <span style="color:#66d9ef">case</span> &lt;-ctx.Done<span style="color:#f92672">()</span>:
-</span></span><span style="display:flex;"><span>+     out &lt;- result<span style="color:#f92672">{}</span>
-</span></span><span style="display:flex;"><span>+     <span style="color:#66d9ef">return</span>
-</span></span><span style="display:flex;"><span>+ <span style="color:#f92672">}</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>- <span style="color:#66d9ef">select</span> <span style="color:#f92672">{</span>
-</span></span><span style="display:flex;"><span>- <span style="color:#66d9ef">case</span> &lt;-ctx.Done<span style="color:#f92672">()</span>:
-</span></span><span style="display:flex;"><span>-     out &lt;- result<span style="color:#f92672">{}</span>
-</span></span><span style="display:flex;"><span>-     <span style="color:#66d9ef">return</span>
-</span></span><span style="display:flex;"><span>- default:
-</span></span><span style="display:flex;"><span>- <span style="color:#f92672">}</span>
-</span></span><span style="display:flex;"><span>+ // removido — ctx.Done<span style="color:#f92672">()</span> já é tratado no acquire <span style="color:#66d9ef">do</span> semáforo</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">- sem &lt;- struct<span class="o">{}{}</span>
+</span></span><span class="line"><span class="cl">- defer func<span class="o">()</span> <span class="o">{</span> &lt;-sem <span class="o">}()</span>
+</span></span><span class="line"><span class="cl">+ <span class="k">select</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">+ <span class="k">case</span> sem &lt;- struct<span class="o">{}{}</span>:
+</span></span><span class="line"><span class="cl">+     defer func<span class="o">()</span> <span class="o">{</span> &lt;-sem <span class="o">}()</span>
+</span></span><span class="line"><span class="cl">+ <span class="k">case</span> &lt;-ctx.Done<span class="o">()</span>:
+</span></span><span class="line"><span class="cl">+     out &lt;- result<span class="o">{}</span>
+</span></span><span class="line"><span class="cl">+     <span class="k">return</span>
+</span></span><span class="line"><span class="cl">+ <span class="o">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">- <span class="k">select</span> <span class="o">{</span>
+</span></span><span class="line"><span class="cl">- <span class="k">case</span> &lt;-ctx.Done<span class="o">()</span>:
+</span></span><span class="line"><span class="cl">-     out &lt;- result<span class="o">{}</span>
+</span></span><span class="line"><span class="cl">-     <span class="k">return</span>
+</span></span><span class="line"><span class="cl">- default:
+</span></span><span class="line"><span class="cl">- <span class="o">}</span>
+</span></span><span class="line"><span class="cl">+ // removido — ctx.Done<span class="o">()</span> já é tratado no acquire <span class="k">do</span> semáforo</span></span></code></pre></div>
 </div>
 <p>
 Duas mudanças, ambas no mesmo arquivo, zero linhas de lógica de negócio alteradas:</p>
@@ -301,25 +303,25 @@ Duas mudanças, ambas no mesmo arquivo, zero linhas de lógica de negócio alter
 <p>O <code>defer func() { &lt;-sem }()</code> continua no caminho feliz: a goroutine que adquiriu o slot ainda precisa liberá-lo. E, crucialmente, ele está <em>dentro</em> do <code>case sem &lt;- struct{}{}:</code> só executa se o slot foi de fato adquirido. Se a goroutine caiu no <code>case &lt;-ctx.Done()</code>, não há token para devolver, e o <code>defer</code> dentro do <code>case</code> simplesmente não roda.</p>
 </div>
 </div>
-<div id="outline-container-headline-8" class="outline-3">
-<h3 id="headline-8">
+<div id="outline-container-headline-8" class="outline-2">
+<h2 id="headline-8">
 Por que isso é um padrão (e como evitar)
-</h3>
-<div id="outline-text-headline-8" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-8" class="outline-text-2">
 <p>
 Esse tipo de bug não é exclusivo do Ollanta. É comum em Go porque a linguagem te dá blocos de construção poderosos com goroutines, channels, <code>select</code>, <code>context</code> mas não te protege da ordem em que você os combina. Você pode escrever código que compila, passa nos testes e funciona há meses, mas que esconde uma bomba-relógio de concorrência. Algumas heurísticas que adotei depois dessa descoberta:</p>
 <p>
 <em>1. Todo <code>channel send</code> bloqueante que depende de contexto deveria ser um <code>select</code></em></p>
 <div class="src src-go">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// suspeito:</span>
-</span></span><span style="display:flex;"><span><span style="color:#a6e22e">ch</span> <span style="color:#f92672">&lt;-</span> <span style="color:#a6e22e">value</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// resiliente:</span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">select</span> {
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">case</span> <span style="color:#a6e22e">ch</span> <span style="color:#f92672">&lt;-</span> <span style="color:#a6e22e">value</span>:
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">case</span> <span style="color:#f92672">&lt;-</span><span style="color:#a6e22e">ctx</span>.<span style="color:#a6e22e">Done</span>():
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span>
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// suspeito:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="nx">ch</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nx">value</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="c1">// resiliente:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="k">select</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="k">case</span><span class="w"> </span><span class="nx">ch</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nx">value</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="k">case</span><span class="w"> </span><span class="o">&lt;-</span><span class="nx">ctx</span><span class="p">.</span><span class="nf">Done</span><span class="p">():</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">return</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
 <em>2. <code>ctx.Done()</code> antes de bloquear, não depois</em></p>
@@ -328,37 +330,37 @@ Se você precisa verificar cancelamento, faça-o <em>antes ou durante</em> a ope
 <p>
 <em>3. Teste o caminho do cancelamento forçando o pool ao limite</em></p>
 <div class="src src-go">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">TestExecutorShutdownWhenPoolFull</span>(<span style="color:#a6e22e">t</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">testing</span>.<span style="color:#a6e22e">T</span>) {
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">e</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">NewExecutor</span>(<span style="color:#66d9ef">nil</span>, <span style="color:#66d9ef">nil</span>)
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">e</span>.<span style="color:#a6e22e">workers</span> = <span style="color:#ae81ff">1</span>  <span style="color:#75715e">// só uma vaga — força contenção</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">files</span> <span style="color:#f92672">:=</span> make([]<span style="color:#a6e22e">DiscoveredFile</span>, <span style="color:#ae81ff">2</span>)
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">files</span>[<span style="color:#ae81ff">0</span>] = <span style="color:#a6e22e">DiscoveredFile</span>{<span style="color:#a6e22e">Path</span>: <span style="color:#e6db74">&#34;slow.go&#34;</span>}   <span style="color:#75715e">// ocupa a vaga por 10s</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">files</span>[<span style="color:#ae81ff">1</span>] = <span style="color:#a6e22e">DiscoveredFile</span>{<span style="color:#a6e22e">Path</span>: <span style="color:#e6db74">&#34;fast.go&#34;</span>}   <span style="color:#75715e">// vai esperar na fila</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">ctx</span>, <span style="color:#a6e22e">cancel</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">context</span>.<span style="color:#a6e22e">WithTimeout</span>(<span style="color:#a6e22e">context</span>.<span style="color:#a6e22e">Background</span>(), <span style="color:#ae81ff">100</span><span style="color:#f92672">*</span><span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Millisecond</span>)
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">defer</span> <span style="color:#a6e22e">cancel</span>()
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">e</span>.<span style="color:#a6e22e">Run</span>(<span style="color:#a6e22e">ctx</span>, <span style="color:#a6e22e">files</span>, <span style="color:#a6e22e">AllowAllProfilePolicy</span>())
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> !<span style="color:#a6e22e">errors</span>.<span style="color:#a6e22e">Is</span>(<span style="color:#a6e22e">err</span>, <span style="color:#a6e22e">context</span>.<span style="color:#a6e22e">DeadlineExceeded</span>) {
-</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">t</span>.<span style="color:#a6e22e">Fatal</span>(<span style="color:#e6db74">&#34;esperava deadline exceeded, obteve&#34;</span>, <span style="color:#a6e22e">err</span>)
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span><span class="w"> </span><span class="nf">TestExecutorShutdownWhenPoolFull</span><span class="p">(</span><span class="nx">t</span><span class="w"> </span><span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">e</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nf">NewExecutor</span><span class="p">(</span><span class="kc">nil</span><span class="p">,</span><span class="w"> </span><span class="kc">nil</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">e</span><span class="p">.</span><span class="nx">workers</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">1</span><span class="w">  </span><span class="c1">// só uma vaga — força contenção</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">files</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nb">make</span><span class="p">([]</span><span class="nx">DiscoveredFile</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">files</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">DiscoveredFile</span><span class="p">{</span><span class="nx">Path</span><span class="p">:</span><span class="w"> </span><span class="s">&#34;slow.go&#34;</span><span class="p">}</span><span class="w">   </span><span class="c1">// ocupa a vaga por 10s</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">files</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="nx">DiscoveredFile</span><span class="p">{</span><span class="nx">Path</span><span class="p">:</span><span class="w"> </span><span class="s">&#34;fast.go&#34;</span><span class="p">}</span><span class="w">   </span><span class="c1">// vai esperar na fila</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">cancel</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nf">WithTimeout</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nf">Background</span><span class="p">(),</span><span class="w"> </span><span class="mi">100</span><span class="o">*</span><span class="nx">time</span><span class="p">.</span><span class="nx">Millisecond</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">defer</span><span class="w"> </span><span class="nf">cancel</span><span class="p">()</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nf">Run</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span><span class="w"> </span><span class="nx">files</span><span class="p">,</span><span class="w"> </span><span class="nf">AllowAllProfilePolicy</span><span class="p">())</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">!</span><span class="nx">errors</span><span class="p">.</span><span class="nf">Is</span><span class="p">(</span><span class="nx">err</span><span class="p">,</span><span class="w"> </span><span class="nx">context</span><span class="p">.</span><span class="nx">DeadlineExceeded</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nx">t</span><span class="p">.</span><span class="nf">Fatal</span><span class="p">(</span><span class="s">&#34;esperava deadline exceeded, obteve&#34;</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="p">}</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
 Sem a correção, esse teste <em>trava por 10 segundos</em>, tempo suficiente para ninguém nunca rodá-lo. Com a correção, ele termina em 100ms. Um teste que demora 10 segundos é um teste que não existe na prática.</p>
 <hr>
 </div>
 </div>
-<div id="outline-container-headline-9" class="outline-3">
-<h3 id="headline-9">
+<div id="outline-container-headline-9" class="outline-2">
+<h2 id="headline-9">
 O que aprendi com isso
-</h3>
-<div id="outline-text-headline-9" class="outline-text-3">
+</h2>
+<div id="outline-text-headline-9" class="outline-text-2">
 <p>
 Canais em Go parecem simples, mas o diabo está na ordem. O padrão de semáforo com channel é ensinado em todos os tutoriais de <a href="https://go.dev/tour/concurrency/1">concorrência em Go</a>, mas poucos mencionam a interação com <a href="https://pkg.go.dev/context">contextos canceláveis</a>. A maioria dos exemplos assume que a operação vai completar rápido, mas em produção não vai!</p>
 <p>
-O resumo em números: duas linhas de diff, zero mudanças de lógica. A diferença não está no tempo total de shutdown — que continua limitado pelos workers ativos (~30 segundos nos piores casos) — mas em <em>quem</em> ocupa recursos durante a espera. </p>
+O resumo em números: duas linhas de diff, zero mudanças de lógica. A diferença não está no tempo total de shutdown — que continua limitado pelos workers ativos (~30 segundos nos piores casos) — mas em <em>quem</em> ocupa recursos durante a espera.</p>
 <p>
 Antes, 184 goroutines ociosas ficavam empilhadas no semáforo; depois, elas saem de cena no primeiro milissegundo, deixando apenas o trabalho realmente útil consumindo CPU e memória. Os workers que já estão processando continuam até terminar, e isso é exatamente o comportamento esperado de um graceful shutdown.</p>
 <table>
@@ -394,8 +396,6 @@ No Ollanta, essa correção de duas linhas eliminou 184 goroutines ociosas que s
 </blockquote>
 </div>
 </div>
-</div>
-</div>
 
   </div>
 </article>
@@ -405,6 +405,7 @@ No Ollanta, essa correção de duas linhas eliminou 184 goroutines ociosas que s
     <footer>
     </footer>
   </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
 <script src="/vendor/prism/prism-core.min.js"></script>
 <script src="/vendor/prism/prism-clike.min.js"></script>
 <script src="/vendor/prism/prism-bash.min.js"></script>
@@ -421,7 +422,19 @@ No Ollanta, essa correção de duas linhas eliminou 184 goroutines ociosas que s
 <script src="/vendor/prism/prism-sql.min.js"></script>
 <script src="/vendor/prism/prism-autoloader.min.js"></script>
   <script src="/vendor/mermaid/mermaid.min.js"></script>
-  <script>mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#bb86fc', primaryTextColor: '#e8e0f0', primaryBorderColor: '#6b58a0', lineColor: '#c792ea', secondaryColor: '#2d1b4e', tertiaryColor: '#362258' } });</script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
   <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
   <script>
     var btn = document.querySelector('.back-to-top');

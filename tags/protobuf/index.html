@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:,">
   <title>Protobuf — scovl</title>
-  <link rel="stylesheet" href="/css/main.css?v=2">
+  <link rel="stylesheet" href="/css/main.css?v=3">
   <link rel="stylesheet" href="/vendor/fonts/fonts.css">
-  <link rel="stylesheet" href="/vendor/prism/prism-tomorrow.min.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
 </head>
 <body>
   <div class="frame">
@@ -38,6 +38,7 @@
     <footer>
     </footer>
   </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
 <script src="/vendor/prism/prism-core.min.js"></script>
 <script src="/vendor/prism/prism-clike.min.js"></script>
 <script src="/vendor/prism/prism-bash.min.js"></script>
@@ -54,7 +55,19 @@
 <script src="/vendor/prism/prism-sql.min.js"></script>
 <script src="/vendor/prism/prism-autoloader.min.js"></script>
   <script src="/vendor/mermaid/mermaid.min.js"></script>
-  <script>mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#bb86fc', primaryTextColor: '#e8e0f0', primaryBorderColor: '#6b58a0', lineColor: '#c792ea', secondaryColor: '#2d1b4e', tertiaryColor: '#362258' } });</script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
   <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
   <script>
     var btn = document.querySelector('.back-to-top');

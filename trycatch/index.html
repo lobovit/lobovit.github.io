@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:,">
   <title>Try/Catch: Origem, Propósito e o Erro de Usá-lo como Fluxo Lógico — scovl</title>
-  <link rel="stylesheet" href="/css/main.css?v=2">
+  <link rel="stylesheet" href="/css/main.css?v=3">
   <link rel="stylesheet" href="/vendor/fonts/fonts.css">
-  <link rel="stylesheet" href="/vendor/prism/prism-tomorrow.min.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
 </head>
 <body>
   <div class="frame">
@@ -33,7 +33,7 @@
 <p>
 O tratamento de exceções surgiu para separar o fluxo normal do programa do tratamento de situações inesperadas, como falhas de hardware ou erros de entrada/saída. Inicialmente, programas usavam códigos de retorno para lidar com erros, mas isso era propenso a falhas e difícil de manter. </p>
 <p>
-O modelo de tratamento estruturado de exceções evoluiu desde os anos 60, ganhando formas mais concretas em linguagens como <a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a>, <a href="https://en.wikipedia.org/wiki/Ada_(programming_language">Ada</a>), <a href="https://en.wikipedia.org/wiki/C%2B%2B">C++</a> e <a href="https://en.wikipedia.org/wiki/Java_(programming_language">Java</a>), e depois sendo adotado por outras como <a href="https://en.wikipedia.org/wiki/JavaScript">JavaScript</a>. </p>
+O modelo de tratamento estruturado de exceções evoluiu desde os anos 60, ganhando formas mais concretas em linguagens como <a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a>, <a href="https://en.wikipedia.org/wiki/Ada_(programming_language)">Ada</a>), <a href="https://en.wikipedia.org/wiki/C%2B%2B">C++</a> e <a href="https://en.wikipedia.org/wiki/Java_(programming_language)">Java</a>), e depois sendo adotado por outras como <a href="https://en.wikipedia.org/wiki/JavaScript">JavaScript</a>. </p>
 <p>
 O objetivo sempre foi permitir que programas lidassem de forma controlada com erros imprevisíveis, sem travar o sistema. As exceções não foram criadas para controlar o fluxo normal do programa, mas sim para tratar casos realmente excepcionais. Neste artigo, vamos ver por que usar <code>try/catch</code> como controle de fluxo é um erro e qual é o seu propósito real.</p>
 <div id="outline-container-headline-1" class="outline-3">
@@ -46,8 +46,8 @@ A linguagem <em><a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a></em> (1964
 <p>
 Esse mecanismo de <em><a href="https://en.wikipedia.org/wiki/Error_handling#Error_handlers">handlers</a></em> de erro já demonstrava a vantagem de estruturar o código para lidar separadamente com situações de erro. Em essência, o modelo PL/I possuía:</p>
 <p>
-/ /Bloco Protegido* – equivalente funcional ao bloco <code>try</code>, delimitando o código onde erros poderiam ocorrer.
-/ /Rotina de Tratamento (Handler)* – definida via construções <code>ON ... DO</code>, análoga ao <code>catch</code> atual, executada caso uma condição excepcional fosse detectada.</p>
+/ /Bloco Protegido* , equivalente funcional ao bloco <code>try</code>, delimitando o código onde erros poderiam ocorrer.
+/ /Rotina de Tratamento (Handler)* , definida via construções <code>ON ... DO</code>, análoga ao <code>catch</code> atual, executada caso uma condição excepcional fosse detectada.</p>
 <p>
 Um exemplo simplificado em pseudo-sintaxe inspirada no <a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a> ilustrava essa estrutura:</p>
 <div class="src src-pli">
@@ -60,30 +60,30 @@ Um exemplo simplificado em pseudo-sintaxe inspirada no <a href="https://en.wikip
 END;</code></pre>
 </div>
 <p>
-Desde cedo, a ideia de separar o código principal do tratamento de erros foi vista como um grande avanço, pois deixava os programas mais organizados e fáceis de entender. O <a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a> trouxe esse conceito pioneiramente em 1964, mas quem realmente mudou o jogo foi o <em><a href="https://en.wikipedia.org/wiki/Lisp_(programming_language">Lisp</a>)</em>. </p>
+Desde cedo, a ideia de separar o código principal do tratamento de erros foi vista como um grande avanço, pois deixava os programas mais organizados e fáceis de entender. O <a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a> trouxe esse conceito pioneiramente em 1964, mas quem realmente mudou o jogo foi o <em><a href="https://en.wikipedia.org/wiki/Lisp_(programming_language)">Lisp</a></em>. </p>
 <p>
-Versões do <a href="https://en.wikipedia.org/wiki/Lisp_(programming_language">Lisp</a>) nos anos 1970 introduziram as funções <code>catch</code> e <code>throw</code> como um mecanismo de <em>controle de fluxo não-local</em> — uma forma de &#34;saltar&#34; diretamente para um ponto específico da pilha de chamadas, ignorando o código intermediário. É importante distinguir que <code>catch/throw</code> no Lisp não eram propriamente um sistema de tratamento de exceções, mas sim uma ferramenta de controle de fluxo.</p>
+Versões do <a href="https://en.wikipedia.org/wiki/Lisp_(programming_language)">Lisp</a> nos anos 1970 introduziram as funções <code>catch</code> e <code>throw</code> como um mecanismo de <em>controle de fluxo não-local</em> , uma forma de &#34;saltar&#34; diretamente para um ponto específico da pilha de chamadas, ignorando o código intermediário. É importante distinguir que <code>catch/throw</code> no Lisp não eram propriamente um sistema de tratamento de exceções, mas sim uma ferramenta de controle de fluxo.</p>
 <p>
 Basicamente, marcava-se um ponto de captura com uma <em>tag</em> simbólica usando <code>catch</code> e, quando necessário, utilizava-se <code>throw</code> com a mesma tag para desviar imediatamente a execução para lá. Esse mecanismo era útil para sair de loops aninhados ou retornar de funções profundamente encadeadas, mas não oferecia tipagem de erros, handlers especializados ou capacidade de reinício como um sistema de exceções moderno.</p>
 <p>
-O verdadeiro avanço do Lisp no tratamento de exceções veio posteriormente com o <em><a href="https://en.wikipedia.org/wiki/Common_Lisp#Condition_system">Common Lisp Condition System</a></em>, que introduziu conceitos sofisticados como <em>handlers</em> tipados, <em>restarts</em> (pontos de recuperação) e a separação entre sinalização (<code>signal</code>) e tratamento de condições. Este sistema permite não apenas capturar erros, mas também corrigi-los e continuar a execução — um paradigma que vai além do simples <code>try/catch</code> e influenciou sistemas modernos de tratamento de erros.</p>
+O verdadeiro avanço do Lisp no tratamento de exceções veio posteriormente com o <em><a href="https://en.wikipedia.org/wiki/Common_Lisp#Condition_system">Common Lisp Condition System</a></em>, que introduziu conceitos sofisticados como <em>handlers</em> tipados, <em>restarts</em> (pontos de recuperação) e a separação entre sinalização (<code>signal</code>) e tratamento de condições. Este sistema permite não apenas capturar erros, mas também corrigi-los e continuar a execução , um paradigma que vai além do simples <code>try/catch</code> e influenciou sistemas modernos de tratamento de erros.</p>
 <p>
-A distinção é crucial: enquanto <code>catch/throw</code> eram ferramentas de controle de fluxo (similares a um <code>goto</code> estruturado), o Condition System modelava verdadeiramente o tratamento de situações excepcionais com tipagem, recuperação e estratégias de reinício — conceitos que, embora formalizados após a introdução de exceções no C++, influenciaram linguagens posteriores como <a href="https://en.wikipedia.org/wiki/Java_(programming_language">Java</a>) e seguem como referência para sistemas modernos de tratamento de erros.</p>
+A distinção é crucial: enquanto <code>catch/throw</code> eram ferramentas de controle de fluxo (similares a um <code>goto</code> estruturado), o Condition System modelava verdadeiramente o tratamento de situações excepcionais com tipagem, recuperação e estratégias de reinício , conceitos que, embora formalizados após a introdução de exceções no C++, influenciaram linguagens posteriores como <a href="https://en.wikipedia.org/wiki/Java_(programming_language)">Java</a> e seguem como referência para sistemas modernos de tratamento de erros.</p>
 <p>
 Consolidando essa evolução histórica, linguagens como <a href="https://en.wikipedia.org/wiki/C%2B%2B">C++</a> formalizaram e refinaram esses conceitos pioneiros por meio das estruturas <em><code>try</code></em> e <em><code>catch</code></em>, introduzindo um sistema de exceções baseado em tipos. Em <a href="https://en.wikipedia.org/wiki/C%2B%2B">C++</a>, por exemplo, podemos proteger um bloco de código e tratar erros assim:</p>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">try</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Código que pode lançar exceções
-</span></span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>runtime_error(<span style="color:#e6db74">&#34;Erro!&#34;</span>);
-</span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">catch</span> (<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>exception<span style="color:#f92672">&amp;</span> e) {
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Tratamento da exceção
-</span></span></span><span style="display:flex;"><span>    std<span style="color:#f92672">::</span>cerr <span style="color:#f92672">&lt;&lt;</span> <span style="color:#e6db74">&#34;Exceção capturada: &#34;</span> <span style="color:#f92672">&lt;&lt;</span> e.what();
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">try</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Código que pode lançar exceções
+</span></span></span><span class="line"><span class="cl">    <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&#34;Erro!&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">exception</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Tratamento da exceção
+</span></span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">&#34;Exceção capturada: &#34;</span> <span class="o">&lt;&lt;</span> <span class="n">e</span><span class="p">.</span><span class="n">what</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
-O objetivo principal desse mecanismo é ajudar os programadores a lidar com problemas que ocorram durante a execução de forma organizada, separando claramente a lógica normal do tratamento de erros. Ele leva adiante – e aprimora – os princípios introduzidos por linguagens como <a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a> e <a href="https://en.wikipedia.org/wiki/Lisp_(programming_language">Lisp</a>), porém com uma implementação mais robusta e integrada à tipagem da linguagem.</p>
+O objetivo principal desse mecanismo é ajudar os programadores a lidar com problemas que ocorram durante a execução de forma organizada, separando claramente a lógica normal do tratamento de erros. Ele leva adiante , e aprimora , os princípios introduzidos por linguagens como <a href="https://en.wikipedia.org/wiki/PL/I">PL/I</a> e <a href="https://en.wikipedia.org/wiki/Lisp_(programming_language)">Lisp</a>, porém com uma implementação mais robusta e integrada à tipagem da linguagem.</p>
 <blockquote>
-<p>Nesse ponto, vale destacar um princípio essencial do livro <em><a href="https://en.wikipedia.org/wiki/The_Pragmatic_Programmer">The Pragmatic Programmer</a></em>, que recomenda: “Crash early” — ou seja, falhe cedo e com clareza quando algo realmente inesperado ocorre. Segundo os autores, &#34;dead programs tell no lies&#34; — um programa que trava rapidamente pode ser mais confiável que um inválido operando silenciosamente com dados corrompidos. Isso reforça o propósito original das exceções: detectar falhas graves imediatamente, evitando consequências imprevisíveis.</p>
+<p>Nesse ponto, vale destacar um princípio essencial do livro <em><a href="https://en.wikipedia.org/wiki/The_Pragmatic_Programmer">The Pragmatic Programmer</a></em>, que recomenda: “Crash early” , ou seja, falhe cedo e com clareza quando algo realmente inesperado ocorre. Segundo os autores, &#34;dead programs tell no lies&#34; , um programa que trava rapidamente pode ser mais confiável que um inválido operando silenciosamente com dados corrompidos. Isso reforça o propósito original das exceções: detectar falhas graves imediatamente, evitando consequências imprevisíveis.</p>
 </blockquote>
 <p>
 Antes de explorarmos os detalhes técnicos e as melhores práticas do uso de <code>try/catch</code>, é importante entender o propósito fundamental desse mecanismo no contexto da programação moderna. O tratamento estruturado de exceções surgiu para resolver problemas clássicos de legibilidade, robustez e manutenção do código, especialmente em situações onde o fluxo normal de execução pode ser interrompido por eventos inesperados. </p>
@@ -93,7 +93,7 @@ A seguir, vamos analisar como o <code>try/catch</code> evoluiu historicamente, q
 <li><em>Problemas com Códigos de Erro</em>:
 Com códigos de retorno, o chamador pode simplesmente esquecer de verificar se ocorreu um erro. Quando isso acontece, o programa continua executando como se tudo estivesse normal, mesmo que tenha ocorrido um problema sério. </li>
 </ol>
-<p>O exemplo abaixo ilustra como isso pode levar a situações indesejadas – a função <code>read_int()</code> retorna um código indicando erro ou sucesso, mas se quem a chamou não conferir esse código, um valor inválido poderá ser usado em cálculo a seguir:</p>
+<p>O exemplo abaixo ilustra como isso pode levar a situações indesejadas , a função <code>read_int()</code> retorna um código indicando erro ou sucesso, mas se quem a chamou não conferir esse código, um valor inválido poderá ser usado em cálculo a seguir:</p>
 <p>
 <img src="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/01.png" alt="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/01.png" title="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/01.png" /></p>
 <p>
@@ -102,7 +102,7 @@ No diagrama, vê-se um fluxo onde <code>read_int()</code> pode indicar uma falha
 <li><em>Separação de Preocupações</em>:
 Com exceções, a detecção de um erro (na função chamada) fica separada do tratamento do erro (na função chamadora). Isso permite um código mais limpo, em que a lógica principal não fica poluída por verificações de erro a cada passo. O tratamento pode ser centralizado em um único lugar, geralmente no nível mais alto da aplicação, enquanto o fluxo normal de execução permanece claro. </li>
 </ol>
-<p>O diagrama abaixo ilustra essa separação: o caminho principal (em azul) representa a execução bem-sucedida – inicia, processa dados, salva resultados, envia notificação e finaliza com sucesso. Porém, se em qualquer dessas etapas ocorrer uma exceção, o fluxo é desviado para o bloco de tratamento de erros (em vermelho), onde o erro é registrado e o programa termina de forma controlada.</p>
+<p>O diagrama abaixo ilustra essa separação: o caminho principal (em azul) representa a execução bem-sucedida , inicia, processa dados, salva resultados, envia notificação e finaliza com sucesso. Porém, se em qualquer dessas etapas ocorrer uma exceção, o fluxo é desviado para o bloco de tratamento de erros (em vermelho), onde o erro é registrado e o programa termina de forma controlada.</p>
 <p>
 <img src="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/02.png" alt="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/02.png" title="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/02.png" /></p>
 <p>
@@ -111,15 +111,15 @@ Esse diagrama destaca como o código principal pode se concentrar na lógica de 
 <li><em>Erros Não Podem Ser Ignorados</em>:
 Se uma exceção não for capturada por nenhum handler correspondente, o C++ chama <code>std::terminate()</code>, que encerra o programa de forma abrupta. Diferentemente de um código de erro que pode ser ignorado sem querer, uma exceção não tratada provoca a finalização do programa, garantindo que erros críticos não passem despercebidos. </li>
 </ol>
-<p>O diagrama a seguir mostra dois fluxos possíveis de um programa simples: no caminho normal, a função é executada e imprime uma mensagem (&#34;Esta linha…&#34;) antes de retornar ao <code>main</code> e encerrar normalmente; já no caminho de erro, a função lança uma exceção (<code>std::runtime_error</code>), que não é capturada em nenhuma parte do programa, resultando na <em>chamada imediata de <code>std::terminate()</code></em> e encerramento abrupto da aplicação. Note que no diagrama, o caminho vermelho representa o comportamento real do C++: unwinding incompleto seguido de terminação forçada.</p>
+<p>O diagrama a seguir mostra dois fluxos possíveis de um programa simples: no caminho normal, a função é executada e imprime uma mensagem (&#34;Esta linha…&#34;) antes de retornar ao <code>main</code> e encerrar normalmente; já no caminho de erro, a função lança uma exceção (<code>std::runtime_error</code>), que não é capturada em nenhuma parte do programa, resultando na <em>chamada imediata de <code>std::terminate()</code></em> e encerramento abrupto da aplicação. Note que no diagrama, o caminho vermelho representa o comportamento típico no GCC/Clang: <code>std::terminate()</code> é chamado, e o unwinding pode ser incompleto (dependendo da implementação).</p>
 <p>
 <img src="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/03.png" alt="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/03.png" title="https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/03.png" /></p>
 <p>
 Podemos observar, em rosa, o ponto onde &#34;dá ruim&#34; (onde a exceção é lançada) e, em vermelho, o caminho do erro levando à chamada de <code>std::terminate()</code>. Esse comportamento é intencional: como o próprio <a href="https://en.wikipedia.org/wiki/Bjarne_Stroustrup">Stroustrup</a> explica, <em>&#34;se uma função encontrar um erro que não consiga resolver, ela lança uma exceção; alguma função acima na hierarquia de chamadas pode capturá-la, mas, se ninguém o fizer, o programa termina&#34;</em>.</p>
 <p>
-<em>Detalhes do Comportamento no Diagrama</em>: O caminho vermelho &#34;Exceção não capturada → <code>std::terminate()</code> chamado&#34; reflete o comportamento real do C++. Diferentemente de linguagens que fazem unwinding completo antes de terminar, o C++ chama <code>std::terminate()</code> imediatamente quando nenhum handler é encontrado, interrompendo o processo de unwinding. Isso significa que objetos em frames superiores (como variáveis locais em <code>main</code>) podem não ter seus destrutores executados. </p>
+<em>Detalhes do Comportamento no Diagrama</em>: O caminho vermelho &#34;Exceção não capturada → <code>std::terminate()</code> chamado&#34; reflete o comportamento padrão do GCC/Clang. O comportamento de unwinding para exceções não capturadas é <em>definido pela implementação</em> (implementation-defined): algumas plataformas executam unwinding completo antes de terminar, outras não. No GCC e Clang, por padrão, <code>std::terminate()</code> é chamado sem unwinding completo, o que significa que objetos em frames superiores (como variáveis locais em <code>main</code>) podem não ter seus destrutores executados.</p>
 <p>
-<em>Importante sobre Stack Unwinding</em>: Quando uma exceção não é capturada, o C++ <em>não</em> executa o stack unwinding completo. Em vez disso, <code>std::terminate()</code> é chamado imediatamente, o que significa que <em>destrutores só são chamados para objetos nos frames de pilha que foram efetivamente desempilhados até o ponto onde a exceção foi lançada</em>. Objetos em frames superiores (incluindo objetos locais em <code>main</code>) podem não ter seus destrutores executados.</p>
+<em>Importante sobre Stack Unwinding</em>: Quando uma exceção não é capturada, o comportamento do C++ é <em>definido pela implementação</em> (implementation-defined): algumas implementações executam o stack unwinding completo antes de chamar <code>std::terminate()</code>, outras chamam <code>std::terminate()</code> imediatamente sem unwinding. No GCC e Clang, por padrão, <code>std::terminate()</code> é chamado sem unwinding completo , destrutores só são executados para objetos nos frames de pilha que foram efetivamente desempilhados. Objetos em frames superiores podem não ter seus destrutores executados, dependendo da implementação.</p>
 <p>
 Embora terminar a aplicação possa parecer drástico, isso na verdade evita consequências piores, como continuar a execução com dados corrompidos. Diferente dos códigos de erro (em que o programador <em>precisa</em> lembrar de verificar cada retorno), as exceções forçam uma decisão: ou você trata o problema em algum lugar, ou o programa será finalizado. Assim, falhas graves não &#34;passam batido&#34;. </p>
 <p>
@@ -129,11 +129,11 @@ A separação clara entre lógica principal e lógica de erro permite a liberaç
 </div>
 <div id="outline-container-headline-2" class="outline-3">
 <h3 id="headline-2">
-<em>Principais Usos do <code>try/catch</code> — Exemplos Práticos em Diferentes Contextos</em>
+<em>Principais Usos do <code>try/catch</code> , Exemplos Práticos em Diferentes Contextos</em>
 </h3>
 <div id="outline-text-headline-2" class="outline-text-3">
 <p>
-O bloco <code>try/catch</code> é fundamental para lidar com eventos <em>realmente excepcionais</em> — aqueles que interrompem o fluxo normal e não podem ser resolvidos apenas com valores de retorno ou verificações simples. Exemplos clássicos: falta de memória, falhas de <em><a href="https://en.wikipedia.org/wiki/Input/output">I/O</a></em>, corrupção de dados, ou erros lógicos imprevistos.</p>
+O bloco <code>try/catch</code> é fundamental para lidar com eventos <em>realmente excepcionais</em> , aqueles que interrompem o fluxo normal e não podem ser resolvidos apenas com valores de retorno ou verificações simples. Exemplos clássicos: falta de memória, falhas de <em><a href="https://en.wikipedia.org/wiki/Input/output">I/O</a></em>, corrupção de dados, ou erros lógicos imprevistos.</p>
 <p>
 A seguir, os principais cenários onde o uso do <code>try/catch</code> é apropriado, já com exemplos comentados em cada contexto:</p>
 <div id="outline-container-headline-3" class="outline-4">
@@ -142,56 +142,56 @@ Falhas de I/O (Arquivos, Rede, Dispositivos)
 </h4>
 <div id="outline-text-headline-3" class="outline-text-4">
 <p>
-Situações em que o programa depende de recursos externos — um arquivo, uma conexão de rede, um socket — e o resultado pode variar a qualquer momento, independentemente da lógica do seu código.</p>
+Situações em que o programa depende de recursos externos , um arquivo, uma conexão de rede, um socket , e o resultado pode variar a qualquer momento, independentemente da lógica do seu código.</p>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">try</span> {
-</span></span><span style="display:flex;"><span>    std<span style="color:#f92672">::</span>ifstream arq(<span style="color:#e6db74">&#34;dados.txt&#34;</span>);
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Por padrão, streams C++ NÃO lançam exceções.
-</span></span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Para habilitá-las, configure os bits de exceção:
-</span></span></span><span style="display:flex;"><span>    arq.exceptions(std<span style="color:#f92672">::</span>ios<span style="color:#f92672">::</span>failbit <span style="color:#f92672">|</span> std<span style="color:#f92672">::</span>ios<span style="color:#f92672">::</span>badbit);
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    std<span style="color:#f92672">::</span>string linha;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (std<span style="color:#f92672">::</span>getline(arq, linha))  <span style="color:#75715e">// agora pode lançar exceção
-</span></span></span><span style="display:flex;"><span>        processar(linha);
-</span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">catch</span> (<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>ios_base<span style="color:#f92672">::</span>failure<span style="color:#f92672">&amp;</span> e) {
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Tipo específico para erros de I/O quando exceções estão habilitadas
-</span></span></span><span style="display:flex;"><span>    logErro(<span style="color:#e6db74">&#34;Falha de I/O: &#34;</span> <span style="color:#f92672">+</span> std<span style="color:#f92672">::</span>string{e.what()});
-</span></span><span style="display:flex;"><span>    logErro(<span style="color:#e6db74">&#34;Código de erro: &#34;</span> <span style="color:#f92672">+</span> std<span style="color:#f92672">::</span>to_string(e.code().value()));
-</span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">catch</span> (<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>exception<span style="color:#f92672">&amp;</span> e) {
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Captura outros tipos de erro (ex: problemas em processar())
-</span></span></span><span style="display:flex;"><span>    logErro(<span style="color:#e6db74">&#34;Erro geral: &#34;</span> <span style="color:#f92672">+</span> std<span style="color:#f92672">::</span>string{e.what()});
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">try</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">ifstream</span> <span class="n">arq</span><span class="p">(</span><span class="s">&#34;dados.txt&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Por padrão, streams C++ NÃO lançam exceções.
+</span></span></span><span class="line"><span class="cl">    <span class="c1">// Para habilitá-las, configure os bits de exceção:
+</span></span></span><span class="line"><span class="cl">    <span class="n">arq</span><span class="p">.</span><span class="n">exceptions</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">ios</span><span class="o">::</span><span class="n">failbit</span> <span class="o">|</span> <span class="n">std</span><span class="o">::</span><span class="n">ios</span><span class="o">::</span><span class="n">badbit</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">linha</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">while</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">getline</span><span class="p">(</span><span class="n">arq</span><span class="p">,</span> <span class="n">linha</span><span class="p">))</span>  <span class="c1">// agora pode lançar exceção
+</span></span></span><span class="line"><span class="cl">        <span class="n">processar</span><span class="p">(</span><span class="n">linha</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">ios_base</span><span class="o">::</span><span class="n">failure</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Tipo específico para erros de I/O quando exceções estão habilitadas
+</span></span></span><span class="line"><span class="cl">    <span class="n">logErro</span><span class="p">(</span><span class="s">&#34;Falha de I/O: &#34;</span> <span class="o">+</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">{</span><span class="n">e</span><span class="p">.</span><span class="n">what</span><span class="p">()});</span>
+</span></span><span class="line"><span class="cl">    <span class="n">logErro</span><span class="p">(</span><span class="s">&#34;Código de erro: &#34;</span> <span class="o">+</span> <span class="n">std</span><span class="o">::</span><span class="n">to_string</span><span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">code</span><span class="p">().</span><span class="n">value</span><span class="p">()));</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">exception</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Captura outros tipos de erro (ex: problemas em processar())
+</span></span></span><span class="line"><span class="cl">    <span class="n">logErro</span><span class="p">(</span><span class="s">&#34;Erro geral: &#34;</span> <span class="o">+</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">{</span><span class="n">e</span><span class="p">.</span><span class="n">what</span><span class="p">()});</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
 / /Fluxo normal:* abrir, ler, processar.
 / /Fluxo de erro:* qualquer falha salta direto para o <code>catch</code>.</p>
 <blockquote>
-<p><em>Importante sobre Streams C++</em>: Por padrão, as streams (<code>std::ifstream</code>, <code>std::ofstream</code>, etc.) <em>não lançam exceções</em> quando encontram erros — elas apenas definem bits de estado interno (<code>failbit</code>, <code>badbit</code>, <code>eofbit</code>) que devem ser verificados manualmente. Para que uma stream lance exceções automaticamente, é necessário configurar explicitamente quais condições devem disparar exceções usando o método <code>exceptions()</code>.</p>
+<p><em>Importante sobre Streams C++</em>: Por padrão, as streams (<code>std::ifstream</code>, <code>std::ofstream</code>, etc.) <em>não lançam exceções</em> quando encontram erros , elas apenas definem bits de estado interno (<code>failbit</code>, <code>badbit</code>, <code>eofbit</code>) que devem ser verificados manualmente. Para que uma stream lance exceções automaticamente, é necessário configurar explicitamente quais condições devem disparar exceções usando o método <code>exceptions()</code>.</p>
 </blockquote>
 <p>
 No exemplo acima, <code>arq.exceptions(std::ios::failbit | std::ios::badbit)</code> instrui a stream a lançar uma exceção do tipo <code>std::ios_base::failure</code> sempre que ocorrer uma falha de operação (<code>failbit</code>) ou um erro irrecuperável (<code>badbit</code>). Sem essa configuração, operações como <code>std::getline()</code> ou <code>read()</code> falhariam silenciosamente, exigindo verificações manuais de estado.</p>
 <p>
 <em>Alternativa com Códigos de Status</em> (quando exceções não estão habilitadas):</p>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// Tratamento tradicional sem exceções - verificação manual
-</span></span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>ifstream arq(<span style="color:#e6db74">&#34;dados.txt&#34;</span>);
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>arq.is_open()) {
-</span></span><span style="display:flex;"><span>    logErro(<span style="color:#e6db74">&#34;Erro: não foi possível abrir dados.txt&#34;</span>);
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span>;
-</span></span><span style="display:flex;"><span>}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>string linha;
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">while</span> (std<span style="color:#f92672">::</span>getline(arq, linha)) {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (arq.bad()) {
-</span></span><span style="display:flex;"><span>        logErro(<span style="color:#e6db74">&#34;Erro irrecuperável durante leitura&#34;</span>);
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">break</span>;
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (arq.fail() <span style="color:#f92672">&amp;&amp;</span> <span style="color:#f92672">!</span>arq.eof()) {
-</span></span><span style="display:flex;"><span>        logErro(<span style="color:#e6db74">&#34;Falha na operação de leitura&#34;</span>);
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">break</span>;
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    processar(linha);
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="c1">// Tratamento tradicional sem exceções - verificação manual
+</span></span></span><span class="line"><span class="cl"><span class="n">std</span><span class="o">::</span><span class="n">ifstream</span> <span class="n">arq</span><span class="p">(</span><span class="s">&#34;dados.txt&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">arq</span><span class="p">.</span><span class="n">is_open</span><span class="p">())</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">logErro</span><span class="p">(</span><span class="s">&#34;Erro: não foi possível abrir dados.txt&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">linha</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="k">while</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">getline</span><span class="p">(</span><span class="n">arq</span><span class="p">,</span> <span class="n">linha</span><span class="p">))</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">arq</span><span class="p">.</span><span class="n">bad</span><span class="p">())</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">logErro</span><span class="p">(</span><span class="s">&#34;Erro irrecuperável durante leitura&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="k">break</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">arq</span><span class="p">.</span><span class="n">fail</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">arq</span><span class="p">.</span><span class="n">eof</span><span class="p">())</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">logErro</span><span class="p">(</span><span class="s">&#34;Falha na operação de leitura&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="k">break</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="n">processar</span><span class="p">(</span><span class="n">linha</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
 <em>Comparação</em>: Com exceções habilitadas, o <code>try/catch</code> separa claramente o fluxo principal do tratamento de erros usando <code>std::ios_base::failure</code> específico. Sem exceções, você deve verificar manualmente os estados da stream (<code>bad()</code>, <code>fail()</code>, <code>eof()</code>) após cada operação. A abordagem com exceções mantém o código principal mais limpo, enquanto códigos de status oferecem controle mais granular sobre cada tipo de falha.</p>
@@ -209,31 +209,31 @@ Papel do RAII: limpeza automática
 <p>
 Em C++ não há <code>finally</code>, porque o RAII resolve a liberação de recursos durante o “desenrolar” da pilha:</p>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;fstream&gt;</span><span style="color:#75715e">
-</span></span></span><span style="display:flex;"><span><span style="color:#75715e">#include</span> <span style="color:#75715e">&lt;memory&gt;</span><span style="color:#75715e">
-</span></span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">processarArquivo</span>(<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span> caminho) {
-</span></span><span style="display:flex;"><span>    std<span style="color:#f92672">::</span>ifstream f(caminho);                     <span style="color:#75715e">// fecha sozinho no destrutor
-</span></span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>f) {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>ios_base<span style="color:#f92672">::</span>failure(<span style="color:#e6db74">&#34;Falha ao abrir: &#34;</span> <span style="color:#f92672">+</span> caminho);
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Configurar stream para lançar exceções em caso de erro
-</span></span></span><span style="display:flex;"><span>    f.exceptions(std<span style="color:#f92672">::</span>ios<span style="color:#f92672">::</span>failbit <span style="color:#f92672">|</span> std<span style="color:#f92672">::</span>ios<span style="color:#f92672">::</span>badbit);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span> buf <span style="color:#f92672">=</span> std<span style="color:#f92672">::</span>make_unique<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">char</span>[]<span style="color:#f92672">&gt;</span>(<span style="color:#ae81ff">1024</span>);    <span style="color:#75715e">// libera sozinho
-</span></span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    f.read(buf.get(), <span style="color:#ae81ff">1024</span>);                      <span style="color:#75715e">// agora pode lançar std::ios_base::failure
-</span></span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ...processa dados...
-</span></span></span><span style="display:flex;"><span>}   <span style="color:#75715e">// Se qualquer exceção &#34;subir&#34;, f e buf são destruídos aqui
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;fstream&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;memory&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">void</span> <span class="nf">processarArquivo</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">caminho</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">ifstream</span> <span class="n">f</span><span class="p">(</span><span class="n">caminho</span><span class="p">);</span>                     <span class="c1">// fecha sozinho no destrutor
+</span></span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">f</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">ios_base</span><span class="o">::</span><span class="n">failure</span><span class="p">(</span><span class="s">&#34;Falha ao abrir: &#34;</span> <span class="o">+</span> <span class="n">caminho</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Configurar stream para lançar exceções em caso de erro
+</span></span></span><span class="line"><span class="cl">    <span class="n">f</span><span class="p">.</span><span class="n">exceptions</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">ios</span><span class="o">::</span><span class="n">failbit</span> <span class="o">|</span> <span class="n">std</span><span class="o">::</span><span class="n">ios</span><span class="o">::</span><span class="n">badbit</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">auto</span> <span class="n">buf</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="kt">char</span><span class="p">[]</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">1024</span><span class="p">);</span>    <span class="c1">// libera sozinho
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">f</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="n">buf</span><span class="p">.</span><span class="n">get</span><span class="p">(),</span> <span class="mi">1024</span><span class="p">);</span>                      <span class="c1">// agora pode lançar std::ios_base::failure
+</span></span></span><span class="line"><span class="cl">    <span class="c1">// ...processa dados...
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span>   <span class="c1">// Se qualquer exceção &#34;subir&#34;, f e buf são destruídos aqui
 </span></span></span></code></pre></div>
 </div>
 <p>
 Quando uma exceção é lançada, a execução normal do programa é imediatamente interrompida. Nesse momento, todos os objetos locais têm seus destrutores chamados automaticamente, o que garante a liberação dos recursos alocados, como arquivos abertos ou blocos de memória. O controle do fluxo, então, é transferido para o bloco <code>catch</code> mais próximo que seja capaz de tratar aquela exceção.</p>
 <p>
-<em>RAII e Níveis de Segurança de Exceção</em>: O RAII garante automaticamente o nível <em>basic exception safety</em> — o programa permanece em um estado válido após uma exceção, sem vazamentos de recursos. Este é um dos três níveis formais de segurança de exceção em C++:</p>
+<em>RAII e Níveis de Segurança de Exceção</em>: O RAII garante automaticamente o nível <em>basic exception safety</em> , o programa permanece em um estado válido após uma exceção, sem vazamentos de recursos. Este é um dos três níveis formais de segurança de exceção em C++:</p>
 <ol>
-<li><em>No-throw guarantee</em> (forte): A operação não pode falhar — garantido por funções marcadas com <code>noexcept</code></li>
+<li><em>No-throw guarantee</em> (sem falha): A operação não pode falhar , garantido por funções marcadas com <code>noexcept</code></li>
 <li><em>Strong exception safety</em> (forte): Em caso de falha, o estado do programa permanece inalterado (como se a operação nunca tivesse sido tentada)</li>
 <li><em>Basic exception safety</em> (básico): O programa permanece em estado válido, recursos são liberados, mas o estado pode ter mudado</li>
 </ol>
@@ -265,18 +265,18 @@ Gerenciamento de recursos
 </h4>
 <div id="outline-text-headline-6" class="outline-text-4">
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">processar</span>() {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span> dados <span style="color:#f92672">=</span> std<span style="color:#f92672">::</span>make_unique<span style="color:#f92672">&lt;</span>Buffer<span style="color:#f92672">&gt;</span>(<span style="color:#ae81ff">1024</span>);   <span style="color:#75715e">// libera sozinho
-</span></span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">try</span> {
-</span></span><span style="display:flex;"><span>        dados<span style="color:#f92672">-&gt;</span>carregar();
-</span></span><span style="display:flex;"><span>        dados<span style="color:#f92672">-&gt;</span>processar();
-</span></span><span style="display:flex;"><span>        dados<span style="color:#f92672">-&gt;</span>salvar();
-</span></span><span style="display:flex;"><span>    } <span style="color:#66d9ef">catch</span> (...) {
-</span></span><span style="display:flex;"><span>        logErro(<span style="color:#e6db74">&#34;Falha no processamento, propagando...&#34;</span>);
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">throw</span>;                                     <span style="color:#75715e">// sobe para quem souber tratar
-</span></span></span><span style="display:flex;"><span>    }                                             <span style="color:#75715e">// `dados` é liberado aqui
-</span></span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="kt">void</span> <span class="nf">processar</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">auto</span> <span class="n">dados</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">Buffer</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">1024</span><span class="p">);</span>   <span class="c1">// libera sozinho
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">try</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">dados</span><span class="o">-&gt;</span><span class="n">carregar</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">        <span class="n">dados</span><span class="o">-&gt;</span><span class="n">processar</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">        <span class="n">dados</span><span class="o">-&gt;</span><span class="n">salvar</span><span class="p">();</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span> <span class="k">catch</span> <span class="p">(...)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">logErro</span><span class="p">(</span><span class="s">&#34;Falha no processamento, propagando...&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="k">throw</span><span class="p">;</span>                                     <span class="c1">// sobe para quem souber tratar
+</span></span></span><span class="line"><span class="cl">    <span class="p">}</span>                                             <span class="c1">// `dados` é liberado aqui
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 </div>
 </div>
@@ -295,7 +295,7 @@ O bloco <code>catch</code> adiciona contexto e re‑lança.
 <p>
 O exemplo acima ilustra como o uso combinado de <code>try/catch</code> e RAII (através do <code>unique_ptr</code>) simplifica o gerenciamento de recursos em C++. Ao encapsular a lógica principal dentro de um bloco <code>try</code>, garantimos que qualquer exceção lançada durante o carregamento, processamento ou salvamento dos dados seja capturada no <code>catch</code>, onde podemos registrar o erro e, se necessário, propagar a exceção para níveis superiores. </p>
 <p>
-O uso do <code>unique_ptr</code> assegura que a memória alocada para o buffer será automaticamente liberada ao final do escopo, mesmo que uma exceção ocorra — eliminando a necessidade de blocos <code>finally</code> ou liberações manuais. </p>
+O uso do <code>unique_ptr</code> assegura que a memória alocada para o buffer será automaticamente liberada ao final do escopo, mesmo que uma exceção ocorra , eliminando a necessidade de blocos <code>finally</code> ou liberações manuais. </p>
 <blockquote>
 <p>Assim, o código permanece limpo, seguro e robusto, pois separa claramente o fluxo normal do tratamento de falhas, um dos principais propósitos do mecanismo de exceções discutido neste artigo.</p>
 </blockquote>
@@ -305,23 +305,23 @@ Validação de dados
 </h4>
 <div id="outline-text-headline-9" class="outline-text-4">
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Usuario</span> {
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span><span style="color:#f92672">:</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">void</span> setIdade(<span style="color:#66d9ef">int</span> idade) {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (idade <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">||</span> idade <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">120</span>)
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>invalid_argument(<span style="color:#e6db74">&#34;Idade fora do intervalo permitido&#34;</span>);
-</span></span><span style="display:flex;"><span>        idade_ <span style="color:#f92672">=</span> idade;
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">private</span><span style="color:#f92672">:</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">int</span> idade_{};
-</span></span><span style="display:flex;"><span>};
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">try</span> {
-</span></span><span style="display:flex;"><span>    Usuario u;
-</span></span><span style="display:flex;"><span>    u.setIdade(valorLido);
-</span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">catch</span> (<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>invalid_argument<span style="color:#f92672">&amp;</span> e) {
-</span></span><span style="display:flex;"><span>    logErro(<span style="color:#e6db74">&#34;Entrada inválida: &#34;</span> <span style="color:#f92672">+</span> std<span style="color:#f92672">::</span>string{e.what()});
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Usuario</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="n">setIdade</span><span class="p">(</span><span class="kt">int</span> <span class="n">idade</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">idade</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="o">||</span> <span class="n">idade</span> <span class="o">&gt;</span> <span class="mi">120</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">invalid_argument</span><span class="p">(</span><span class="s">&#34;Idade fora do intervalo permitido&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">idade_</span> <span class="o">=</span> <span class="n">idade</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="k">private</span><span class="o">:</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">int</span> <span class="n">idade_</span><span class="p">{};</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">try</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">Usuario</span> <span class="n">u</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">u</span><span class="p">.</span><span class="n">setIdade</span><span class="p">(</span><span class="n">valorLido</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">invalid_argument</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">logErro</span><span class="p">(</span><span class="s">&#34;Entrada inválida: &#34;</span> <span class="o">+</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">{</span><span class="n">e</span><span class="p">.</span><span class="n">what</span><span class="p">()});</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
 / A regra de negócio fica /dentro* da classe.</p>
@@ -345,21 +345,21 @@ Transações atômicas
 </h4>
 <div id="outline-text-headline-11" class="outline-text-4">
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">transferir</span>(Conta<span style="color:#f92672">&amp;</span> a, Conta<span style="color:#f92672">&amp;</span> b, <span style="color:#66d9ef">double</span> v) {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (v <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span>) <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>invalid_argument(<span style="color:#e6db74">&#34;valor &lt;= 0&#34;</span>);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    std<span style="color:#f92672">::</span>scoped_lock lk(a.mtx(), b.mtx());  <span style="color:#75715e">// C++17: adquire ambos sem deadlock
-</span></span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">bool</span> debitado <span style="color:#f92672">=</span> false;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">try</span> {
-</span></span><span style="display:flex;"><span>        a.debitar(v);
-</span></span><span style="display:flex;"><span>        debitado <span style="color:#f92672">=</span> true;
-</span></span><span style="display:flex;"><span>        b.creditar(v);
-</span></span><span style="display:flex;"><span>    } <span style="color:#66d9ef">catch</span> (...) {          <span style="color:#75715e">// qualquer erro ⇒ rollback se necessário
-</span></span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (debitado) a.creditar(v);
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">throw</span>;
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="kt">void</span> <span class="nf">transferir</span><span class="p">(</span><span class="n">Conta</span><span class="o">&amp;</span> <span class="n">a</span><span class="p">,</span> <span class="n">Conta</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">,</span> <span class="kt">double</span> <span class="n">v</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">invalid_argument</span><span class="p">(</span><span class="s">&#34;valor &lt;= 0&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">std</span><span class="o">::</span><span class="n">scoped_lock</span> <span class="n">lk</span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">mtx</span><span class="p">(),</span> <span class="n">b</span><span class="p">.</span><span class="n">mtx</span><span class="p">());</span>  <span class="c1">// C++17: adquire ambos sem deadlock
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="kt">bool</span> <span class="n">debitado</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">try</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="n">a</span><span class="p">.</span><span class="n">debitar</span><span class="p">(</span><span class="n">v</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">debitado</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="n">b</span><span class="p">.</span><span class="n">creditar</span><span class="p">(</span><span class="n">v</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span> <span class="k">catch</span> <span class="p">(...)</span> <span class="p">{</span>          <span class="c1">// qualquer erro ⇒ rollback se necessário
+</span></span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">debitado</span><span class="p">)</span> <span class="n">a</span><span class="p">.</span><span class="n">creditar</span><span class="p">(</span><span class="n">v</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="k">throw</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
 / /All‑or‑nothing*: ou ambas as contas mudam, ou nada persiste.</p>
@@ -376,7 +376,7 @@ Transações atômicas
 <p><em>✅ Prevenção de deadlock</em>: O código utiliza <code>std::scoped_lock</code> (C++17+) que adquire ambos os mutexes simultaneamente usando um algoritmo livre de deadlock. Isso elimina a necessidade de ordenação manual dos locks e previne deadlocks que poderiam ocorrer com <code>lock_guard</code> separados quando diferentes threads adquirem os mesmos mutexes em ordens distintas.</p>
 </blockquote>
 <p>
-O exemplo acima ilustra como implementar uma operação transacional utilizando exceções para garantir a atomicidade: se qualquer etapa da transferência falhar (por exemplo, por saldo insuficiente ou erro inesperado), o código faz o rollback condicional — creditando a conta de origem apenas se o débito foi efetivamente aplicado — antes de propagar a exceção. </p>
+O exemplo acima ilustra como implementar uma operação transacional utilizando exceções para garantir a atomicidade: se qualquer etapa da transferência falhar (por exemplo, por saldo insuficiente ou erro inesperado), o código faz o rollback condicional , creditando a conta de origem apenas se o débito foi efetivamente aplicado , antes de propagar a exceção. </p>
 <p>
 O uso de <code>scoped_lock</code> assegura que os mutexes das contas sejam adquiridos de forma livre de deadlock e liberados automaticamente, mesmo em caso de erro, evitando tanto deadlocks quanto vazamentos de recursos. </p>
 <blockquote>
@@ -390,25 +390,25 @@ Enriquecendo contexto em camadas
 </h4>
 <div id="outline-text-headline-13" class="outline-text-4">
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">baixa</span>()  { <span style="color:#75715e">/* ... */</span> <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>runtime_error(<span style="color:#e6db74">&#34;DB offline&#34;</span>); }
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">media</span>()  { <span style="color:#66d9ef">try</span> { baixa(); }
-</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">catch</span> (<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>exception<span style="color:#f92672">&amp;</span> e) {
-</span></span><span style="display:flex;"><span>                    <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>runtime_error(<span style="color:#e6db74">&#34;Camada média: &#34;</span> <span style="color:#f92672">+</span> std<span style="color:#f92672">::</span>string{e.what()});
-</span></span><span style="display:flex;"><span>                }}
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">alta</span>()   { <span style="color:#66d9ef">try</span> { media(); }
-</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">catch</span> (<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>exception<span style="color:#f92672">&amp;</span> e) {
-</span></span><span style="display:flex;"><span>                    <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>runtime_error(<span style="color:#e6db74">&#34;Camada alta: &#34;</span>  <span style="color:#f92672">+</span> std<span style="color:#f92672">::</span>string{e.what()});
-</span></span><span style="display:flex;"><span>                }}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="kt">void</span> <span class="nf">baixa</span><span class="p">()</span>  <span class="p">{</span> <span class="cm">/* ... */</span> <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&#34;DB offline&#34;</span><span class="p">);</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="kt">void</span> <span class="nf">media</span><span class="p">()</span>  <span class="p">{</span> <span class="k">try</span> <span class="p">{</span> <span class="n">baixa</span><span class="p">();</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">                <span class="k">catch</span> <span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">exception</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                    <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&#34;Camada média: &#34;</span> <span class="o">+</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">{</span><span class="n">e</span><span class="p">.</span><span class="n">what</span><span class="p">()});</span>
+</span></span><span class="line"><span class="cl">                <span class="p">}}</span>
+</span></span><span class="line"><span class="cl"><span class="kt">void</span> <span class="nf">alta</span><span class="p">()</span>   <span class="p">{</span> <span class="k">try</span> <span class="p">{</span> <span class="n">media</span><span class="p">();</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">                <span class="k">catch</span> <span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">exception</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                    <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&#34;Camada alta: &#34;</span>  <span class="o">+</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">{</span><span class="n">e</span><span class="p">.</span><span class="n">what</span><span class="p">()});</span>
+</span></span><span class="line"><span class="cl">                <span class="p">}}</span></span></span></code></pre></div>
 </div>
 <p>
 O objetivo desse padrão é fornecer uma trilha clara e detalhada do caminho percorrido pelo erro, desde sua origem até o ponto mais alto da pilha de chamadas. Ao enriquecer a mensagem de exceção em cada camada, o desenvolvedor consegue identificar rapidamente onde o problema começou e por quais etapas ele passou, facilitando o diagnóstico e a correção. Esse encadeamento de mensagens resulta em um relatório final como:</p>
 <div class="src src-text">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>&#34;Camada alta: Camada média: DB offline&#34;</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">&#34;Camada alta: Camada média: DB offline&#34;</span></span></code></pre></div>
 </div>
 <p>
 Exceções devem ser usadas exclusivamente para situações realmente excepcionais, ou seja, aquelas que impedem o fluxo normal do programa de continuar. Não utilize exceções para controlar o fluxo rotineiro da aplicação, pois isso pode tornar o código confuso, difícil de manter e impactar negativamente a performance.</p>
 <blockquote>
-<p>Algumas boas práticas são fundamentais para um uso correto do <code>try/catch</code>: sempre capture tipos específicos de exceção primeiro, evitando tratar tudo como erro genérico; nunca ignore exceções silenciosamente — registre o erro ou converta-o em um erro de domínio; em C++, garanta o uso de RAII (Resource Acquisition Is Initialization) para liberar recursos automaticamente, dispensando a necessidade de blocos <code>finally</code> e prevenindo vazamentos (em outras linguagens, utilize os mecanismos equivalentes, como <code>with</code> em Python ou <code>using</code> em C#).</p>
+<p>Algumas boas práticas são fundamentais para um uso correto do <code>try/catch</code>: sempre capture tipos específicos de exceção primeiro, evitando tratar tudo como erro genérico; nunca ignore exceções silenciosamente , registre o erro ou converta-o em um erro de domínio; em C++, garanta o uso de RAII (Resource Acquisition Is Initialization) para liberar recursos automaticamente, dispensando a necessidade de blocos <code>finally</code> e prevenindo vazamentos (em outras linguagens, utilize os mecanismos equivalentes, como <code>with</code> em Python ou <code>using</code> em C#).</p>
 </blockquote>
 <p>
 Documente claramente quais exceções sua função pode lançar, facilitando o uso e os testes; e lembre-se de que lançar exceções tem custo, então não utilize esse mecanismo para situações comuns do fluxo de controle.</p>
@@ -417,33 +417,33 @@ Documente claramente quais exceções sua função pode lançar, facilitando o u
 </div>
 <div id="outline-container-headline-14" class="outline-4">
 <h4 id="headline-14">
-Má prática de design — quando o <code>try/catch</code> vira gambiarra
+Má prática de design , quando o <code>try/catch</code> vira gambiarra
 </h4>
 <div id="outline-text-headline-14" class="outline-text-4">
 <p>
 No tópico anterior, vimos quando é apropriado lançar exceções; agora, é importante abordar o outro lado: o que acontece quando utilizamos <code>try/catch</code> para tratar situações que não são realmente excepcionais. Usar exceções como substituto de verificações normais, como um simples <code>if</code>, é considerado um anti-padrão e pode trazer consequências negativas para a clareza, desempenho e manutenção do código. Observe o exemplo abaixo:</p>
 <div class="src src-ts">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-ts" data-lang="ts"><span style="display:flex;"><span><span style="color:#75715e">// ❌  Exceção controlando fluxo normal
-</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">function</span> <span style="color:#a6e22e">getItemPrice</span>(<span style="color:#a6e22e">item</span><span style="color:#f92672">:</span> { <span style="color:#a6e22e">name</span>: <span style="color:#66d9ef">string</span>; <span style="color:#a6e22e">price?</span>: <span style="color:#66d9ef">number</span> })<span style="color:#f92672">:</span> <span style="color:#66d9ef">number</span> {
-</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">try</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">item</span>.<span style="color:#a6e22e">price</span> <span style="color:#f92672">===</span> <span style="color:#66d9ef">undefined</span>)            <span style="color:#75715e">// caso esperado
-</span></span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> Error(<span style="color:#e6db74">&#34;Preço indefinido&#34;</span>);   <span style="color:#75715e">// força exceção
-</span></span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">item</span>.<span style="color:#a6e22e">price</span>;
-</span></span><span style="display:flex;"><span>  } <span style="color:#66d9ef">catch</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>;                                <span style="color:#75715e">// valor padrão
-</span></span></span><span style="display:flex;"><span>  }
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-ts" data-lang="ts"><span class="line"><span class="cl"><span class="c1">// ❌  Exceção controlando fluxo normal
+</span></span></span><span class="line"><span class="cl"><span class="kd">function</span> <span class="nx">getItemPrice</span><span class="p">(</span><span class="nx">item</span><span class="o">:</span> <span class="p">{</span> <span class="nx">name</span>: <span class="kt">string</span><span class="p">;</span> <span class="nx">price?</span>: <span class="kt">number</span> <span class="p">})</span><span class="o">:</span> <span class="kt">number</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">try</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="nx">item</span><span class="p">.</span><span class="nx">price</span> <span class="o">===</span> <span class="kc">undefined</span><span class="p">)</span>            <span class="c1">// caso esperado
+</span></span></span><span class="line"><span class="cl">      <span class="k">throw</span> <span class="k">new</span> <span class="nb">Error</span><span class="p">(</span><span class="s2">&#34;Preço indefinido&#34;</span><span class="p">);</span>   <span class="c1">// força exceção
+</span></span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">item</span><span class="p">.</span><span class="nx">price</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span> <span class="k">catch</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>                                <span class="c1">// valor padrão
+</span></span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
-Usar exceções para tratar situações rotineiras, como uma simples validação de campo, é prejudicial por vários motivos. Primeiro, isso surpreende quem lê o código, pois dá a impressão de que ocorreu uma falha grave, quando na verdade é apenas um caso esperado e trivial — quebrando o <a href="https://en.wikipedia.org/wiki/Principle_of_least_astonishment">Princípio do Menor Espanto (POLA)</a>. </p>
+Usar exceções para tratar situações rotineiras, como uma simples validação de campo, é prejudicial por vários motivos. Primeiro, isso surpreende quem lê o código, pois dá a impressão de que ocorreu uma falha grave, quando na verdade é apenas um caso esperado e trivial , quebrando o <a href="https://en.wikipedia.org/wiki/Principle_of_least_astonishment">Princípio do Menor Espanto (POLA)</a>. </p>
 <p>
-Além disso, lançar e capturar exceções é uma operação significativamente mais custosa do que um simples <code>if</code>. O modelo C++ usa <em>&#34;zero-cost exceptions&#34;</em> — que significa zero custo <em>apenas no caminho normal</em> (quando nenhuma exceção é lançada) — mas o custo de realmente lançar uma exceção é extremamente alto. Como explica <a href="https://devblogs.microsoft.com/oldnewthing/20220228-00/?p=106296">Raymond Chen</a>, da Microsoft, o termo pode ser enganoso: <em>&#34;Metadata-based exception handling should really be called super-expensive exceptions&#34;</em>.</p>
+Além disso, lançar e capturar exceções é uma operação significativamente mais custosa do que um simples <code>if</code>. O modelo C++ usa <em>&#34;zero-cost exceptions&#34;</em> , que significa zero custo <em>apenas no caminho normal</em> (quando nenhuma exceção é lançada) , mas o custo de realmente lançar uma exceção é extremamente alto. Como explica <a href="https://devblogs.microsoft.com/oldnewthing/20220228-00/?p=106296">Raymond Chen</a>, da Microsoft, o termo pode ser enganoso: <em>&#34;Metadata-based exception handling should really be called super-expensive exceptions&#34;</em>.</p>
 <p>
 O processo envolve: busca por metadados no PC (program counter), decodificação de dados DWARF compactados, chamadas ao <em>personality routine</em>, e o custoso <em>stack unwinding</em>. <a href="https://isocpp.org/blog/2019/09/cppcon-2019-de-fragmenting-cpp-making-exceptions-and-rtti-more-affordable-a">Herb Sutter</a> demonstra que exceções violam o <em>zero-overhead principle</em> do C++, sendo uma das únicas duas funcionalidades da linguagem (junto com RTTI) que têm opções para serem desabilitadas pelos compiladores.</p>
 <p>
 Adicionalmente, mesmo quando não lançadas, exceções <em>podem</em> limitar certas otimizações do compilador: antes de operações que podem gerar exceção, o compilador pode precisar descarregar registradores para memória e evitar reordenações que quebrariam a semântica de unwinding. As <a href="https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#e3-use-exceptions-for-error-handling-only">C++ Core Guidelines</a> enfatizam que &#34;exceptions are for error handling only&#34; e que usar exceções para controle de fluxo normal &#34;makes code hard to follow and maintain.&#34;</p>
 <blockquote>
-<p>Essa ideia está diretamente alinhada ao conselho do livro <em><a href="https://en.wikipedia.org/wiki/The_Pragmatic_Programmer">The Pragmatic Programmer</a></em>: trate apenas o que realmente é excepcional como exceção — caso contrário, você adiciona complexidade desnecessária e viola princípios como <a href="https://en.wikipedia.org/wiki/Principle_of_least_astonishment">Principle of Least Astonishment</a>.</p>
+<p>Essa ideia está diretamente alinhada ao conselho do livro <em><a href="https://en.wikipedia.org/wiki/The_Pragmatic_Programmer">The Pragmatic Programmer</a></em>: trate apenas o que realmente é excepcional como exceção , caso contrário, você adiciona complexidade desnecessária e viola princípios como <a href="https://en.wikipedia.org/wiki/Principle_of_least_astonishment">Principle of Least Astonishment</a>.</p>
 </blockquote>
 <blockquote>
 <p>Além disso, conforme <a href="https://github.com/mattklein123">Matt Klein</a> argumenta em seu artigo <em>&#34;Crash early and crash often for more reliable software&#34;</em> (7 abr 2019), verificações de erro excessivas prejudicam a confiabilidade do software. Ele afirma literalmente: <em>&#34;The only error checking a program needs are for errors that can actually happen during normal control flow&#34;</em> (A única verificação de erro que um programa precisa é para erros que podem realmente acontecer durante o fluxo de controle normal).</p>
@@ -455,25 +455,25 @@ Outro problema é que esse uso inadequado de exceções <a href="https://en.wiki
 <p>
 Por isso, para validações simples e previsíveis, prefira sempre estruturas de controle explícitas, reservando as exceções apenas para situações realmente inesperadas ou graves. Vamos ver um exemplo idiomático em TypeScript:</p>
 <div class="src src-ts">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-ts" data-lang="ts"><span style="display:flex;"><span><span style="color:#75715e">// ✅  Política de negócio explícita (se 0 é valor válido)
-</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">function</span> <span style="color:#a6e22e">getItemPrice</span>(<span style="color:#a6e22e">item</span><span style="color:#f92672">:</span> { <span style="color:#a6e22e">name</span>: <span style="color:#66d9ef">string</span>; <span style="color:#a6e22e">price?</span>: <span style="color:#66d9ef">number</span> })<span style="color:#f92672">:</span> <span style="color:#66d9ef">number</span> {
-</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">item</span>.<span style="color:#a6e22e">price</span> <span style="color:#f92672">??</span> <span style="color:#ae81ff">0</span>;     <span style="color:#75715e">// política: preço indefinido = gratuito
-</span></span></span><span style="display:flex;"><span>}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// ✅  Tratamento de erro de domínio (se preço é obrigatório)
-</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">function</span> <span style="color:#a6e22e">getItemPriceStrict</span>(<span style="color:#a6e22e">item</span><span style="color:#f92672">:</span> { <span style="color:#a6e22e">name</span>: <span style="color:#66d9ef">string</span>; <span style="color:#a6e22e">price?</span>: <span style="color:#66d9ef">number</span> })<span style="color:#f92672">:</span> <span style="color:#66d9ef">number</span> <span style="color:#f92672">|</span> <span style="color:#66d9ef">undefined</span> {
-</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">item</span>.<span style="color:#a6e22e">price</span>;          <span style="color:#75715e">// deixa caller decidir o que fazer
-</span></span></span><span style="display:flex;"><span>}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// ✅  Alternativa com Result/Either pattern
-</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">Result</span>&lt;<span style="color:#f92672">T</span>, <span style="color:#a6e22e">E</span>&gt; <span style="color:#f92672">=</span> { <span style="color:#a6e22e">success</span>: <span style="color:#66d9ef">true</span>; <span style="color:#a6e22e">data</span>: <span style="color:#66d9ef">T</span> } <span style="color:#f92672">|</span> { <span style="color:#a6e22e">success</span>: <span style="color:#66d9ef">false</span>; <span style="color:#a6e22e">error</span>: <span style="color:#66d9ef">E</span> };
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">function</span> <span style="color:#a6e22e">getItemPriceResult</span>(<span style="color:#a6e22e">item</span><span style="color:#f92672">:</span> { <span style="color:#a6e22e">name</span>: <span style="color:#66d9ef">string</span>; <span style="color:#a6e22e">price?</span>: <span style="color:#66d9ef">number</span> })<span style="color:#f92672">:</span> <span style="color:#a6e22e">Result</span>&lt;<span style="color:#f92672">number</span>, <span style="color:#a6e22e">string</span>&gt; {
-</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">item</span>.<span style="color:#a6e22e">price</span> <span style="color:#f92672">===</span> <span style="color:#66d9ef">undefined</span>) {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> { <span style="color:#a6e22e">success</span>: <span style="color:#66d9ef">false</span>, <span style="color:#a6e22e">error</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;Preço não informado&#34;</span> };
-</span></span><span style="display:flex;"><span>  }
-</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> { <span style="color:#a6e22e">success</span>: <span style="color:#66d9ef">true</span>, <span style="color:#a6e22e">data</span>: <span style="color:#66d9ef">item.price</span> };
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-ts" data-lang="ts"><span class="line"><span class="cl"><span class="c1">// ✅  Política de negócio explícita (se 0 é valor válido)
+</span></span></span><span class="line"><span class="cl"><span class="kd">function</span> <span class="nx">getItemPrice</span><span class="p">(</span><span class="nx">item</span><span class="o">:</span> <span class="p">{</span> <span class="nx">name</span>: <span class="kt">string</span><span class="p">;</span> <span class="nx">price?</span>: <span class="kt">number</span> <span class="p">})</span><span class="o">:</span> <span class="kt">number</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="nx">item</span><span class="p">.</span><span class="nx">price</span> <span class="o">??</span> <span class="mi">0</span><span class="p">;</span>     <span class="c1">// política: preço indefinido = gratuito
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// ✅  Tratamento de erro de domínio (se preço é obrigatório)
+</span></span></span><span class="line"><span class="cl"><span class="kd">function</span> <span class="nx">getItemPriceStrict</span><span class="p">(</span><span class="nx">item</span><span class="o">:</span> <span class="p">{</span> <span class="nx">name</span>: <span class="kt">string</span><span class="p">;</span> <span class="nx">price?</span>: <span class="kt">number</span> <span class="p">})</span><span class="o">:</span> <span class="kt">number</span> <span class="o">|</span> <span class="kc">undefined</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="nx">item</span><span class="p">.</span><span class="nx">price</span><span class="p">;</span>          <span class="c1">// deixa caller decidir o que fazer
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// ✅  Alternativa com Result/Either pattern
+</span></span></span><span class="line"><span class="cl"><span class="kr">type</span> <span class="nx">Result</span><span class="p">&lt;</span><span class="nt">T</span><span class="p">,</span> <span class="na">E</span><span class="p">&gt;</span> <span class="o">=</span> <span class="p">{</span> <span class="nx">success</span>: <span class="kt">true</span><span class="p">;</span> <span class="nx">data</span>: <span class="kt">T</span> <span class="p">}</span> <span class="o">|</span> <span class="p">{</span> <span class="nx">success</span>: <span class="kt">false</span><span class="p">;</span> <span class="nx">error</span>: <span class="kt">E</span> <span class="p">};</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">function</span> <span class="nx">getItemPriceResult</span><span class="p">(</span><span class="nx">item</span><span class="o">:</span> <span class="p">{</span> <span class="nx">name</span>: <span class="kt">string</span><span class="p">;</span> <span class="nx">price?</span>: <span class="kt">number</span> <span class="p">})</span><span class="o">:</span> <span class="nx">Result</span><span class="p">&lt;</span><span class="nt">number</span><span class="p">,</span> <span class="na">string</span><span class="p">&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="p">(</span><span class="nx">item</span><span class="p">.</span><span class="nx">price</span> <span class="o">===</span> <span class="kc">undefined</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="p">{</span> <span class="nx">success</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">error</span><span class="o">:</span> <span class="s2">&#34;Preço não informado&#34;</span> <span class="p">};</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="p">{</span> <span class="nx">success</span>: <span class="kt">true</span><span class="p">,</span> <span class="nx">data</span>: <span class="kt">item.price</span> <span class="p">};</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
 <em>Distinguindo Política de Negócio vs. Erro de Domínio</em>: O exemplo acima demonstra três abordagens distintas:</p>
@@ -487,7 +487,7 @@ Por isso, para validações simples e previsíveis, prefira sempre estruturas de
 <p>Assim, situações como campo obrigatório não preenchido, busca sem resultado ou divisão por zero prevista são tratadas de forma transparente e previsível, sem sobrecarregar o sistema com o custo e a complexidade das exceções.</p>
 </blockquote>
 <p>
-Já para eventos realmente excepcionais — como disco cheio, queda de conexão, corrupção de dados ou necessidade de desfazer uma operação crítica — o uso de exceções (<code>throw</code>) é apropriado. </p>
+Já para eventos realmente excepcionais , como disco cheio, queda de conexão, corrupção de dados ou necessidade de desfazer uma operação crítica , o uso de exceções (<code>throw</code>) é apropriado. </p>
 <p>
 Nesses casos, não há como prever ou contornar o problema apenas com verificações simples, e a exceção serve para interromper o fluxo e sinalizar que algo grave aconteceu, permitindo que o erro seja tratado em um nível superior ou que o programa seja encerrado de forma segura.</p>
 <p>
@@ -502,21 +502,21 @@ Alternativa correta: retorno explícito de erro
 <p>
 Para casos previsíveis como divisão por zero, a abordagem ideal é usar tipos como <code>std::optional</code> que tornam a possibilidade de falha explícita:</p>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>std<span style="color:#f92672">::</span>optional<span style="color:#f92672">&lt;</span><span style="color:#66d9ef">int</span><span style="color:#f92672">&gt;</span> dividir_seguro(<span style="color:#66d9ef">int</span> a, <span style="color:#66d9ef">int</span> b) {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (b <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>) <span style="color:#66d9ef">return</span> std<span style="color:#f92672">::</span>nullopt;   <span style="color:#75715e">// falha previsível
-</span></span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> a <span style="color:#f92672">/</span> b;
-</span></span><span style="display:flex;"><span>}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// Uso claro e sem exceções
-</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> media <span style="color:#f92672">=</span> dividir_seguro(a, b);     <span style="color:#75715e">// retorno explícito
-</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>media) {                          <span style="color:#75715e">// falha prevista
-</span></span></span><span style="display:flex;"><span>    log(<span style="color:#e6db74">&#34;b = 0, usando valor padrão&#34;</span>);
-</span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">else</span> {
-</span></span><span style="display:flex;"><span>    usar(<span style="color:#f92672">*</span>media);
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="n">std</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">dividir_seguro</span><span class="p">(</span><span class="kt">int</span> <span class="n">a</span><span class="p">,</span> <span class="kt">int</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="n">b</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="k">return</span> <span class="n">std</span><span class="o">::</span><span class="n">nullopt</span><span class="p">;</span>   <span class="c1">// falha previsível
+</span></span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">a</span> <span class="o">/</span> <span class="n">b</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Uso claro e sem exceções
+</span></span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">media</span> <span class="o">=</span> <span class="n">dividir_seguro</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">);</span>     <span class="c1">// retorno explícito
+</span></span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">media</span><span class="p">)</span> <span class="p">{</span>                          <span class="c1">// falha prevista
+</span></span></span><span class="line"><span class="cl">    <span class="n">log</span><span class="p">(</span><span class="s">&#34;b = 0, usando valor padrão&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">usar</span><span class="p">(</span><span class="o">*</span><span class="n">media</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
-No exemplo apresentado acima, vemos que tratar situações esperadas com exceções — como retornar 0 quando o preço está indefinido — prejudica a clareza e a eficiência do código. Isso ocorre porque exceções interrompem o fluxo normal e impactam significativamente otimizações do compilador: impedem marcação de funções com <code>noexcept</code> (essencial para move semântics eficientes na STL), forçam spilling de registradores para memória, e limitam reordenação de instruções que poderiam melhorar o pipeline do processador. </p>
+No exemplo apresentado acima, vemos que tratar situações esperadas com exceções , como retornar 0 quando o preço está indefinido , prejudica a clareza e a eficiência do código. Isso ocorre porque exceções interrompem o fluxo normal e impactam significativamente otimizações do compilador: impedem marcação de funções com <code>noexcept</code> (essencial para move semântics eficientes na STL), forçam spilling de registradores para memória, e limitam reordenação de instruções que poderiam melhorar o pipeline do processador. </p>
 <p>
 O ideal é reservar exceções para eventos realmente inesperados, como um air-bag que só deve ser acionado em caso de acidente, enquanto validações de domínio e casos previstos devem ser tratados com retornos explícitos, usando estruturas como <code>if</code>, valores opcionais ou operadores como <code>??</code>. </p>
 <blockquote>
@@ -545,23 +545,23 @@ O <em>Design by Contract</em> (DbC) é um paradigma de desenvolvimento que defin
 <p>
 O exemplo em C++ abaixo ilustra como aplicar esse princípio, diferenciando claramente quando lançar exceção por violação de contrato e quando validar previamente:</p>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Conta</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">double</span> saldo_{<span style="color:#ae81ff">0</span>};                       <span style="color:#75715e">// invariante: ≥ 0
-</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">public</span><span style="color:#f92672">:</span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">void</span> sacar(<span style="color:#66d9ef">double</span> v) {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (v <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span>)                      <span style="color:#75715e">// pré‑condição violada → erro do usuário
-</span></span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>invalid_argument(<span style="color:#e6db74">&#34;valor ≤ 0&#34;</span>);
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (v <span style="color:#f92672">&gt;</span> saldo_)                  <span style="color:#75715e">// pré‑condição violada → uso incorreto
-</span></span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>runtime_error(<span style="color:#e6db74">&#34;saldo insuficiente&#34;</span>);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">double</span> antigo <span style="color:#f92672">=</span> saldo_;
-</span></span><span style="display:flex;"><span>        saldo_ <span style="color:#f92672">-=</span> v;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (saldo_ <span style="color:#f92672">!=</span> antigo <span style="color:#f92672">-</span> v)        <span style="color:#75715e">// pós‑condição falhou → erro interno
-</span></span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">throw</span> std<span style="color:#f92672">::</span>logic_error(<span style="color:#e6db74">&#34;sacar corrompeu saldo&#34;</span>);
-</span></span><span style="display:flex;"><span>        assert(saldo_ <span style="color:#f92672">&gt;=</span> <span style="color:#ae81ff">0</span>);             <span style="color:#75715e">// invariante (desligada em release)
-</span></span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>};</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Conta</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">double</span> <span class="n">saldo_</span><span class="p">{</span><span class="mi">0</span><span class="p">};</span>                       <span class="c1">// invariante: ≥ 0
+</span></span></span><span class="line"><span class="cl"><span class="k">public</span><span class="o">:</span>
+</span></span><span class="line"><span class="cl">    <span class="kt">void</span> <span class="n">sacar</span><span class="p">(</span><span class="kt">double</span> <span class="n">v</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">v</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span>                      <span class="c1">// pré‑condição violada → erro do usuário
+</span></span></span><span class="line"><span class="cl">            <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">invalid_argument</span><span class="p">(</span><span class="s">&#34;valor ≤ 0&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">v</span> <span class="o">&gt;</span> <span class="n">saldo_</span><span class="p">)</span>                  <span class="c1">// pré‑condição violada → uso incorreto
+</span></span></span><span class="line"><span class="cl">            <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="s">&#34;saldo insuficiente&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="kt">double</span> <span class="n">antigo</span> <span class="o">=</span> <span class="n">saldo_</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="n">saldo_</span> <span class="o">-=</span> <span class="n">v</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">(</span><span class="n">saldo_</span> <span class="o">!=</span> <span class="n">antigo</span> <span class="o">-</span> <span class="n">v</span><span class="p">)</span>        <span class="c1">// pós‑condição falhou → erro interno
+</span></span></span><span class="line"><span class="cl">            <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">logic_error</span><span class="p">(</span><span class="s">&#34;sacar corrompeu saldo&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">        <span class="n">assert</span><span class="p">(</span><span class="n">saldo_</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">);</span>             <span class="c1">// invariante (desligada em release)
+</span></span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span></span></span></code></pre></div>
 </div>
 <div id="outline-container-headline-17" class="outline-5">
 <h5 id="headline-17">
@@ -573,10 +573,10 @@ Programação com <em>asserções</em>
 / <em>Quando usar:* para invariantes internas e estados “impossíveis”.
 / /Quando /não</em> usar:* para validar entrada de usuário ou recursos externos (isso é papel de exceção ou valor de retorno).</p>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">void</span> <span style="color:#a6e22e">push</span>(Buffer<span style="color:#f92672">&amp;</span> buf, <span style="color:#66d9ef">int</span> x) {
-</span></span><span style="display:flex;"><span>    assert(<span style="color:#f92672">!</span>buf.cheio());          <span style="color:#75715e">// bug se falhar em dev
-</span></span></span><span style="display:flex;"><span>    buf.escreve(x);
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="kt">void</span> <span class="nf">push</span><span class="p">(</span><span class="n">Buffer</span><span class="o">&amp;</span> <span class="n">buf</span><span class="p">,</span> <span class="kt">int</span> <span class="n">x</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">assert</span><span class="p">(</span><span class="o">!</span><span class="n">buf</span><span class="p">.</span><span class="n">cheio</span><span class="p">());</span>          <span class="c1">// bug se falhar em dev
+</span></span></span><span class="line"><span class="cl">    <span class="n">buf</span><span class="p">.</span><span class="n">escreve</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
 O código apresentado acima ilustra como aplicar, de forma prática, os princípios do <a href="https://en.wikipedia.org/wiki/Design_by_contract">Design by Contract (DbC)</a> e o uso de asserções para garantir a robustez do software. Cada tipo de situação exige uma ferramenta adequada: bugs internos, como a quebra de invariantes, devem ser detectados com <code>assert</code> (que só dispara em modo debug); violações de pré-condições, ou seja, quando o usuário utiliza a interface de forma incorreta, são tratadas com exceções específicas como <code>invalid_argument</code> ou <code>domain_error</code>.</p>
@@ -590,26 +590,26 @@ Assim, o chamador sabe exatamente o que precisa fornecer, a função garante o r
 <p>Isso fecha, de forma formal, o ciclo começado lá atrás: <em>&#34;exceção para o inesperado, valor para o esperado, assert para o impossível&#34;</em>.</p>
 </blockquote>
 <p>
-Até aqui vimos que <em>pré‑/pós‑condições e asserções</em> deixam claro <em>o que</em> cada parte deve cumprir — e que exceções só aparecem quando o contrato é quebrado. Mas o inverso também é verdadeiro: <em>quando usamos exceções para controlar o fluxo diário, criamos contratos escondidos</em> que amarram módulos sem ninguém notar.</p>
+Até aqui vimos que <em>pré‑/pós‑condições e asserções</em> deixam claro <em>o que</em> cada parte deve cumprir , e que exceções só aparecem quando o contrato é quebrado. Mas o inverso também é verdadeiro: <em>quando usamos exceções para controlar o fluxo diário, criamos contratos escondidos</em> que amarram módulos sem ninguém notar.</p>
 <p>
-Quando usamos exceções para controlar o fluxo normal do programa, criamos dependências ocultas entre módulos: o cliente precisa conhecer os tipos de exceção internos do serviço, o que torna o contrato implícito — afinal, as ações a serem tomadas em caso de erro (“se der erro X faça Y”) não aparecem na assinatura da função, mas apenas nos blocos <code>catch</code> espalhados pelo código. </p>
+Quando usamos exceções para controlar o fluxo normal do programa, criamos dependências ocultas entre módulos: o cliente precisa conhecer os tipos de exceção internos do serviço, o que torna o contrato implícito , afinal, as ações a serem tomadas em caso de erro (“se der erro X faça Y”) não aparecem na assinatura da função, mas apenas nos blocos <code>catch</code> espalhados pelo código. </p>
 <p>
 Isso gera fragilidade, pois qualquer alteração nos tipos de exceção ou nas condições que as disparam pode quebrar vários pontos do sistema, como ilustrado no exemplo em C++ abaixo, onde o serviço lança exceções específicas e o cliente é obrigado a capturar cada uma delas individualmente. Observe o exemplo abaixo:</p>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// ❌ Problema: raw pointer + exceções específicas
-</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">try</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span><span style="color:#f92672">*</span> u <span style="color:#f92672">=</span> auth.autenticar(user, pass);  <span style="color:#75715e">// Quem é dono de u?
-</span></span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">catch</span>(<span style="color:#66d9ef">const</span> UsuarioNaoEncontrado<span style="color:#f92672">&amp;</span>) { <span style="color:#960050;background-color:#1e0010">…</span> }
-</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">catch</span>(<span style="color:#66d9ef">const</span> SenhaInvalida<span style="color:#f92672">&amp;</span>)       { <span style="color:#960050;background-color:#1e0010">…</span> }
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// ✅ Melhor: contrato explícito sem raw pointers
-</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">auto</span> resultado <span style="color:#f92672">=</span> auth.autenticar(user, pass);
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> (resultado.has_value()) {
-</span></span><span style="display:flex;"><span>    Usuario<span style="color:#f92672">&amp;</span> u <span style="color:#f92672">=</span> resultado.value();  <span style="color:#75715e">// propriedade clara
-</span></span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ... usar u
-</span></span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">else</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// tratar resultado.error()
-</span></span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="c1">// ❌ Problema: raw pointer + exceções específicas
+</span></span></span><span class="line"><span class="cl"><span class="k">try</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">auto</span><span class="o">*</span> <span class="n">u</span> <span class="o">=</span> <span class="n">auth</span><span class="p">.</span><span class="n">autenticar</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">pass</span><span class="p">);</span>  <span class="c1">// Quem é dono de u?
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span> <span class="k">catch</span><span class="p">(</span><span class="k">const</span> <span class="n">UsuarioNaoEncontrado</span><span class="o">&amp;</span><span class="p">)</span> <span class="p">{</span> <span class="err">…</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="k">catch</span><span class="p">(</span><span class="k">const</span> <span class="n">SenhaInvalida</span><span class="o">&amp;</span><span class="p">)</span>       <span class="p">{</span> <span class="err">…</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// ✅ Melhor: contrato explícito sem raw pointers
+</span></span></span><span class="line"><span class="cl"><span class="k">auto</span> <span class="n">resultado</span> <span class="o">=</span> <span class="n">auth</span><span class="p">.</span><span class="n">autenticar</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">pass</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="p">(</span><span class="n">resultado</span><span class="p">.</span><span class="n">has_value</span><span class="p">())</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">Usuario</span><span class="o">&amp;</span> <span class="n">u</span> <span class="o">=</span> <span class="n">resultado</span><span class="p">.</span><span class="n">value</span><span class="p">();</span>  <span class="c1">// propriedade clara
+</span></span></span><span class="line"><span class="cl">    <span class="c1">// ... usar u
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// tratar resultado.error()
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
 Quando um serviço lança exceções específicas para sinalizar falhas, qualquer alteração nesses tipos de erro obriga o desenvolvedor a revisar e atualizar todos os blocos <code>catch</code> espalhados pelo código cliente. </p>
@@ -619,18 +619,18 @@ Quando um serviço lança exceções específicas para sinalizar falhas, qualque
 <p>
 Para tornar o contrato explícito e facilitar a manutenção, o <em>C++23</em> introduziu o <code>std::expected&lt;T, E&gt;</code>, que incorpora o erro ao próprio tipo de retorno da função. Para versões anteriores do C++, alternativas incluem <code>tl::expected</code> (biblioteca header-only), <code>boost::outcome</code>, ou a combinação de <code>std::optional&lt;T&gt;</code> com um código de erro separado. Assim, a assinatura já deixa claro para o usuário todas as possibilidades de sucesso ou falha:</p>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// C++23 - propriedade clara
-</span></span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>expected<span style="color:#f92672">&lt;</span>Usuario, ErroAuth<span style="color:#f92672">&gt;</span>
-</span></span><span style="display:flex;"><span>autenticar(std<span style="color:#f92672">::</span>string_view user, std<span style="color:#f92672">::</span>string_view pass);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// Alternativa com smart pointer se necessário
-</span></span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>expected<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>unique_ptr<span style="color:#f92672">&lt;</span>Usuario<span style="color:#f92672">&gt;</span>, ErroAuth<span style="color:#f92672">&gt;</span>
-</span></span><span style="display:flex;"><span>autenticar(std<span style="color:#f92672">::</span>string_view user, std<span style="color:#f92672">::</span>string_view pass);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// Alternativas para C++ &lt; 23
-</span></span></span><span style="display:flex;"><span>tl<span style="color:#f92672">::</span>expected<span style="color:#f92672">&lt;</span>Usuario, ErroAuth<span style="color:#f92672">&gt;</span>               <span style="color:#75715e">// por valor
-</span></span></span><span style="display:flex;"><span>outcome<span style="color:#f92672">::</span>result<span style="color:#f92672">&lt;</span>Usuario, ErroAuth<span style="color:#f92672">&gt;</span>            <span style="color:#75715e">// por valor
-</span></span></span><span style="display:flex;"><span>std<span style="color:#f92672">::</span>optional<span style="color:#f92672">&lt;</span>std<span style="color:#f92672">::</span>unique_ptr<span style="color:#f92672">&lt;</span>Usuario<span style="color:#f92672">&gt;&gt;</span>       <span style="color:#75715e">// smart pointer + erro separado
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="c1">// C++23 - propriedade clara
+</span></span></span><span class="line"><span class="cl"><span class="n">std</span><span class="o">::</span><span class="n">expected</span><span class="o">&lt;</span><span class="n">Usuario</span><span class="p">,</span> <span class="n">ErroAuth</span><span class="o">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="n">autenticar</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string_view</span> <span class="n">user</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string_view</span> <span class="n">pass</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Alternativa com smart pointer se necessário
+</span></span></span><span class="line"><span class="cl"><span class="n">std</span><span class="o">::</span><span class="n">expected</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Usuario</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">ErroAuth</span><span class="o">&gt;</span>
+</span></span><span class="line"><span class="cl"><span class="n">autenticar</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string_view</span> <span class="n">user</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string_view</span> <span class="n">pass</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Alternativas para C++ &lt; 23
+</span></span></span><span class="line"><span class="cl"><span class="n">tl</span><span class="o">::</span><span class="n">expected</span><span class="o">&lt;</span><span class="n">Usuario</span><span class="p">,</span> <span class="n">ErroAuth</span><span class="o">&gt;</span>               <span class="c1">// por valor
+</span></span></span><span class="line"><span class="cl"><span class="n">outcome</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="n">Usuario</span><span class="p">,</span> <span class="n">ErroAuth</span><span class="o">&gt;</span>            <span class="c1">// por valor
+</span></span></span><span class="line"><span class="cl"><span class="n">std</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">Usuario</span><span class="o">&gt;&gt;</span>       <span class="c1">// smart pointer + erro separado
 </span></span></span></code></pre></div>
 </div>
 <p>
@@ -658,25 +658,25 @@ Cenários de erro merecem atenção especial nos testes, pois é justamente no t
 <p>
 Por outro lado, quando o tratamento de falhas depende de exceções, surgem desafios práticos. Simular e capturar exceções em testes exige o uso de mocks que lançam erros, além de poluir o código de teste com blocos <code>try-catch</code> ou macros como <code>EXPECT_THROW</code>. Isso pode prejudicar a legibilidade e facilitar a omissão de casos importantes, já que é fácil esquecer de testar um <code>catch</code> específico. O resultado é uma cobertura de testes parcial e menos confiável.</p>
 <p>
-Ao adotar contratos explícitos, como no exemplo em C++ abaixo usando <code>std::expected</code>, o teste se torna mais direto: basta verificar o valor retornado, sem precisar capturar exceções. Isso simplifica o código de teste, aumenta a clareza e garante que todos os ramos — inclusive os de erro — sejam exercitados de forma sistemática. </p>
+Ao adotar contratos explícitos, como no exemplo em C++ abaixo usando <code>std::expected</code>, o teste se torna mais direto: basta verificar o valor retornado, sem precisar capturar exceções. Isso simplifica o código de teste, aumenta a clareza e garante que todos os ramos , inclusive os de erro , sejam exercitados de forma sistemática. </p>
 <p>
 Assim, além de reduzir o acoplamento, esse padrão melhora a testabilidade e contribui para a manutenção segura do software. Abaixo, vamos ver como testar o código com contratos explícitos e como testar o código com exceções:</p>
 <p>
 <em>Simetria entre Estilos de Contrato de Erro</em>:</p>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// ❌ Testando exceções (mais verboso)
-</span></span></span><span style="display:flex;"><span>TEST(AuthTest, InvalidPasswordThrows) {
-</span></span><span style="display:flex;"><span>    AuthService auth;
-</span></span><span style="display:flex;"><span>    EXPECT_THROW(auth.login(<span style="color:#e6db74">&#34;user&#34;</span>, <span style="color:#e6db74">&#34;wrong&#34;</span>), InvalidPasswordException);
-</span></span><span style="display:flex;"><span>}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e">// ✅ Testando erros explícitos (mais direto)  
-</span></span></span><span style="display:flex;"><span>TEST(AuthTest, InvalidPasswordReturnsError) {
-</span></span><span style="display:flex;"><span>    AuthService auth;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">auto</span> result <span style="color:#f92672">=</span> auth.login(<span style="color:#e6db74">&#34;user&#34;</span>, <span style="color:#e6db74">&#34;wrong&#34;</span>);
-</span></span><span style="display:flex;"><span>    ASSERT_FALSE(result.has_value());
-</span></span><span style="display:flex;"><span>    EXPECT_EQ(result.error(), AuthError<span style="color:#f92672">::</span>InvalidPassword);
-</span></span><span style="display:flex;"><span>}</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl"><span class="c1">// ❌ Testando exceções (mais verboso)
+</span></span></span><span class="line"><span class="cl"><span class="n">TEST</span><span class="p">(</span><span class="n">AuthTest</span><span class="p">,</span> <span class="n">InvalidPasswordThrows</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">AuthService</span> <span class="n">auth</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="n">EXPECT_THROW</span><span class="p">(</span><span class="n">auth</span><span class="p">.</span><span class="n">login</span><span class="p">(</span><span class="s">&#34;user&#34;</span><span class="p">,</span> <span class="s">&#34;wrong&#34;</span><span class="p">),</span> <span class="n">InvalidPasswordException</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// ✅ Testando erros explícitos (mais direto)  
+</span></span></span><span class="line"><span class="cl"><span class="n">TEST</span><span class="p">(</span><span class="n">AuthTest</span><span class="p">,</span> <span class="n">InvalidPasswordReturnsError</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="n">AuthService</span> <span class="n">auth</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="n">auth</span><span class="p">.</span><span class="n">login</span><span class="p">(</span><span class="s">&#34;user&#34;</span><span class="p">,</span> <span class="s">&#34;wrong&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="n">ASSERT_FALSE</span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">has_value</span><span class="p">());</span>
+</span></span><span class="line"><span class="cl">    <span class="n">EXPECT_EQ</span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">error</span><span class="p">(),</span> <span class="n">AuthError</span><span class="o">::</span><span class="n">InvalidPassword</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
 </div>
 <p>
 <em>Técnicas de Teste Específicas</em>:</p>
@@ -684,15 +684,15 @@ Assim, além de reduzir o acoplamento, esse padrão melhora a testabilidade e co
 <li><em>Mocks que simulam falha</em></li>
 </ol>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>   <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">IServico</span> { <span style="color:#66d9ef">public</span><span style="color:#f92672">:</span> <span style="color:#66d9ef">virtual</span> Dados get(std<span style="color:#f92672">::</span>string) <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; };
-</span></span><span style="display:flex;"><span>   <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">MockFalho</span> <span style="color:#f92672">:</span> <span style="color:#66d9ef">public</span> IServico {
-</span></span><span style="display:flex;"><span>       std<span style="color:#f92672">::</span>exception_ptr ex_;
-</span></span><span style="display:flex;"><span>   <span style="color:#66d9ef">public</span><span style="color:#f92672">:</span>
-</span></span><span style="display:flex;"><span>       <span style="color:#66d9ef">void</span> setFalha(<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span> msg) {
-</span></span><span style="display:flex;"><span>           ex_ <span style="color:#f92672">=</span> std<span style="color:#f92672">::</span>make_exception_ptr(std<span style="color:#f92672">::</span>runtime_error(msg));
-</span></span><span style="display:flex;"><span>       }
-</span></span><span style="display:flex;"><span>       Dados <span style="color:#a6e22e">get</span>(std<span style="color:#f92672">::</span>string) <span style="color:#66d9ef">override</span> { std<span style="color:#f92672">::</span>rethrow_exception(ex_); }
-</span></span><span style="display:flex;"><span>   };</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl">   <span class="k">class</span> <span class="nc">IServico</span> <span class="p">{</span> <span class="k">public</span><span class="o">:</span> <span class="k">virtual</span> <span class="n">Dados</span> <span class="n">get</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">)</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="p">};</span>
+</span></span><span class="line"><span class="cl">   <span class="k">class</span> <span class="nc">MockFalho</span> <span class="o">:</span> <span class="k">public</span> <span class="n">IServico</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">       <span class="n">std</span><span class="o">::</span><span class="n">exception_ptr</span> <span class="n">ex_</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">   <span class="k">public</span><span class="o">:</span>
+</span></span><span class="line"><span class="cl">       <span class="kt">void</span> <span class="n">setFalha</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">msg</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">           <span class="n">ex_</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">make_exception_ptr</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="n">msg</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl">       <span class="p">}</span>
+</span></span><span class="line"><span class="cl">       <span class="n">Dados</span> <span class="nf">get</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span> <span class="n">std</span><span class="o">::</span><span class="n">rethrow_exception</span><span class="p">(</span><span class="n">ex_</span><span class="p">);</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">   <span class="p">};</span></span></span></code></pre></div>
 </div>
 <p>
    Teste foca em como o <em>consumidor</em> reage, sem depender do serviço real.</p>
@@ -700,47 +700,47 @@ Assim, além de reduzir o acoplamento, esse padrão melhora a testabilidade e co
 <li><em>Retorno explícito para casos esperados</em></li>
 </ol>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>   <span style="color:#66d9ef">struct</span> <span style="color:#a6e22e">Resultado</span> { <span style="color:#66d9ef">bool</span> ok; std<span style="color:#f92672">::</span>string erro; Dados dados; };
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>   Resultado <span style="color:#a6e22e">processar</span>(<span style="color:#66d9ef">const</span> Entrada<span style="color:#f92672">&amp;</span> in) {
-</span></span><span style="display:flex;"><span>       <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>valido(in)) <span style="color:#66d9ef">return</span> {false,<span style="color:#e6db74">&#34;Entrada inválida&#34;</span>,{}};
-</span></span><span style="display:flex;"><span>       <span style="color:#75715e">// ...
-</span></span></span><span style="display:flex;"><span>       <span style="color:#66d9ef">return</span> {true,<span style="color:#e6db74">&#34;&#34;</span>,dados};
-</span></span><span style="display:flex;"><span>   }
-</span></span><span style="display:flex;"><span>   <span style="color:#75715e">// Teste
-</span></span></span><span style="display:flex;"><span>   EXPECT_FALSE(processar(invalido).ok);</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl">   <span class="k">struct</span> <span class="nc">Resultado</span> <span class="p">{</span> <span class="kt">bool</span> <span class="n">ok</span><span class="p">;</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">erro</span><span class="p">;</span> <span class="n">Dados</span> <span class="n">dados</span><span class="p">;</span> <span class="p">};</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">   <span class="n">Resultado</span> <span class="nf">processar</span><span class="p">(</span><span class="k">const</span> <span class="n">Entrada</span><span class="o">&amp;</span> <span class="n">in</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">       <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">valido</span><span class="p">(</span><span class="n">in</span><span class="p">))</span> <span class="k">return</span> <span class="p">{</span><span class="nb">false</span><span class="p">,</span><span class="s">&#34;Entrada inválida&#34;</span><span class="p">,{}};</span>
+</span></span><span class="line"><span class="cl">       <span class="c1">// ...
+</span></span></span><span class="line"><span class="cl">       <span class="k">return</span> <span class="p">{</span><span class="nb">true</span><span class="p">,</span><span class="s">&#34;&#34;</span><span class="p">,</span><span class="n">dados</span><span class="p">};</span>
+</span></span><span class="line"><span class="cl">   <span class="p">}</span>
+</span></span><span class="line"><span class="cl">   <span class="c1">// Teste
+</span></span></span><span class="line"><span class="cl">   <span class="n">EXPECT_FALSE</span><span class="p">(</span><span class="n">processar</span><span class="p">(</span><span class="n">invalido</span><span class="p">).</span><span class="n">ok</span><span class="p">);</span></span></span></code></pre></div>
 </div>
 <ol>
-<li><em>Tipos de erro explícitos</em> – contrato de erro no tipo</li>
+<li><em>Tipos de erro explícitos</em> , contrato de erro no tipo</li>
 </ol>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>   <span style="color:#75715e">// Teste com exceções: precisa capturar tipo específico
-</span></span></span><span style="display:flex;"><span>   TEST(FileTest, NonExistentFileThrows) {
-</span></span><span style="display:flex;"><span>       EXPECT_THROW(lerArquivo(<span style="color:#e6db74">&#34;inexistente.txt&#34;</span>), FileNotFoundException);
-</span></span><span style="display:flex;"><span>   }
-</span></span><span style="display:flex;"><span>   
-</span></span><span style="display:flex;"><span>   <span style="color:#75715e">// Teste com expected: verifica valor e erro diretamente
-</span></span></span><span style="display:flex;"><span>   TEST(FileTest, NonExistentFileReturnsError) {
-</span></span><span style="display:flex;"><span>       <span style="color:#66d9ef">auto</span> result <span style="color:#f92672">=</span> lerArquivo(<span style="color:#e6db74">&#34;inexistente.txt&#34;</span>);
-</span></span><span style="display:flex;"><span>       ASSERT_FALSE(result.has_value());
-</span></span><span style="display:flex;"><span>       EXPECT_EQ(result.error(), ErroIO<span style="color:#f92672">::</span>FileNotFound);
-</span></span><span style="display:flex;"><span>       EXPECT_THAT(result.error().message(), HasSubstr(<span style="color:#e6db74">&#34;inexistente.txt&#34;</span>));
-</span></span><span style="display:flex;"><span>   }
-</span></span><span style="display:flex;"><span>   
-</span></span><span style="display:flex;"><span>   <span style="color:#75715e">// Alternativas para C++ &lt; 23
-</span></span></span><span style="display:flex;"><span>   tl<span style="color:#f92672">::</span>expected<span style="color:#f92672">&lt;</span>Dados,ErroIO<span style="color:#f92672">&gt;</span> lerArquivo(...);        <span style="color:#75715e">// tl::expected
-</span></span></span><span style="display:flex;"><span>   outcome<span style="color:#f92672">::</span>result<span style="color:#f92672">&lt;</span>Dados,ErroIO<span style="color:#f92672">&gt;</span> lerArquivo(...);     <span style="color:#75715e">// boost::outcome
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl">   <span class="c1">// Teste com exceções: precisa capturar tipo específico
+</span></span></span><span class="line"><span class="cl">   <span class="n">TEST</span><span class="p">(</span><span class="n">FileTest</span><span class="p">,</span> <span class="n">NonExistentFileThrows</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">       <span class="n">EXPECT_THROW</span><span class="p">(</span><span class="n">lerArquivo</span><span class="p">(</span><span class="s">&#34;inexistente.txt&#34;</span><span class="p">),</span> <span class="n">FileNotFoundException</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">   <span class="p">}</span>
+</span></span><span class="line"><span class="cl">   
+</span></span><span class="line"><span class="cl">   <span class="c1">// Teste com expected: verifica valor e erro diretamente
+</span></span></span><span class="line"><span class="cl">   <span class="n">TEST</span><span class="p">(</span><span class="n">FileTest</span><span class="p">,</span> <span class="n">NonExistentFileReturnsError</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">       <span class="k">auto</span> <span class="n">result</span> <span class="o">=</span> <span class="n">lerArquivo</span><span class="p">(</span><span class="s">&#34;inexistente.txt&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">       <span class="n">ASSERT_FALSE</span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">has_value</span><span class="p">());</span>
+</span></span><span class="line"><span class="cl">       <span class="n">EXPECT_EQ</span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">error</span><span class="p">(),</span> <span class="n">ErroIO</span><span class="o">::</span><span class="n">FileNotFound</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">       <span class="n">EXPECT_THAT</span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="n">error</span><span class="p">().</span><span class="n">message</span><span class="p">(),</span> <span class="n">HasSubstr</span><span class="p">(</span><span class="s">&#34;inexistente.txt&#34;</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl">   <span class="p">}</span>
+</span></span><span class="line"><span class="cl">   
+</span></span><span class="line"><span class="cl">   <span class="c1">// Alternativas para C++ &lt; 23
+</span></span></span><span class="line"><span class="cl">   <span class="n">tl</span><span class="o">::</span><span class="n">expected</span><span class="o">&lt;</span><span class="n">Dados</span><span class="p">,</span><span class="n">ErroIO</span><span class="o">&gt;</span> <span class="n">lerArquivo</span><span class="p">(...);</span>        <span class="c1">// tl::expected
+</span></span></span><span class="line"><span class="cl">   <span class="n">outcome</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="n">Dados</span><span class="p">,</span><span class="n">ErroIO</span><span class="o">&gt;</span> <span class="n">lerArquivo</span><span class="p">(...);</span>     <span class="c1">// boost::outcome
 </span></span></span></code></pre></div>
 </div>
 <ol>
 <li>
-<p><em>Testes de propriedade</em> – use frameworks como <em>rapidcheck</em> ou <em>Catch2 generators</em> para iterar entradas aleatórias e garantir:</p>
+<p><em>Testes de propriedade</em> , use frameworks como <em>rapidcheck</em> ou <em>Catch2 generators</em> para iterar entradas aleatórias e garantir:</p>
 <ul>
 <li>“Nenhum input válido gera exceção”.</li>
 <li>“Toda falha retorna erro não‑vazio”.</li>
 </ul>
 </li>
-<li><em>Ambiente de integração controlado</em> – docker de DB que cai, servidor fake que devolve <em>timeouts</em>; reproduz falhas reais sem mexer no prod.</li>
+<li><em>Ambiente de integração controlado</em> , docker de DB que cai, servidor fake que devolve <em>timeouts</em>; reproduz falhas reais sem mexer no prod.</li>
 </ol>
 <hr>
 </div>
@@ -795,32 +795,32 @@ Para facilitar decisões técnicas em governança de código, use este checklist
 <li><em>Erro de domínio esperado</em> → <code>Result&lt;T,E&gt;</code>, <code>std::expected</code>, <code>std::optional</code></li>
 </ul>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>  std<span style="color:#f92672">::</span>expected<span style="color:#f92672">&lt;</span>Usuario, ErroAuth<span style="color:#f92672">&gt;</span> login(user, pass);  <span style="color:#75715e">// ✅
-</span></span></span><span style="display:flex;"><span>  <span style="color:#75715e">// throw UsuarioNaoEncontrado();                     // ❌
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl">  <span class="n">std</span><span class="o">::</span><span class="n">expected</span><span class="o">&lt;</span><span class="n">Usuario</span><span class="p">,</span> <span class="n">ErroAuth</span><span class="o">&gt;</span> <span class="n">login</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">pass</span><span class="p">);</span>  <span class="c1">// ✅
+</span></span></span><span class="line"><span class="cl">  <span class="c1">// throw UsuarioNaoEncontrado();                     // ❌
 </span></span></span></code></pre></div>
 </div>
 <ul>
 <li><em>Validação de entrada rotineira</em> → códigos de retorno, bool</li>
 </ul>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>  <span style="color:#66d9ef">bool</span> <span style="color:#a6e22e">validarEmail</span>(<span style="color:#66d9ef">const</span> std<span style="color:#f92672">::</span>string<span style="color:#f92672">&amp;</span> email);        <span style="color:#75715e">// ✅
-</span></span></span><span style="display:flex;"><span>  <span style="color:#75715e">// throw EmailInvalidoException();                   // ❌
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl">  <span class="kt">bool</span> <span class="nf">validarEmail</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">email</span><span class="p">);</span>        <span class="c1">// ✅
+</span></span></span><span class="line"><span class="cl">  <span class="c1">// throw EmailInvalidoException();                   // ❌
 </span></span></span></code></pre></div>
 </div>
 <ul>
 <li><em>Estado &#34;impossível&#34; interno</em> → <code>assert()</code>, <code>panic!</code> (debug only)</li>
 </ul>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>  assert(index <span style="color:#f92672">&lt;</span> size);                                <span style="color:#75715e">// ✅ debug
-</span></span></span><span style="display:flex;"><span>  <span style="color:#75715e">// throw std::logic_error(&#34;Impossível&#34;);            // ❌ production
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl">  <span class="n">assert</span><span class="p">(</span><span class="n">index</span> <span class="o">&lt;</span> <span class="n">size</span><span class="p">);</span>                                <span class="c1">// ✅ debug
+</span></span></span><span class="line"><span class="cl">  <span class="c1">// throw std::logic_error(&#34;Impossível&#34;);            // ❌ production
 </span></span></span></code></pre></div>
 </div>
 <ul>
 <li><em>Performance crítica</em> → códigos de erro, flags</li>
 </ul>
 <div class="src src-cpp">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>  ErrorCode <span style="color:#a6e22e">parseNumber</span>(<span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span><span style="color:#f92672">*</span> str, <span style="color:#66d9ef">int</span><span style="color:#f92672">&amp;</span> result); <span style="color:#75715e">// ✅
-</span></span></span><span style="display:flex;"><span>  <span style="color:#75715e">// int parseNumber(const char* str);  // throws     // ❌
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-cpp" data-lang="cpp"><span class="line"><span class="cl">  <span class="n">ErrorCode</span> <span class="nf">parseNumber</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">str</span><span class="p">,</span> <span class="kt">int</span><span class="o">&amp;</span> <span class="n">result</span><span class="p">);</span> <span class="c1">// ✅
+</span></span></span><span class="line"><span class="cl">  <span class="c1">// int parseNumber(const char* str);  // throws     // ❌
 </span></span></span></code></pre></div>
 </div>
 </div>
@@ -899,6 +899,7 @@ Referências
     <footer>
     </footer>
   </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
 <script src="/vendor/prism/prism-core.min.js"></script>
 <script src="/vendor/prism/prism-clike.min.js"></script>
 <script src="/vendor/prism/prism-bash.min.js"></script>
@@ -915,7 +916,19 @@ Referências
 <script src="/vendor/prism/prism-sql.min.js"></script>
 <script src="/vendor/prism/prism-autoloader.min.js"></script>
   <script src="/vendor/mermaid/mermaid.min.js"></script>
-  <script>mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#bb86fc', primaryTextColor: '#e8e0f0', primaryBorderColor: '#6b58a0', lineColor: '#c792ea', secondaryColor: '#2d1b4e', tertiaryColor: '#362258' } });</script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
   <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
   <script>
     var btn = document.querySelector('.back-to-top');
