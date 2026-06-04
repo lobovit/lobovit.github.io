@@ -1,0 +1,433 @@
++++
+title = "03 - AI Engineering from scratch: do perceptron ao debug de rede neural"
+description = "Como uma rede neural aprende de verdade, peça por peça, com código Python que você pode rodar"
+date = 2026-05-25T17:00:00-03:00
+tags = ["AI", "deep-learning", "pytorch", "backpropagation", "neural-networks", "python"]
+draft = true
+weight = 1
+author = "Vitor Lobo Ramos"
++++
+
+
+Deep learning parece mágica. Você joga dados num buraco negro de matrizes, espera alguns minutos (ou dias) e sai um modelo que reconhece gatos, traduz idiomas e escreve código. Mas não é mágica. São 13 peças que se encaixam, e quando você entende cada uma, o buraco negro vira um mecanismo de relógio.
+
+Este artigo percorre essas 13 peças. Do perceptron (um único neurônio que decide sim ou não) até um framework completo de deep learning em 500 linhas. Depois conecta com PyTorch, dá uma olhada no JAX e fecha com o capítulo mais importante e mais ignorado: como debugar uma rede neural quando ela falha sem dar erro.
+
+A stack aqui é Python + Go: Python pra treinar (PyTorch), Go pra servir (inferência em produção). O que você vai ver de código é Python, mas toda a lógica se aplica a qualquer framework.
+
+* A anatomia de uma rede neural
+
+Uma rede neural é uma função matemática com milhares (ou bilhões) de parâmetros ajustáveis. O treino é o processo de encontrar os valores desses parâmetros que minimizam o erro nas predições. Três ideias bastam pra entender como isso funciona.
+
+** O perceptron: o tijolo fundamental**
+
+O perceptron é o modelo mais simples possível. Ele recebe entradas (~x₁, x₂, ..., x_n~), multiplica cada uma por um peso (~wᵢ~), soma tudo, adiciona um viés (~b~) e passa por uma função de ativação. Se o resultado passar de um limiar, é classe A; senão, classe B.
+
+#+BEGIN_SRC python
+import numpy as np
+
+def perceptron_predict(x, w, b):
+    z = np.dot(w, x) + b
+    return 1 if z >= 0 else 0
+
+# Porta AND: só retorna 1 se ambas entradas forem 1
+w_and = np.array([1.0, 1.0])
+b_and = -1.5
+print(perceptron_predict([1, 1], w_and, b_and))  # 1
+print(perceptron_predict([0, 1], w_and, b_and))  # 0
+#+END_SRC
+
+O aprendizado é igualmente simples. Pra cada exemplo de treino, compare a predição com o valor real. Se errou, ajuste os pesos na direção do erro: ~w += lr * (y_true - y_pred) * x~. Esse loop converge pra qualquer problema /linearmente separável/.
+
+O problema: o XOR não é. Tente desenhar uma reta que separe os pontos (0,0) e (1,1) [classe 0] dos pontos (0,1) e (1,0) [classe 1]. Impossível. Essa limitação quase matou as redes neurais nos anos 60.
+
+A solução é empilhar perceptrons.
+
+** Camadas escondidas e o forward pass**
+
+Uma rede com camada escondida resolve o XOR. A ideia: a primeira camada transforma o espaço de entrada num espaço onde os pontos /são/ linearmente separáveis. A segunda camada (de saída) faz a classificação final nesse novo espaço.
+
+O forward pass é a computação da esquerda pra direita: ~a¹ = σ(W¹x + b¹); a² = σ(W²a¹ + b²); ...~. Cada ~W~ é uma matriz de pesos entre camadas. Cada ~σ~ é uma função de ativação não-linear (sigmoid, ReLU, GELU, dependendo da arquitetura). Sem a não-linearidade, 100 camadas colapsam numa única multiplicação de matriz, porque linear de linear é linear.
+
+#+BEGIN_SRC python
+import numpy as np
+
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+# XOR com uma camada escondida de 2 neurônios
+W1 = np.array([[20, 20], [-20, -20]])   # (2,2)
+b1 = np.array([-10, 30])                 # (2,)
+W2 = np.array([[20, 20]])                # (1,2)
+b2 = np.array([-30])                     # (1,)
+
+def xor_forward(x):
+    h = sigmoid(W1 @ x + b1)
+    return sigmoid(W2 @ h + b2)
+
+for x in [[0,0], [0,1], [1,0], [1,1]]:
+    print(f"{x} -> {xor_forward(x):.4f}")
+#+END_SRC
+
+O Teorema da Aproximação Universal diz que uma rede com uma única camada escondida e neurônios suficientes pode aproximar qualquer função contínua. Na prática, redes profundas (muitas camadas) são mais eficientes que redes largas (poucas camadas com muitos neurônios). O GPT-3 tem 96 camadas; o GPT-4, mais de 120.
+
+** Backpropagation: como o modelo descobre o que ajustar**
+
+O forward pass computa predições. O backward pass (backpropagation) computa gradientes. É o algoritmo que tornou deep learning viável, reduzindo o que seria 2.3 milhões de ajustes manuais de peso a uma única passada de trás pra frente.
+
+A regra da cadeia aplicada em reverso. Pra cada camada, a partir da saída: calcule o gradiente da loss em relação aos pesos da camada, depois propague o gradiente pra camada anterior. O gradiente de uma camada depende do gradiente da camada seguinte. Isso é retropropagação.
+
+#+BEGIN_SRC python
+# Derivada da sigmoid: s(x) * (1 - s(x))
+def sigmoid_derivative(x):
+    s = sigmoid(x)
+    return s * (1 - s)
+
+# Backprop manual simplificado: loss MSE, uma saída
+def backward_pass(x, y, W1, b1, W2, b2):
+    # Forward
+    z1 = W1 @ x + b1
+    a1 = sigmoid(z1)
+    z2 = W2 @ a1 + b2
+    a2 = sigmoid(z2)
+
+    # Backward (da saída pra entrada)
+    d_loss = 2 * (a2 - y)                        # gradiente da MSE
+    d_z2 = d_loss * sigmoid_derivative(z2)
+    d_W2 = np.outer(d_z2, a1)                    # gradiente dos pesos W2
+    d_b2 = d_z2
+    d_a1 = W2.T @ d_z2
+    d_z1 = d_a1 * sigmoid_derivative(z1)
+    d_W1 = np.outer(d_z1, x)                     # gradiente dos pesos W1
+    d_b1 = d_z1
+
+    return d_W1, d_b1, d_W2, d_b2, a2
+#+END_SRC
+
+O problema do vanishing gradient: a derivada da sigmoid no ponto de saturação é quase zero (máximo de 0.25). Depois de 10 camadas, o gradiente que chega na primeira é no máximo ~0.25^10 ≈ 1e-6~. As camadas iniciais simplesmente param de aprender. A ReLU resolve isso: gradiente é 1 pra valores positivos, sem saturação.
+
+No PyTorch, ~loss.backward()~ faz tudo isso automaticamente. Mas entender o que acontece por baixo é o que te permite debugar quando algo some.
+
+* As engrenagens do treino
+
+Uma rede neural é definida por quatro escolhas interligadas. A função de ativação decide se o sinal passa. A função de perda define o que "erro" significa. O otimizador decide como corrigir o erro. E o learning rate controla a velocidade da correção.
+
+** Ativações: o que faz o sinal passar (ou não)**
+
+Sem ativação não-linear, 100 camadas de ~Wx + b~ colapsam em ~W_equivalente * x + b_equivalente~. A não-linearidade é o que permite à rede aprender fronteiras curvas.
+
+A sigmoid (~σ(x) = 1/(1+e^(-x))~) foi a primeira. Suave, derivada fácil, output entre 0 e 1. Caiu em desuso porque satura (gradiente ~0 nos extremos). A tanh (~(e^x - e^(-x))/(e^x + e^(-x))~) é a sigmoid centralizada no zero: output entre -1 e 1, gradientes mais fortes.
+
+A ReLU (~max(0, x)~) dominou por uma década. Simples, rápida, sem saturação pra valores positivos. O problema: se um neurônio só recebe entradas negativas, ele morre (gradiente zero pra sempre, nunca mais atualiza). É o "dying ReLU".
+
+A GELU (~x * Φ(x)~, onde Φ é a CDF da normal) é a ativação padrão dos transformers modernos (BERT, GPT). Ela suaviza a ReLU multiplicando por uma probabilidade, o que produz gradientes mais estáveis em redes profundas. A Swish (~x * σ(x)~) é similar e foi descoberta por busca de arquitetura.
+
+#+BEGIN_SRC python
+import numpy as np
+
+def relu(x):       return np.maximum(0, x)
+def leaky_relu(x): return np.where(x > 0, x, 0.01 * x)
+def gelu(x):       return 0.5 * x * (1 + np.tanh(np.sqrt(2/np.pi) * (x + 0.044715 * x**3)))
+def swish(x):      return x / (1 + np.exp(-x))
+
+x = np.array([-2, -1, 0, 1, 2])
+print("ReLU:     ", relu(x))         # [0, 0, 0, 1, 2]
+print("GELU:     ", gelu(x).round(3))  # [-0.045, -0.159, 0, 0.841, 1.955]
+#+END_SRC
+
+A regra prática: transformers (NLP, LLMs) usam GELU. CNNs (visão) usam ReLU. RNNs usam tanh. Saída de classificação binária usa sigmoid; multiclasse usa softmax; regressão usa linear (sem ativação). Se neurônios estão morrendo numa ReLU, troque pra GELU, não pra LeakyReLU.
+
+#+BEGIN_QUOTE
+/Em miúdos:/ ~Saturação~ é quando a função de ativação achata nos extremos e a derivada vai pra zero. É como tentar descer uma ladeira que virou um platô: você não sabe mais pra onde ir. ~Neurônio morto~ é um neurônio ReLU que nunca mais dispara porque todos os inputs são negativos e o gradiente é zero. ~Softmax~ transforma um vetor de scores brutos (logits) numa distribuição de probabilidade que soma 1. É a última camada de todo classificador.
+#+END_QUOTE
+
+** Loss functions: o que o modelo tenta minimizar**
+
+A loss é o único número que o modelo vê. Toda a complexidade do treino se resume a "faça esse número descer". Escolher a loss errada é como dar a bússola errada pro navegador.
+
+MSE (~(pred - target)²~) é a loss de regressão. Suave, derivada contínua, penaliza erros grandes quadraticamente. Mas em classificação, MSE produz gradientes pequenos demais quando a predição está longe do alvo, o que significa aprendizado lento justo quando você mais precisa de correção.
+
+Cross-entropy resolve isso. Pra classificação binária: ~BCE = -(y*log(p) + (1-y)*log(1-p))~. Quando o modelo erra feio (prevê 0.01 pra classe correta), o ~-log(0.01) = 4.6~ explode e o gradiente é enorme. É o equivalente matemático de "acorda, você errou muito".
+
+Label smoothing troca o one-hot ~[0,0,1,0]~ por ~[0.01, 0.01, 0.97, 0.01]~. Isso impede overfitting e overconfidence. O GPT usa label smoothing. Focal loss adiciona um fator ~(1-p)^γ~ que reduz o peso de exemplos fáceis (já classificados corretamente), focando o treino nos difíceis. Essencial pra detecção de objetos com desbalanceamento de classes.
+
+InfoNCE é a loss do aprendizado auto-supervisionado. Dado um par positivo (duas visões da mesma imagem) e N pares negativos (visões de imagens diferentes), minimize a distância do positivo e maximize a dos negativos. SimCLR e CLIP usam isso.
+
+#+BEGIN_SRC python
+import numpy as np
+
+def bce_loss(y_true, y_pred):
+    eps = 1e-12
+    y_pred = np.clip(y_pred, eps, 1 - eps)
+    return -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
+
+def label_smoothing(y_true, num_classes, alpha=0.1):
+    one_hot = np.eye(num_classes)[y_true]
+    return (1 - alpha) * one_hot + alpha / num_classes
+
+y_true = np.array([1, 0, 1])
+y_pred = np.array([0.9, 0.1, 0.2])
+print(f"BCE dos erros: {bce_loss(y_true, y_pred):.4f}")  # alto: 0.2 está muito errado
+#+END_SRC
+
+** Otimizadores: como o modelo se corrige**
+
+O SGD puro (~w -= lr * grad~) é um compasso: aponta a direção mas não sabe nada sobre o terreno. Momentum (~v = β*v + grad; w -= lr*v~) adiciona inércia: continue andando na direção média, ignore oscilações.
+
+Adam junta momentum com adaptação por parâmetro. Mantém duas médias móveis exponenciais: ~m~ (primeira momento, direção) e ~v~ (segundo momento, magnitude). Cada peso ganha sua própria taxa de aprendizado efetiva, inversamente proporcional à raiz da média dos gradientes ao quadrado. Isso faz o Adam ser robusto a gradientes com escalas diferentes, que é exatamente o que acontece em redes profundas (pesos das primeiras camadas têm gradientes ordens de magnitude menores que os das últimas).
+
+AdamW é o Adam com weight decay desacoplado. No Adam original, weight decay e adaptação de learning rate se misturavam (o decay era aplicado ao gradiente, não ao peso). AdamW aplica ~w -= lr * λ * w~ separadamente, o que produz regularização mais forte e melhor generalização. Todo transformer moderno (BERT, GPT, LLaMA, Stable Diffusion) foi treinado com AdamW.
+
+#+BEGIN_SRC python
+class AdamW:
+    def __init__(self, lr=1e-3, betas=(0.9, 0.999), eps=1e-8, weight_decay=0.01):
+        self.lr, self.b1, self.b2, self.eps, self.wd = lr, *betas, eps, weight_decay
+        self.m, self.v, self.t = {}, {}, 0
+
+    def step(self, params, grads):
+        self.t += 1
+        for name in params:
+            p, g = params[name], grads[name]
+            self.m[name] = self.b1 * self.m.get(name, 0) + (1 - self.b1) * g
+            self.v[name] = self.b2 * self.v.get(name, 0) + (1 - self.b2) * g**2
+            m_hat = self.m[name] / (1 - self.b1**self.t)
+            v_hat = self.v[name] / (1 - self.b2**self.t)
+            params[name] = p - self.lr * (m_hat / (np.sqrt(v_hat) + self.eps) + self.wd * p)
+#+END_SRC
+
+#+BEGIN_QUOTE
+/Em miúdos:/ ~Weight decay~ é a regularização L2: penalize pesos grandes pra evitar overfitting. ~Bias correction~ corrige o viés inicial do Adam: nas primeiras iterações, ~m~ e ~v~ começam em zero e demoram a aquecer; dividir por ~(1 - β^t)~ compensa isso. ~Beta1=0.9~ significa "lembre 90% do momentum passado"; ~beta2=0.999~ significa "lembre 99.9% da magnitude passada". ~Epsilon~ (1e-8) evita divisão por zero.
+#+END_QUOTE
+
+* Fazendo a rede aprender melhor
+
+Os três ingredientes anteriores (ativação, loss, otimizador) são o motor. Os três seguintes são o volante: regularização impede overfitting, inicialização de pesos faz o motor pegar de primeira, e learning rate schedule controla a velocidade na curva.
+
+** Regularização: o freio que evita decoreba**
+
+Uma rede neural com parâmetros suficientes pode memorizar qualquer dataset. Literalmente: um paper famoso (Zhang et al., 2017) mostrou que redes profundas podem atingir 100% de acurácia em treino com labels aleatórios. Se seu modelo tem 100% no treino e 50% no teste, ele decorou, não aprendeu.
+
+Dropout desliga neurônios aleatoriamente durante o treino (cada neurônio tem probabilidade ~p~ de ser zerado naquela iteração). Isso força a rede a construir representações redundantes, porque nenhum neurônio pode depender de outro estar presente. Na inferência, todos os neurônios participam e a média implícita de muitos submodelos diferentes produz regularização. O dropout padrão do transformer é p=0.1.
+
+BatchNorm normaliza as ativações de cada camada pra média zero e variância um, calculadas sobre o batch atual. Isso acelera o treino (paisagem de loss mais suave), permite learning rates maiores e adiciona um leve ruído que regulariza. Mas depende do tamanho do batch: com batch pequeno, as estatísticas ficam instáveis.
+
+LayerNorm normaliza por amostra em vez de por batch. Calcula média e variância sobre as features de uma única amostra. É o padrão dos transformers porque funciona com batch size 1 e não acopla amostras do batch (importante pra inferência sequencial). RMSNorm é uma LayerNorm sem subtração da média e sem o parâmetro de viés (~β~). A LLaMA e Mistral usam RMSNorm porque é ~10% mais rápida com a mesma qualidade.
+
+#+BEGIN_SRC python
+import numpy as np
+
+def layernorm(x, gamma=1.0, beta=0.0, eps=1e-5):
+    mean = np.mean(x, axis=-1, keepdims=True)
+    var = np.var(x, axis=-1, keepdims=True)
+    return gamma * (x - mean) / np.sqrt(var + eps) + beta
+
+def rmsnorm(x, gamma=1.0, eps=1e-5):
+    rms = np.sqrt(np.mean(x**2, axis=-1, keepdims=True))
+    return gamma * x / (rms + eps)
+
+#+END_SRC
+
+** Inicialização de pesos: por que o primeiro chute importa**
+
+Se todos os pesos começam em zero, todos os neurônios de uma camada são idênticos e produzem o mesmo gradiente. A rede nunca quebra a simetria e não aprende nada.
+
+Se os pesos começam com valores aleatórios na escala errada, o sinal explode (ativações vão pra infinito) ou desaparece (ativações vão pra zero) conforme atravessa as camadas. A matemática: ~Var(z) = fan_in * Var(w) * Var(x)~. Pra manter a variância estável, você precisa de ~Var(w) = 1 / fan_in~.
+
+Xavier (Glorot) inicializa com ~Var(w) = 2 / (fan_in + fan_out)~, otimizada pra sigmoid/tanh. Kaiming (He) inicializa com ~Var(w) = 2 / fan_in~, porque a ReLU zera metade das ativações e você precisa compensar essa perda de variância. O PyTorch usa Kaiming uniforme como padrão no ~nn.Linear~.
+
+O GPT-2 vai além: escala a saída de cada bloco transformer por ~1/√(2 * num_layers)~ antes de somar ao residual. Isso evita que o sinal cresça com a profundidade da rede.
+
+#+BEGIN_SRC python
+def kaiming_init(shape, gain=np.sqrt(2)):
+    fan_in = shape[1] if len(shape) > 1 else shape[0]
+    std = gain / np.sqrt(fan_in)
+    return np.random.randn(*shape) * std
+
+def xavier_init(shape):
+    fan_in = shape[1] if len(shape) > 1 else shape[0]
+    fan_out = shape[0] if len(shape) > 1 else 1
+    limit = np.sqrt(6 / (fan_in + fan_out))
+    return np.random.uniform(-limit, limit, shape)
+#+END_SRC
+
+** Learning rate schedules: a arte de dosar a velocidade**
+
+O learning rate é o hiperparâmetro mais importante. Constante raramente é ótimo: você quer passos grandes no começo (explorar) e pequenos no fim (refinar). A diferença entre o melhor e o segundo melhor schedule pode ser vários pontos percentuais de acurácia.
+
+Warmup resolve o problema do Adam nas primeiras iterações: como ~m~ e ~v~ começam em zero, as estimativas iniciais são ruidosas. Warmup sobe o learning rate gradualmente de ~lr/25~ até o valor alvo nos primeiros 3-5% dos passos. Todo transformer grande usa warmup (LLaMA 3: 2000 passos de warmup).
+
+Cosine decay desce suavemente do pico até quase zero: ~lr(t) = lr_min + 0.5 * (lr_max - lr_min) * (1 + cos(π * t / T))~. É o padrão moderno pra transformers. Step decay (cai 10x a cada N épocas) ainda funciona bem pra CNNs com SGD.
+
+A política 1cycle (Smith, 2018) sobe o learning rate na primeira metade do treino e desce na segunda. A intuição: learning rates altos no meio do treino regularizam (jogam o modelo pra regiões mais planas da paisagem de loss, que generalizam melhor). Pra orçamentos fixos de compute, 1cycle frequentemente bate cosine.
+
+#+BEGIN_SRC python
+def cosine_schedule(step, total_steps, lr_max=1e-3, lr_min=1e-5):
+    return lr_min + 0.5 * (lr_max - lr_min) * (1 + np.cos(np.pi * step / total_steps))
+
+def warmup_cosine(step, warmup_steps, total_steps, lr_max=1e-3, lr_min=1e-5):
+    if step < warmup_steps:
+        return lr_max * step / warmup_steps
+    return cosine_schedule(step - warmup_steps, total_steps - warmup_steps, lr_max, lr_min)
+#+END_SRC
+
+* Do zero ao framework
+
+As 9 peças anteriores formam um mecanismo completo. Juntando tudo, você consegue construir um mini-framework de deep learning em ~500 linhas.
+
+** Construindo seu próprio PyTorch**
+
+A abstração central é o ~Module~. Ele tem ~forward()~ (computar predições), ~backward()~ (calcular gradientes), ~parameters()~ (devolver todos os pesos ajustáveis) e ~train()/eval()~ (ligar/desligar dropout e batch norm). Toda camada da rede herda de Module.
+
+O ~Linear~ é um Module que guarda uma matriz de pesos ~W~ e um vetor de vieses ~b~. O forward é ~W @ x + b~. No backward, você recebe o gradiente da camada seguinte e calcula os gradientes locais (pra atualizar W e b) e o gradiente pra propagar pra camada anterior.
+
+O ~Sequential~ é um container que empilha módulos e chama o forward de cada um em sequência. O backward percorre a lista de trás pra frente (porque gradiente flui da saída pra entrada).
+
+#+BEGIN_SRC python
+class Module:
+    def forward(self, x): raise NotImplementedError
+    def backward(self, grad): raise NotImplementedError
+    def parameters(self): return []
+    def train(self): pass
+    def eval(self): pass
+
+class Sequential(Module):
+    def __init__(self, *modules):
+        self.modules = modules
+    def forward(self, x):
+        for m in self.modules: x = m.forward(x)
+        return x
+    def backward(self, grad):
+        for m in reversed(self.modules): grad = m.backward(grad)
+        return grad
+    def parameters(self):
+        return [p for m in self.modules for p in m.parameters()]
+#+END_SRC
+
+O loop de treino é sempre o mesmo, seja seu framework de 500 linhas ou o PyTorch treinando GPT-4:
+
+#+BEGIN_SRC python
+for epoch in range(epochs):
+    for x_batch, y_batch in dataloader:
+        optimizer.zero_grad()          # zera gradientes acumulados
+        y_pred = model.forward(x_batch) # forward pass
+        loss = loss_fn(y_pred, y_batch) # calcula erro
+        loss.backward()                 # backpropagation
+        optimizer.step()                # atualiza pesos
+#+END_SRC
+
+** PyTorch: o framework que ganhou**
+
+Seu mini-framework é 500x mais lento que o PyTorch. O PyTorch faz tudo que você construiu, mas com autograd (não precisa escrever backward manual), GPU (troque ~cpu~ por ~cuda~), mixed precision (float16 onde pode, float32 onde precisa) e um ecossistema que vai do ~torchvision~ ao ~torch.distributed~.
+
+A API do PyTorch mapeia 1:1 pro que você construiu: ~nn.Module~ é seu Module. ~nn.Linear~ é seu Linear. ~nn.Sequential~ é seu Sequential. ~optim.AdamW~ é seu AdamW. A diferença é que o PyTorch compila o grafo computacional em C++ e manda pra GPU.
+
+O loop canônico de 5 linhas treinou todos os modelos que você já ouviu falar:
+
+#+BEGIN_SRC python
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+model = nn.Sequential(nn.Linear(784, 256), nn.ReLU(), nn.Linear(256, 10))
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.AdamW(model.parameters(), lr=1e-3)
+
+for x, y in dataloader:
+    optimizer.zero_grad()
+    loss = criterion(model(x), y)
+    loss.backward()
+    optimizer.step()
+#+END_SRC
+
+** JAX: o primo funcional**
+
+JAX adota uma filosofia oposta. Em vez de objetos mutáveis com estado interno (como ~model.parameters()~ que são atualizados in-place), JAX exige funções puras. Você escreve ~def loss_fn(params, x, y)~, e o JAX te dá ~grad(loss_fn)~, ~jit(loss_fn)~ e ~vmap(loss_fn)~ de graça.
+
+A imutabilidade é a chave: como nada é modificado in-place, o JAX pode traçar o grafo inteiro da computação e compilar pra XLA (Acelerador Linear Algebra), que funde operações e elimina overhead de Python. O resultado é 10-100x mais rápido em hardware acelerado (TPU especialmente).
+
+Quem usa JAX: Google DeepMind (Gemini), Anthropic (Claude). Vale a pena se você tem TPU, precisa de gradientes por amostra (~per-example gradients~) ou treina em escala massiva com múltiplos dispositivos. Pra todo o resto, PyTorch.
+
+#+BEGIN_SRC python
+# Em JAX, o treino é uma função pura que retorna novos parâmetros:
+# @jax.jit
+# def train_step(params, opt_state, x, y):
+#     loss, grads = jax.value_and_grad(loss_fn)(params, x, y)
+#     updates, opt_state = optimizer.update(grads, opt_state, params)
+#     params = optax.apply_updates(params, updates)
+#     return params, opt_state, loss
+#+END_SRC
+
+* Debugging: quando a rede não quebra, mas também não aprende
+
+Rede neural quebrada não dá erro. Ela treina por horas, a loss desce (ou não), você olha a acurácia no teste e descobre que seu modelo aprendeu a chutar a classe majoritária. Ou aprendeu a decorar o dataset. Ou simplesmente não converge. E não tem stack trace.
+
+60 a 70% do tempo de debugging em ML é gasto em bugs silenciosos. Existe um protocolo.
+
+** Overfit num batch**
+
+O teste mais importante de todos. Pegue um único batch de 32 exemplos. Treine por 100 iterações. Se a loss não chegar perto de zero e a acurácia não for 100%, seu modelo tem um bug estrutural (shape errado, gradiente quebrado, loss errada). Não prossiga antes de passar nesse teste.
+
+** Gradient checking**
+
+Compare o gradiente analítico (calculado pelo backprop) com o numérico (perturbe cada peso em ε, meça a diferença na loss). Se a diferença relativa for maior que 1e-5, seu backward tem um erro de implementação.
+
+** Estatísticas de ativação**
+
+Registre média, desvio padrão e fração de zeros das ativações de cada camada. Se a média está crescendo exponencialmente com a profundidade, os pesos estão mal inicializados. Se mais de 50% das ativações ReLU são zero, você tem neurônios mortos.
+
+** Gradiente por camada**
+
+Registre média e máximo do gradiente absoluto por camada. Se as primeiras camadas têm gradiente próximo de zero e as últimas têm gradiente normal, você tem vanishing gradients (troque sigmoid por ReLU/GELU ou adicione skip connections). Se os gradientes são NaN ou Inf, reduza o learning rate em 10x.
+
+** Learning rate finder**
+
+Faça um sweep do learning rate de 1e-7 a 10 em escala log, uma iteração por valor, e plote loss vs lr. O learning rate ideal está ~10x abaixo do ponto onde a loss desce mais rápido (antes de explodir).
+
+#+BEGIN_SRC python
+import torch
+
+class NetworkDebugger:
+    def __init__(self, model):
+        self.stats = {}
+        for name, module in model.named_modules():
+            if isinstance(module, (nn.Linear, nn.Conv2d)):
+                module.register_forward_hook(self._hook(name))
+
+    def _hook(self, name):
+        def hook(module, inp, out):
+            self.stats[f"{name}_act"] = {
+                "mean": out.mean().item(), "std": out.std().item(),
+                "zero_frac": (out == 0).float().mean().item()
+            }
+        return hook
+
+    def diagnose(self):
+        for name, s in self.stats.items():
+            if s["zero_frac"] > 0.5:
+                print(f"ALERTA {name}: {s['zero_frac']:.1%} neurônios mortos")
+            if abs(s["mean"]) > 10:
+                print(f"ALERTA {name}: ativação média {s['mean']:.1f} (explodindo)")
+#+END_SRC
+
+#+BEGIN_QUOTE
+/Em miúdos:/ ~Overfit num batch~ é o canário na mina: se o modelo não consegue decorar 32 exemplos, ele não vai aprender 50 mil. ~Gradient checking~ é o teste de sanidade do seu backward: compare o que você calculou com uma aproximação numérica (diferença finita). ~Dying ReLU~ é quando um neurônio ReLU só recebe entradas negativas e o gradiente é zero pra sempre. ~Vanishing gradient~ é quando o gradiente some nas camadas iniciais e elas param de aprender. ~Exploding gradient~ é o oposto: gradientes tão grandes que os pesos dão saltos e a loss vai pra NaN. Gradient clipping (~clip_grad_norm~) resolve exploding. Skip connections (ResNets, transformers) resolvem vanishing.
+#+END_QUOTE
+
+* O que levar disso
+
+Deep learning não é mágica. São 13 peças:
+
+- O perceptron decide sim ou não com uma soma ponderada.
+- Camadas escondidas transformam o espaço até o problema ficar linearmente separável.
+- Backpropagation propaga o erro de trás pra frente usando a regra da cadeia.
+- A ativação certa (GELU pra transformers, ReLU pra CNNs) evita gradientes que somem.
+- A loss certa (cross-entropy pra classificação, nunca MSE) dá o sinal de aprendizado correto.
+- O otimizador certo (AdamW, com warmup e cosine decay) faz o treino convergir.
+- Regularização (dropout, weight decay, normalização) evita decoreba.
+- Inicialização (Kaiming, Xavier) faz o sinal atravessar dezenas de camadas sem explodir nem sumir.
+- O learning rate schedule (warmup + cosine) controla a velocidade de aprendizado.
+- Um mini-framework de 500 linhas ensina mais que 500 páginas de documentação.
+- PyTorch é o padrão da indústria; JAX é o primo funcional pra escala extrema.
+- Debugging sistemático (overfit num batch, gradient check, estatísticas de ativação) pega bugs que não dão erro.
+
+Se você entendeu essas 13 peças, você entende o que acontece dentro de qualquer rede neural. O resto é engenharia.

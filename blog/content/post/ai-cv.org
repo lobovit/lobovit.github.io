@@ -1,0 +1,236 @@
+﻿+++
+title = "04 - AI Engineering from scratch: do pixel ao modelo de mundo"
+description = "Como máquinas aprendem a enxergar, de convoluções 3x3 a difusão de vídeo"
+date = 2026-05-25T20:00:00-03:00
+tags = ["AI", "computer-vision", "cnn", "diffusion", "yolo", "vit", "pytorch", "python"]
+draft = true
+weight = 1
+author = "Vitor Lobo Ramos"
++++
+
+
+Uma imagem digital é uma matriz de números. Um pixel é um valor entre 0 e 255. Três canais (RGB) por pixel, 224 linhas, 224 colunas. Isso dá 150 mil números. E em cima desses 150 mil números a gente constrói modelos que reconhecem rostos, dirigem carros, geram arte e simulam física.
+
+Visão computacional é o campo que ensina máquinas a extrair significado de pixels. Este artigo percorre 28 tópicos, dos fundamentos de imagem até modelos de mundo que preveem o futuro em vídeo. A stack é Python (PyTorch) pra treino e experimentação, Go pra inferência em produção.
+
+* Como uma imagem vira tensor
+
+Tudo começa com o pipeline de pré-processamento. Você carrega um JPEG, decodifica os pixels, converte o espaço de cor, redimensiona, recorta, normaliza e transpõe. Cada passo tem uma razão. Pular um quebra o modelo silenciosamente: acurácia cai, e você não sabe por quê.
+
+O formato HWC (Height-Width-Channel) é o que PIL e OpenCV usam. O formato CHW (Channel-Height-Width) é o que PyTorch e cuDNN esperam. A conversão ~transpose(2, 0, 1)~ é a linha mais frequente em código de visão. E a normalização do ImageNet (~mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]~) é a constante mais importante do campo: todo modelo pré-treinado espera esses valores. Se você normalizar errado, o modelo não vai dar erro, só vai performar mal.
+
+#+BEGIN_SRC python
+from torchvision import transforms
+
+pipeline = transforms.Compose([
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),               # HWC -> CHW, [0,255] -> [0,1]
+    transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225],
+    ),
+])
+#+END_SRC
+
+* Convoluções: o tijolo da visão
+
+Uma convolução é um filtro que desliza sobre a imagem. Em cada posição, multiplica elemento a elemento e soma. O resultado é um mapa de ativação que responde a um padrão específico: bordas horizontais, bordas verticais, texturas, cantos.
+
+O que faz a convolução ser perfeita pra visão: compartilhamento de pesos. O mesmo kernel de 3x3 (9 parâmetros) é aplicado em todas as 50 mil posições da imagem. Compare com uma camada densa que precisaria de milhões de parâmetros. E a equivariância à translação: se o objeto se move 5 pixels pra direita, o mapa de ativação também se move 5 pixels. A rede "sabe" onde as coisas estão.
+
+A fórmula do tamanho de saída: ~(H - K + 2P) / S + 1~. Com kernel 3x3, padding 1 e stride 1, o tamanho se preserva. Com stride 2, reduz pela metade (downsampling). Duas convoluções 3x3 empilhadas têm o mesmo campo receptivo de uma 5x5, com menos parâmetros e uma não-linearidade extra no meio. Por isso todo mundo empilha 3x3.
+
+#+BEGIN_SRC python
+import numpy as np
+
+def conv2d_naive(x, kernel, stride=1, padding=0):
+    C_in, H, W = x.shape
+    C_out, _, K, _ = kernel.shape
+    H_out = (H - K + 2*padding) // stride + 1
+    W_out = (W - K + 2*padding) // stride + 1
+    out = np.zeros((C_out, H_out, W_out))
+
+    if padding > 0:
+        x = np.pad(x, ((0,0), (padding,padding), (padding,padding)))
+
+    for oc in range(C_out):
+        for h in range(H_out):
+            for w in range(W_out):
+                patch = x[:, h*stride:h*stride+K, w*stride:w*stride+K]
+                out[oc, h, w] = np.sum(kernel[oc] * patch)
+    return out
+
+# Filtro de Sobel: detecta bordas horizontais
+sobel_h = np.array([[[[-1,-2,-1],[0,0,0],[1,2,1]]]])
+#+END_SRC
+
+O truque im2col acelera isso 100x: rearranje cada janela de convolução como uma coluna de matriz, achate o kernel como linhas, e a convolução inteira vira uma multiplicação de matrizes. É assim que o PyTorch faz por baixo (via cuDNN).
+
+* A árvore genealógica das CNNs
+
+Toda CNN dos últimos 30 anos é a mesma receita (convolução, não-linearidade, downsampling) com uma ideia nova colada. Entender a árvore genealógica resolve 80% das decisões de arquitetura.
+
+LeNet-5 (1998, LeCun) inventou o template: conv, pool, conv, pool, fully-connected. Funcionava pra dígitos manuscritos (MNIST). AlexNet (2012, Krizhevsky) adicionou ReLU (em vez de tanh), Dropout e profundidade. Ganhou o ImageNet por 10 pontos percentuais e começou a era do deep learning.
+
+VGG (2014) provou que profundidade importa mais que truques: 16 camadas de convoluções 3x3 empilhadas, zero invenção. Inception (Google, 2014) rodou convoluções 1x1, 3x3 e 5x5 em paralelo e concatenou os resultados, capturando padrões em múltiplas escalas.
+
+ResNet (2015, He) resolveu o problema da degradação. Redes com 20 camadas treinavam melhor que redes com 56 camadas. A causa: vanishing gradients. A solução: skip connections. ~y = F(x) + x~. O ~+x~ é um atalho de identidade que dá ao gradiente um caminho direto de volta, sem passar por nenhuma camada. Isso permite 152 camadas sem perder sinal.
+
+#+BEGIN_SRC python
+import torch
+import torch.nn as nn
+
+class BasicBlock(nn.Module):
+    def __init__(self, in_ch, out_ch, stride=1):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_ch, out_ch, 3, stride, 1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_ch)
+        self.conv2 = nn.Conv2d(out_ch, out_ch, 3, 1, 1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_ch)
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_ch != out_ch:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(in_ch, out_ch, 1, stride, bias=False),
+                nn.BatchNorm2d(out_ch))
+
+    def forward(self, x):
+        out = torch.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out += self.shortcut(x)
+        return torch.relu(out)
+#+END_SRC
+
+A skip connection do ResNet é o padrão por trás de todo transformer moderno (o ~x + attention(x)~ do GPT é a mesma ideia). O que era um truque pra CNNs virou a arquitetura da linguagem.
+
+* Classificação, fine-tuning e o que fazer com um modelo pré-treinado
+
+Treinar um classificador do zero exige milhões de imagens e dias de GPU. O que você faz na prática: pegue uma ResNet ou ConvNeXt pré-treinada no ImageNet (14 milhões de imagens, 1000 classes), congele o backbone e treine só uma nova cabeça de classificação. Isso é transfer learning.
+
+Se você tem muitos dados (10k+ por classe) e seu domínio é próximo do ImageNet (fotos naturais), descongele tudo e faça fine-tuning com learning rate 10x menor. Se tem poucos dados (<1k por classe), congele tudo menos a última camada. Se o domínio é distante (imagens médicas, satélite, microscopia), o fine-tuning ajuda menos e você pode precisar treinar mais camadas.
+
+Taxas de aprendizado discriminativas: as primeiras camadas (que detectam bordas e texturas, genéricas) recebem atualizações pequenas (lr/100). As últimas (específicas da tarefa) recebem a taxa normal. Progressive unfreezing: descongele uma camada por época, da última pra primeira.
+
+#+BEGIN_SRC python
+import torchvision.models as models
+
+model = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
+model.fc = nn.Linear(512, 10)  # nova cabeça pra 10 classes
+
+# Feature extraction: só a cabeça treina
+for param in model.parameters():
+    param.requires_grad = False
+for param in model.fc.parameters():
+    param.requires_grad = True
+
+optimizer = torch.optim.AdamW(model.fc.parameters(), lr=1e-3)
+#+END_SRC
+
+* Detecção: YOLO e a arte de achar objetos
+
+Classificação responde "o que é isso?". Detecção responde "o que é e onde está?". YOLO (You Only Look Once) faz as duas coisas numa única passada, o que o torna rápido o bastante pra vídeo em tempo real.
+
+A imagem é dividida numa grade S×S. Cada célula prediz B caixas delimitadoras. Cada caixa tem 5 números: ~(x, y, w, h, confiança)~ mais as probabilidades das C classes. O ~x~ e ~y~ são relativos à célula; o ~w~ e ~h~ são relativos a âncoras pré-definidas (formas típicas de caixa: retangular horizontal, quadrada, retangular vertical). A confiança diz "tem um objeto aqui?". O modelo prediz deslocamentos em relação às âncoras, não coordenadas absolutas.
+
+A loss tem três componentes: regressão das caixas (só nas células que contêm objetos), confiança (objeto vs fundo, em todas as células), e classificação (só nas células com objeto). Depois da predição, Non-Maximum Suppression (NMS) remove caixas redundantes: ordene por score, pegue a maior, suprima todas com IoU > 0.5, repita.
+
+#+BEGIN_SRC python
+def nms(boxes, scores, iou_threshold=0.5):
+    order = np.argsort(scores)[::-1]
+    keep = []
+    while len(order) > 0:
+        keep.append(order[0])
+        if len(order) == 1:
+            break
+        ious = box_iou_matrix(boxes[order[0]], boxes[order[1:]])
+        order = order[1:][ious < iou_threshold]
+    return keep
+#+END_SRC
+
+As métricas são mAP@0.5 (PASCAL VOC) e mAP@0.5:0.95 (COCO, bem mais rigoroso). Um detector com 50 de mAP no COCO já é muito bom.
+
+* Segmentação: classificando cada pixel
+
+Segmentação semântica (U-Net) rotula cada pixel com uma classe ("isso é carro, isso é estrada, isso é árvore"). Segmentação de instâncias (Mask R-CNN) vai além: separa "carro A" de "carro B", mesmo sendo a mesma classe.
+
+A U-Net tem formato de U. O encoder (lado esquerdo) comprime a imagem progressivamente, capturando contexto global. O decoder (lado direito) restaura a resolução espacial. Entre eles, skip connections entregam features de alta resolução do encoder diretamente ao decoder, preservando bordas finas que seriam perdidas na compressão.
+
+A loss combina cross-entropy (estável, bons gradientes iniciais) e Dice loss (otimiza sobreposição de máscara diretamente, robusta a desbalanceamento de classes). A fórmula do Dice: ~2 * |A ∩ B| / (|A| + |B|)~. É o padrão em imagem médica, onde o objeto de interesse (tumor) ocupa 1% dos pixels.
+
+Mask R-CNN adiciona um branch de máscara ao detector Faster R-CNN. O RoIAlign (em vez de RoIPool) é o detalhe crítico: ele amostra features em coordenadas float exatas via interpolação bilinear, sem arredondar pra inteiro. O RoIPool perdia 3-4 pontos de mAP por causa do arredondamento.
+
+* Gerando imagens: de GANs a difusão
+
+Uma GAN é um jogo entre duas redes. O gerador cria imagens a partir de ruído aleatório. O discriminador tenta distinguir imagens reais de falsas. Os dois treinam em competição: o gerador melhora pra enganar o discriminador, o discriminador melhora pra não ser enganado.
+
+Funciona bem pra geração rápida (milissegundos) e transferência de estilo. Mas é instável: mode collapse (o gerador produz uma única imagem convincente e para de explorar), discriminator-wins (o discriminador fica bom demais e o gradiente do gerador some), oscilação. A DCGAN estabeleceu cinco regras pra estabilizar: convoluções com stride (nada de pooling), BatchNorm nos dois lados, nada de fully-connected, ReLU no gerador, LeakyReLU no discriminador.
+
+Modelos de difusão vieram depois e resolveram o problema de estabilidade. A ideia: pegue uma imagem, adicione ruído gaussiano em 1000 passos até virar ruído puro. Depois treine uma rede (U-Net) pra reverter um passo de cada vez. A rede aprende a prever o ruído adicionado, não a imagem final. O treino é uma única linha: ~loss = MSE(ruído_real, ruído_previsto)~. Sem adversarial, sem colapso de modo, sem oscilação. Só regressão.
+
+O insight que torna isso viável: você não precisa rodar 1000 passos pra treinar. A fórmula ~x_t = √(ᾱ_t)·x_0 + √(1-ᾱ_t)·ε~ te dá qualquer passo intermediário diretamente da imagem limpa. Você amostra um ~t~ aleatório, aplica a fórmula, e treina a rede pra prever ~ε~ a partir de ~x_t~ e ~t~. O sampling (gerar imagem) roda os 1000 passos de trás pra frente, partindo do ruído puro. DDIM acelera isso 20-50x reformulando como EDO determinística.
+
+#+BEGIN_SRC python
+def q_sample(x_0, t, sqrt_alpha_cumprod, sqrt_one_minus_alpha_cumprod, noise=None):
+    if noise is None:
+        noise = torch.randn_like(x_0)
+    return sqrt_alpha_cumprod[t] * x_0 + sqrt_one_minus_alpha_cumprod[t] * noise
+
+# Treino: uma linha
+noise_pred = model(x_t, t)
+loss = F.mse_loss(noise_pred, noise)
+#+END_SRC
+
+Stable Diffusion roda esse processo no espaço latente de um VAE, não no espaço de pixels. A imagem 512x512x3 vira 64x64x4 (48x menos dimensões). Um encoder de texto (CLIP) condiciona a geração via cross-attention em cada camada da U-Net. E o Classifier-Free Guidance (CFG) mistura predição condicional e incondicional: ~ε = ε_uncond + w*(ε_cond - ε_uncond)~, com w=7.5 típico. LoRA (Low-Rank Adaptation) permite fine-tuning com adaptadores de 10-50 MB que cabem em GPU de consumidor.
+
+* Vídeo, 3D e o mundo além das fotos
+
+Vídeo é uma sequência de imagens mais a física que as conecta. Três abordagens: 2D+pool (CNN por frame, média dos embeddings, rápido mas cego a movimento), 3D convolutions (kernel com profundidade temporal, modela movimento diretamente, I3D infla pesos 2D do ImageNet), e spatio-temporal transformers (atenção dividida no tempo e no espaço, estado da arte).
+
+Nuvens de pontos são a saída bruta de sensores 3D (LiDAR). O PointNet processa cada ponto com o mesmo MLP e faz max-pooling global, garantindo invariância à permutação (a ordem dos pontos não importa). NeRF (Neural Radiance Fields) aprende um campo volumétrico contínuo: dado um ponto no espaço (x,y,z) e uma direção de visão (θ,φ), uma MLP prevê densidade e cor. O rendering integra amostras ao longo de raios com a equação de composição alfa.
+
+3D Gaussian Splatting substituiu NeRFs na prática. Em vez de uma MLP implícita, a cena é uma nuvem de milhões de gaussianas 3D explícitas, cada uma com posição, rotação, escala, opacidade e cor. O rendering projeta cada gaussiana 3D numa elipse 2D na tela e faz alpha compositing de trás pra frente. Treina em minutos, renderiza a 100+ fps. A extensão glTF da Khronos tornou portável.
+
+Vision Transformers (ViT) aplicam a arquitetura do "Attention is All You Need" a imagens. A imagem é cortada em patches 16x16, cada patch vira um token (como uma palavra), e um transformer padrão processa tudo. Um token [CLS] no início agrega a informação global. ViT precisa de mais dados que CNNs pra funcionar bem, mas com pré-treinamento auto-supervisionado (MAE: mascare 75% dos patches, reconstrua os pixels faltantes), bate CNNs com folga.
+
+* Visão além do visível: CLIP, VLMs e segmentação aberta
+
+CLIP (Contrastive Language-Image Pre-training) treina um encoder de imagem e um encoder de texto juntos. O objetivo: pares (imagem, legenda) correspondentes devem ficar próximos no espaço de embedding; pares não correspondentes, distantes. O resultado é um modelo que entende linguagem e visão no mesmo espaço.
+
+Isso permite classificação zero-shot: "uma foto de um {gato}" vs "uma foto de um {cachorro}". Codifique os prompts de texto, codifique a imagem, argmax da similaridade de cosseno. Sem uma única imagem de treino daquelas classes. O prompt importa: usar 80 templates diferentes ("uma foto de um {}", "uma imagem borrada de um {}", "um close-up de um {}") e tirar a média adiciona 1-3% de acurácia.
+
+Vision-Language Models (VLMs) como Qwen-VL e LLaVA conectam o encoder de visão a um LLM. A imagem vira tokens via ViT, um projetor MLP mapeia pro espaço do LLM, e o modelo de linguagem processa texto e imagem entrelaçados. O resultado é um chat que "vê": você manda uma foto de uma planta e pergunta "que espécie é essa?", e ele responde com texto.
+
+SAM 3 (Segment Anything Model 3) leva isso pra segmentação. Você dá um prompt de texto ("ônibus escolar amarelo") e uma imagem. O modelo retorna máscaras pra todos os objetos que casam com o conceito, em uma única passada. A arquitetura junta detector de imagem, tracker baseado em memória e um "presence head" que separa "esse conceito está aqui?" de "onde exatamente?", reduzindo falsos positivos.
+
+* De volta ao mundo real: deployment, OCR e tracking
+
+Modelos de visão em produção enfrentam restrições de latência e memória. MobileNetV3 e ConvNeXt-Tiny são as escolhas pra edge. Quantização INT8 reduz o modelo em 4x e acelera 2-4x com perda mínima de acurácia. O pipeline de deployment: PyTorch, ONNX, ONNX Runtime/TensorRT. Meça latência com warmup, sincronização de CUDA e percentis (p50, p95, p99), nunca com média.
+
+OCR é um pipeline de três estágios: detectar caixas de texto, reconhecer caracteres em cada caixa, ordenar o layout. O reconhecimento usa CRNN (CNN + BiLSTM + CTC loss). CTC (Connectionist Temporal Classification) alinha sequências de comprimentos diferentes sem precisar de anotação por caractere: ele marginaliza sobre todos os alinhamentos possíveis que colapsam no texto alvo. Modelos modernos (Donut, TrOCR) usam transformers ponta a ponta.
+
+Multi-object tracking associa detecções frame a frame. O SORT (2016) usa Filtro de Kalman pra prever posição + Hungarian algorithm pra matching ótimo. DeepSORT adiciona features de re-identificação. ByteTrack faz um segundo matching com detecções de baixa confiança, recuperando oclusões. A métrica HOTA (Higher Order Tracking Accuracy) decompõe detecção e associação, substituindo MOTA como padrão da comunidade.
+
+* O estado da arte em 2026: DiT, profundidade e modelos de mundo
+
+Diffusion Transformers (DiT) substituem a U-Net por um transformer. Os patches latentes (do VAE) viram tokens, e blocos transformer com AdaLN-Zero (conditioning via adaptative layer norm com pesos inicializados em zero) processam tudo. Rectified flow reformula a trajetória de difusão como uma linha reta (~x_t = (1-t)*x_0 + t*ε~) em vez da curva do DDPM, permitindo amostragem em 20 passos deterministicos em vez de 1000. SD3, FLUX e Sora usam isso.
+
+Monocular depth estimation prevê profundidade a partir de uma única imagem RGB, algo que era considerado impossível sem estereoscopia ou LiDAR. Funciona porque um ViT treinado em bilhões de imagens internaliza pistas de perspectiva, oclusão, gradiente de textura e perspectiva atmosférica como priors estatísticos. Depth Anything V3 é o padrão de 2026.
+
+World models são o Santo Graal: um modelo de vídeo que prevê os próximos segundos de uma cena, condicionado em ações. É um simulador aprendido. A arquitetura: Video DiT com 3D patch embedding (patches no espaço-tempo) e atenção dividida (temporal e espacial separadas pra evitar complexidade O((THW)²)). Sora 2 gera vídeo com áudio a partir de texto. Modelos de mundo robóticos simulam rollouts pra planejamento: o VLM planeja, o modelo de vídeo simula, a dinâmica inversa emite comandos de motor.
+
+* O que levar disso
+
+Visão computacional em 2026 é um campo maduro com um arco claro:
+
+- Toda imagem vira tensor com um pipeline de pré-processamento que você não pode errar.
+- Convoluções 3x3 empilhadas são o tijolo; skip connections (ResNet) são a argamassa que deixa empilhar 152 camadas.
+- Transfer learning com backbone pré-treinado é o padrão de produção pra qualquer tarefa.
+- YOLO detecta, U-Net segmenta, Mask R-CNN segmenta instâncias.
+- GANs geram rápido, difusão gera bonito, Stable Diffusion gera bonito e rápido no espaço latente.
+- ViT trata patches como palavras; CLIP alinha visão e linguagem; VLMs conversam sobre imagens.
+- DiT + rectified flow é a arquitetura de geração de 2026.
+- SAM 3 segmenta qualquer coisa com prompt de texto.
+- Depth Anything estima profundidade de uma foto só.
+- World models prevem o futuro em vídeo.
+
+Do pixel ao modelo de mundo, o caminho passa por cada uma dessas ideias. E cada uma delas é, no fundo, um tensor passando por uma rede neural.

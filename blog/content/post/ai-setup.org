@@ -1,0 +1,958 @@
++++
+title = "01 - AI Engineering from scratch: a fase zero da engenharia de IA"
+description = "Tudo que você precisa configurar antes de escrever uma única linha de PyTorch, do ambiente de desenvolvimento ao debug de NaN loss"
+date = 2026-05-27T10:00:00-03:00
+tags = ["AI", "setup", "tooling", "python", "go", "docker", "linux", "gpu", "amd", "rocm", "cuda", "debugging"]
+draft = true
+weight = 1
+author = "Vitor Lobo Ramos"
++++
+
+
+Este artigo é uma parte de uma série de outros artigos que pretendo escrever sobre AI Engineering From Scratch baseados no projeto [[https://github.com/rohitg00/ai-engineering-from-scratch][ai-engineering-from-scratch]] de Rohit Ghumare. Os artigos cobrem de regressão linear a agentes multi-modelo, passando por CNNs (redes convolucionais, as que reconhecem objetos em imagens), transformers (a arquitetura por trás do GPT e do Claude), RAG (Retrieval-Augmented Generation quando você dá documentos de contexto pro LLM antes de perguntar), fine-tuning (ajustar um modelo pré-treinado com seus próprios dados) e inferência em produção (servir o modelo treinado pra usuários reais). E nenhuma delas funciona se o ambiente não estiver pronto.
+
+A stack que vamos usar é Python + Go. Python é o rei do ecossistema de IA, PyTorch, JAX, transformers, datasets, Jupyter, tudo vive aqui. Go é a linguagem pra construir APIs, agentes, servidores MCP e tudo que precisa ser rápido, compilado e deployável com um binário só. Duas linguagens, zero gordura.
+
+* O ambiente de desenvolvimento
+
+Antes de qualquer modelo, antes de qualquer dataset, você precisa de um lugar onde o código /roda/. Não adianta ter o melhor notebook do mundo se o Python não encontra o NumPy, ou se seu agente em Go não compila.
+
+O que vamos fazer aqui: instalar Python (com ~uv~) e Go, nessa ordem. O objetivo é chegar no fim com um terminal onde ~python~ e ~go~ respondem sem erro e você entende /por que/ cada um está ali. Toda stack de engenharia de IA tem camadas. Se uma falha, a culpa cai na de cima e você nunca sabe onde foi o problema:
+
+#+BEGIN_SRC mermaid
+graph TD
+    A["4. Bibliotecas de IA<br/>PyTorch, JAX, transformers, etc."] --> B["3. Runtimes de linguagem<br/>Python 3.12+, Go 1.23+"]
+    B --> C["2. Gerenciadores de pacote<br/>uv, go mod"]
+    C --> D["1. Fundação do sistema<br/>OS, shell, git, editor, drivers GPU"]
+
+    classDef l4 fill:#1a1c2e,stroke:#4a4e6b,color:#b8bcd0
+    classDef l3 fill:#1e2040,stroke:#525580,color:#c0c4d8
+    classDef l2 fill:#222450,stroke:#5a5e90,color:#c8cce0
+    classDef l1 fill:#262860,stroke:#6266a0,color:#d0d4e8
+    class A l4
+    class B l3
+    class C l2
+    class D l1
+#+END_SRC
+
+Em Python, ao menos neste experimento, prefira usar ~uv~ ao invés de ~pip~ por questão de praticidade e performance:
+
+#+BEGIN_SRC bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv python install 3.12
+
+uv venv
+source .venv/bin/activate  # ou .venv\Scripts\activate no Windows
+
+uv pip install numpy matplotlib jupyter
+#+END_SRC
+
+Verifique se tudo subiu:
+
+#+BEGIN_SRC python
+import sys; print(f"Python {sys.version}")
+import numpy as np; print(f"NumPy {np.__version__}")
+a = np.array([1, 2, 3])
+print(f"Vector: {a}, dot: {np.dot(a, a)}")
+#+END_SRC
+
+* Go
+
+Python cuida dos modelos. Go cuida de todo o resto: APIs de LLM, agentes autônomos, servidores MCP, ferramentas de linha de comando, automação de infra. É a linguagem que você usa quando precisa de performance, deploy simples e zero dependência externa.
+
+#+BEGIN_SRC bash
+# Linux/macOS
+curl -sSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz | sudo tar -C /usr/local -xz
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+
+# Windows (PowerShell como admin)
+winget install GoLang.Go.1.23
+
+# Ou via gvm (gerenciador de versões, similar ao fnm)
+bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binds/gvm_install)
+source ~/.gvm/scripts/gvm
+gvm install go1.23.4
+gvm use go1.23.4
+#+END_SRC
+
+Verifique:
+
+#+BEGIN_SRC bash
+go version
+# go version go1.23.4 linux/amd64
+
+mkdir -p ~/hello && cd ~/hello
+go mod init hello
+cat > main.go << 'EOF'
+package main
+import "fmt"
+func main() { fmt.Println("Go pronto pra IA.") }
+EOF
+go run main.go
+#+END_SRC
+
+#+BEGIN_QUOTE
+/Em miúdos:/ ~Go~ (ou Golang) foi criada pelo Google pra resolver problemas de infraestrutura em escala. Ela compila em segundos, gera um binário estático (sem dependências externas) e tem concorrência nativa com goroutines, perfeito pra agentes que fazem dezenas de chamadas de API em paralelo. ~MCP~ (Model Context Protocol) é um protocolo aberto da Anthropic que padroniza como agentes de IA se conectam a ferramentas externas (bancos de dados, APIs, sistemas de arquivos), Go é uma das linguagens mais usadas pra implementar servidores MCP. ~Go modules~ (~go mod~) é o gerenciador de dependências nativo do Go, similar ao ~uv~ no Python.
+#+END_QUOTE
+
+#+BEGIN_QUOTE
+/Saiba mais:/ se seu terminal diz "command not found" depois de instalar, você provavelmente esqueceu de reiniciar o shell ou rodar o ~source~ do profile. Acontece com todo mundo.
+#+END_QUOTE
+
+* GPU: local, nuvem ou Colab?
+
+Você já tem Python e Go rodando. Agora a pergunta que define se seu treino vai durar 10 minutos ou 8 horas: /onde está sua GPU?/
+
+O que vamos fazer aqui: verificar se você tem GPU local tanto NVIDIA quanto AMD, aprender a usar o Google Colab como alternativa gratuita, e rodar um benchmark pra ver o speedup real. No fim, você vai saber qual opção usar e como instalar o PyTorch certo pro seu hardware.
+
+Treinar em CPU é ok pra aprender. Treinar pra valer em CPU é dormir 8 horas esperando um /epoch/ (uma passada completa do modelo por todo o dataset de treino se seu dataset tem 50 mil imagens, uma epoch significa que o modelo viu cada uma delas uma vez). GPU acelera isso por um fator de 50 a 200x. Você tem três opções e nenhuma é universalmente melhor:
+
+| Opção | Custo | Setup | Ideal para |
+|-------+-------+-------+------------|
+| GPU local (NVIDIA ou AMD) | $0 (já é sua) | Instalar driver + PyTorch | Uso diário, datasets grandes |
+| Google Colab (T4 grátis) | $0 | Nenhum | Experimentos rápidos, sem GPU em casa |
+| Cloud GPU (Lambda, RunPod) | $0.20–2.00/h | SSH + instalação | Treinamento pesado, modelos grandes |
+
+**Se você tem NVIDIA**, verifique com:
+
+#+BEGIN_SRC bash
+nvidia-smi
+#+END_SRC
+
+Instale o PyTorch com CUDA:
+
+#+BEGIN_SRC bash
+uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+#+END_SRC
+
+**Se você tem AMD** (como eu), verifique com:
+
+#+BEGIN_SRC bash
+rocm-smi
+# ou, se não tiver o rocm-smi instalado:
+rocminfo | grep -E "Name:|VRAM"
+#+END_SRC
+
+Instale o PyTorch com ROCm:
+
+#+BEGIN_SRC bash
+uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.0
+#+END_SRC
+
+O bonito é que, depois de instalado, o código Python é /idêntico/ pros dois. O PyTorch trata ROCm como um backend CUDA-like, você continua usando ~torch.cuda.is_available()~ e ~model.to("cuda")~, e ele resolve pra você. Não precisa de ~if nvidia elif amd~ no código. E no Python, o teste pra ambos:
+
+#+BEGIN_SRC python
+import torch
+print(f"GPU disponível: {torch.cuda.is_available()}")
+if torch.cuda.is_available():
+    print(f"GPU: {torch.cuda.get_device_name(0)}")
+    print(f"VRAM: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
+#+END_SRC
+
+O benchmark que compara CPU e GPU na multiplicação de matrizes 5000x5000:
+
+#+BEGIN_SRC python
+import torch, time
+size = 5000
+a_cpu = torch.randn(size, size); b_cpu = torch.randn(size, size)
+
+start = time.time()
+c_cpu = a_cpu @ b_cpu
+print(f"CPU: {time.time() - start:.3f}s")
+
+if torch.cuda.is_available():
+    a_gpu = a_cpu.to("cuda"); b_gpu = b_cpu.to("cuda")
+    torch.cuda.synchronize()
+    start = time.time()
+    c_gpu = a_gpu @ b_gpu
+    torch.cuda.synchronize()
+    print(f"GPU: {time.time() - start:.3f}s")
+    print(f"Speedup: {cpu_time / gpu_time:.0f}x")
+#+END_SRC
+
+Na primeira vez que eu rodei isso na minha AMD, o speedup foi de 140x. Depois disso você nunca mais quer treinar em CPU.
+
+#+BEGIN_QUOTE
+/Em miúdos:/ ~CUDA~ é a plataforma de computação paralela da NVIDIA, é ela que deixa você rodar código na GPU em vez da CPU. ~ROCm~ (Radeon Open Compute) é o equivalente da AMD, mesma ideia, implementação diferente, mesma API no PyTorch. ~cuDNN~ é uma biblioteca otimizada de redes neurais que roda em cima do CUDA. A AMD tem a ~MIOpen~ como equivalente. ~VRAM~ é a memória de vídeo da GPU, aquele número em GB que limita o tamanho do modelo que você consegue treinar. E ~device-agnostic~ é o padrão de código que pergunta "tem GPU?" antes de mandar o modelo pra lá, o ~model.to(device)~ que você vai escrever umas mil vezes.
+#+END_QUOTE
+
+*Sem GPU?*
+
+A maioria dos tutoriais e experimentos iniciais roda em CPU. Os mais pesados que precisam de GPU geralmente incluem links pro Colab. O device-agnostic pattern que você vai usar o tempo inteiro:
+
+#+BEGIN_SRC python
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = model.to(device)
+#+END_SRC
+
+* APIs e chaves: o padrão que nunca muda
+
+Modelos grandes como GPT e Claude não rodam no seu laptop, eles vivem em servidores, e você conversa com eles via API. É como pedir comida por aplicativo: você faz o pedido (request), o restaurante prepara (processamento) e entrega (response). A chave de API é seu endereço de entrega, sem ela, ninguém sabe quem está pedindo.
+
+O que vamos fazer aqui: guardar chaves com segurança (nunca no código!), fazer a primeira chamada a um LLM usando Python, e entender o que acontece por baixo dos panos quando você usa um SDK. No fim, você vai saber debugar os quatro erros HTTP mais comuns sem precisar do Google.
+
+Quando você começar a trabalhar com LLMs, vai chamar APIs da Anthropic, OpenAI e Google. Mais adiante, quando estiver construindo agentes autônomos, essas chamadas vão acontecer em loop. Toda API funciona do mesmo jeito:
+
+1. Um endpoint (URL)
+2. Uma chave (autenticação)
+3. Um corpo de requisição (o que você quer)
+4. Um corpo de resposta (o que volta)
+
+A primeira chamada, via SDK:
+
+#+BEGIN_SRC python
+import anthropic
+
+client = anthropic.Anthropic()
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=256,
+    messages=[{"role": "user", "content": "O que é uma rede neural em uma frase?"}]
+)
+print(response.content[0].text)
+#+END_SRC
+
+E a versão HTTP crua, que é o que o SDK faz por baixo e você precisa entender pra debugar:
+
+#+BEGIN_SRC python
+import os, urllib.request, json
+
+url = "https://api.anthropic.com/v1/messages"
+headers = {
+    "Content-Type": "application/json",
+    "x-api-key": os.environ["ANTHROPIC_API_KEY"],
+    "anthropic-version": "2023-06-01",
+}
+body = json.dumps({
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 256,
+    "messages": [{"role": "user", "content": "O que é uma rede neural em uma frase?"}],
+}).encode()
+
+req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+with urllib.request.urlopen(req) as resp:
+    result = json.loads(resp.read())
+    print(result["content"][0]["text"])
+#+END_SRC
+
+Regra número um: /nunca/ ponha chave de API no código. Use variáveis de ambiente ou um ~.env~ (que vai pro ~.gitignore~). Regra número dois: leia a mensagem de erro. ~401~ é chave errada, ~429~ é rate limit, ~400~ é corpo malformado. Os erros de API são surpreendentemente informativos quando você para pra ler.
+
+| API | Quando precisa | Crédito grátis |
+|-----+---------------+---------------|
+| Anthropic (Claude) | Agentes, ferramentas, LLMs | $5 no cadastro |
+| OpenAI | Comparação, benchmarks | $5 no cadastro |
+| Hugging Face | Modelos, datasets, embeddings | Grátis |
+
+#+BEGIN_QUOTE
+/Em miúdos:/ ~LLM~ (Large Language Model) é o modelo de linguagem grande, GPT, Claude, Gemini. ~SDK~ (Software Development Kit) é uma biblioteca pronta que empacota as chamadas HTTP pra você não precisar escrever ~urllib.request~ manualmente. ~Rate limit~ é o limite de requisições por minuto que a API impõe pra evitar abuso; quando você estoura, recebe HTTP 429 e precisa esperar. ~Token~, no contexto de APIs, é a unidade de cobrança: cada palavra (ou pedaço de palavra) que você manda ou recebe conta como token. O ~max_tokens=256~ do código acima significa "não me cobre mais do que 256 tokens de resposta". E ~variável de ambiente~ é aquela configuração que fica fora do código, você define no terminal com ~export~ ou num arquivo ~.env~, e o programa lê de lá. Isso evita que sua chave secreta vá parar no GitHub.
+#+END_QUOTE
+
+* Jupyter: o laboratório de IA
+
+Toda competição do Kaggle, todo paper com código, todo tutorial de fine-tuning usa Jupyter. Não é frescura, é que notebook deixa você rodar código em pedaços, ver output inline e iterar sem rerodar o script inteiro.
+
+Mas notebook também é uma arma carregada. Os três tiros no pé mais comuns:
+
+- /Execução fora de ordem./ Você roda célula 5, depois a 2, depois a 7. Funciona na sua máquina. Quebra quando alguém roda de cima pra baixo. Corrige com ~Kernel > Restart & Run All~.
+- /Estado fantasma./ Você deleta uma célula, mas a variável que ela criou continua na memória. O notebook parece limpo, mas depende de um fantasma. Reinicie o kernel regularmente.
+- /Vazamento de memória./ Você carrega um dataset de 4 GB, treina um modelo, carrega outro dataset. Nada é liberado. ~del variavel~ e ~gc.collect()~, ou reinicie o kernel.
+
+Os magic commands que salvam tempo:
+
+#+BEGIN_SRC python
+%timeit np.random.randn(10000)       # microbenchmark (roda N vezes e faz média)
+%%time                                # mede a célula inteira (uma vez)
+model.fit(X_train, y_train, epochs=10)
+
+%matplotlib inline                    # plots renderizam direto no notebook
+!pip install scikit-learn             # shell command sem sair do notebook
+%env CUDA_VISIBLE_DEVICES             # checa variável de ambiente
+#+END_SRC
+
+A regra de ouro: /explore em notebooks, envie em scripts/. Prototipe no ~.ipynb~, depois extraia o que funciona pra um ~.py~ e importe de volta.
+
+#+BEGIN_QUOTE
+/Em miúdos:/ ~Kernel~ é o processo Python que roda por trás do notebook, é ele que executa suas células e mantém as variáveis em memória. Toda vez que você reinicia o kernel, perde as variáveis e precisa rerodar as células. ~Magic commands~ são comandos especiais do Jupyter que começam com ~%~ (linha) ou ~%%~ (célula inteira), eles não são Python, são atalhos do ambiente. ~%timeit~ mede performance rodando o código várias vezes, ~%%time~ mede uma vez só, ~%matplotlib inline~ faz gráficos aparecerem dentro do notebook. E ~!pip install~ é um escape pro shell: o ~!~ manda o comando pro terminal sem sair do notebook. ~.ipynb~ é o formato de arquivo do Jupyter, um JSON que contém as células, os outputs e os metadados.
+#+END_QUOTE
+
+#+BEGIN_QUOTE
+/Saiba mais:/ o Colab é um Jupyter grátis na nuvem com GPU T4. Vai em [[https://colab.research.google.com][colab.research.google.com]], Runtime > Change runtime type > T4 GPU. Sessões expiram depois de 90 minutos de inatividade no tier gratuito. Monte o Google Drive pra persistência: ~from google.colab import drive; drive.mount('/content/drive')~.
+#+END_QUOTE
+
+* Ambientes Python: o fim do dependency hell
+
+Você instala PyTorch 2.4 pra um projeto de fine-tuning. Semana seguinte, outro projeto precisa de PyTorch 2.1 porque o build CUDA é pinado. Você faz upgrade global. O primeiro projeto quebra. Você faz downgrade. O segundo quebra.
+
+Isso se chama /dependency hell/ e é endêmico em IA porque PyTorch, JAX e TensorFlow cada um embarca seus próprios bindings CUDA. A cura: cada projeto no seu próprio ambiente isolado.
+
+#+BEGIN_SRC mermaid
+graph TD
+    subgraph sem["Sem virtualenv"]
+        SP[System Python] --> T24["torch 2.4 (CUDA 12.4)"]
+        SP --> T21["torch 2.1 (CUDA 11.8)"]
+        SP --> CONFLITO["CONFLITO: só uma versão pode existir"]
+    end
+    subgraph com["Com virtualenv"]
+        PA["Projeto A (.venv/)"] --> P1["torch 2.4 (CUDA 12.4)"]
+        PB["Projeto B (.venv/)"] --> P2["torch 2.1 (CUDA 11.8)"]
+    end
+
+    classDef base fill:#1e1e30,stroke:#4a4e6b,color:#b8bcd0
+    classDef dep fill:#222240,stroke:#525580,color:#c0c4d8
+    classDef conflict fill:#301a1f,stroke:#8b4a5a,color:#e0b8c0
+    classDef good fill:#1a2a22,stroke:#4a7a5a,color:#b8d8c0
+    class SP,PA,PB base
+    class T24,T21,P1,P2 dep
+    class CONFLITO conflict
+#+END_SRC
+
+Três opções, uma recomendação:
+
+| Ferramenta | Quando usar |
+|------------+------------|
+| ~uv venv~ (recomendado) | Sempre. 10-100x mais rápido que pip. |
+| ~venv~ (built-in) | Quando não pode instalar nada. Vem com Python. |
+| ~conda~ | Quando precisa de CUDA toolkit específico sem instalar no sistema. |
+
+Uma regra: se você usa conda, use /só/ conda pra todos os pacotes daquele ambiente. Misturar ~pip install~ dentro de conda é receita pra conflito.
+
+O ~pyproject.toml~ substitui ~setup.py~, ~setup.cfg~ e ~requirements.txt~ em um arquivo só:
+
+#+BEGIN_SRC toml
+[project]
+name = "meu-projeto-ia"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.26", "matplotlib>=3.8", "scikit-learn>=1.4"]
+
+[project.optional-dependencies]
+torch = ["torch>=2.3", "torchvision>=0.18"]
+llm = ["anthropic>=0.39", "openai>=1.50"]
+#+END_SRC
+
+E o lockfile (~uv.lock~ ou ~requirements.lock~) garante que todo mundo que clonar o repositório instale exatamente as mesmas versões. Comite o lockfile. Não comite o ~.venv/~ (200 MB a 2 GB de arquivos não-portáteis).
+
+#+BEGIN_QUOTE
+/Em miúdos:/ ~Dependency hell~ ("inferno de dependências") é quando dois projetos precisam de versões diferentes da mesma biblioteca e você só pode ter uma instalada no sistema. O virtualenv resolve isso dando a cada projeto sua própria cópia isolada do Python e das bibliotecas. ~Lockfile~ é o arquivo que congela todas as versões exatas (incluindo dependências das dependências) pra garantir que daqui a seis meses, quando você clonar o projeto de novo, vai instalar exatamente as mesmas versões de tudo. ~Bindings CUDA~ são a ponte entre o PyTorch e o CUDA: cada versão do PyTorch é compilada contra uma versão específica do CUDA (11.8, 12.1, 12.4...), e se você instalar o PyTorch errado pra sua GPU, o ~torch.cuda.is_available()~ volta ~False~ e você treina em CPU sem saber por quê.
+#+END_QUOTE
+
+* Docker: "na minha máquina funciona"
+
+Você treinou um modelo no seu laptop com PyTorch 2.3, CUDA 12.4 e Python 3.12. Seu colega tem PyTorch 2.1, CUDA 11.8 e Python 3.10. O modelo quebra na máquina dele. O Dockerfile funciona nas duas.
+
+Projetos de IA são pesadelos de dependência. Uma stack típica inclui Python, PyTorch, drivers CUDA, cuDNN, bibliotecas C de sistema e pacotes especializados como ~flash-attn~ que exigem versões exatas de compilador. Docker empacota tudo isso numa imagem que roda idêntica em qualquer lugar.
+
+O Dockerfile mínimo pra desenvolvimento com GPU:
+
+#+BEGIN_SRC dockerfile
+FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.12 python3.12-venv python3.12-dev python3-pip \
+    git curl build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m pip install --no-cache-dir \
+    torch torchvision torchaudio \
+    --index-url https://download.pytorch.org/whl/cu124
+
+RUN python -m pip install --no-cache-dir \
+    numpy pandas scikit-learn matplotlib jupyter transformers datasets
+
+WORKDIR /workspace
+VOLUME ["/workspace", "/models"]
+#+END_SRC
+
+Builda e roda (NVIDIA):
+
+#+BEGIN_SRC bash
+docker build -t ai-dev .
+docker run --rm -it --gpus all \
+    -v $(pwd):/workspace \
+    -v ~/models:/models \
+    ai-dev python -c "import torch; print(torch.cuda.is_available())"
+#+END_SRC
+
+E pra AMD com ROCm (o ~--device~ expõe a GPU sem precisar do NVIDIA Container Toolkit):
+
+#+BEGIN_SRC bash
+docker build -t ai-dev-amd -f- . <<'EOF'
+FROM ubuntu:22.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.12 python3.12-venv python3.12-dev python3-pip git curl \
+    && rm -rf /var/lib/apt/lists/*
+RUN python3 -m pip install --no-cache-dir \
+    torch torchvision torchaudio \
+    --index-url https://download.pytorch.org/whl/rocm6.0
+WORKDIR /workspace
+VOLUME ["/workspace", "/models"]
+EOF
+
+docker run --rm -it \
+    --device=/dev/kfd --device=/dev/dri \
+    -v $(pwd):/workspace \
+    -v ~/models:/models \
+    ai-dev-amd python -c "import torch; print(torch.cuda.is_available())"
+#+END_SRC
+
+Os volumes são críticos. Seus modelos de 14 GB não podem viver dentro do container, eles morrem junto com ele. Monte um diretório do host e carregue de lá:
+
+#+BEGIN_SRC python
+from transformers import AutoModel
+model = AutoModel.from_pretrained("/models/llama-7b")
+#+END_SRC
+
+Três padrões de container que você vai encontrar:
+
+| Container | Tamanho | Quando usar |
+|-----------+---------+------------|
+| Dev | Grande (toolkit completo, Jupyter) | Desenvolvimento e experimentação |
+| Training | Médio (só o script e dependências) | Cluster GPU, sem editor |
+| Inference | Pequeno (otimizado pra servir) | Produção, atrás de load balancer |
+
+E o Docker Compose pra aplicações multi-serviço. Pra NVIDIA:
+
+#+BEGIN_SRC yaml
+services:
+  ai-dev:
+    build: .
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - .:/workspace
+      - ~/models:/models
+    ports:
+      - "8888:8888"
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.5
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+volumes:
+  qdrant_data:
+#+END_SRC
+
+Pra AMD, troque o bloco ~deploy~ por:
+
+#+BEGIN_SRC yaml
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri:/dev/dri
+#+END_SRC
+
+Um ~docker compose up -d~ e seu container de IA enxerga o banco vetorial em ~http://qdrant:6333~ pelo nome do serviço. Rede compartilhada, automática, sem configurar IP.
+
+#+BEGIN_QUOTE
+/Em miúdos:/ ~Container~ é como uma máquina virtual leve: ele isola seu código, runtime, bibliotecas e ferramentas de sistema num pacote que roda idêntico em qualquer lugar, mas compartilha o kernel do sistema operacional, por isso ele inicia em segundos, não em minutos. ~Imagem~ é o molde (construído a partir de um Dockerfile); ~container~ é a instância rodando da imagem. ~Volume~ é um diretório do seu computador real montado dentro do container, essencial pra modelos de 14 GB que você não quer perder quando o container morrer. ~Inferência~ é o ato de usar um modelo já treinado pra fazer predições (vs ~treinamento~, que é ensinar o modelo). ~flash-attn~ e ~bitsandbytes~ são bibliotecas que otimizam atenção (o mecanismo central dos transformers) e quantização (reduzir precisão dos pesos pra caber em menos memória). ~Vector database~ como o Qdrant armazena embeddings, representações numéricas de texto, pra buscas por similaridade, o coração do RAG. E pra GPU: NVIDIA usa ~--gpus all~ com o NVIDIA Container Toolkit; AMD usa ~--device=/dev/kfd --device=/dev/dri~ pra expor a GPU via ROCm.
+#+END_QUOTE
+
+* Editor: seu copiloto silencioso
+
+Você passa mais tempo no editor do que dormindo. Um editor mal configurado é atrito constante: sem autocomplete, sem type hints, sem erros inline, formatação manual. O setup certo leva 20 minutos. Pular ele custa 20 minutos todo dia.
+
+O VS Code é a recomendação porque é grátis, roda em todo OS, tem suporte nativo a Jupyter e o ecossistema de extensões cobre tudo. As extensões essenciais:
+
+#+BEGIN_SRC bash
+code --install-extension ms-python.python
+code --install-extension ms-python.vscode-pylance
+code --install-extension ms-toolsai.jupyter
+code --install-extension eamodio.gitlens
+code --install-extension ms-vscode-remote.remote-ssh
+code --install-extension ms-python.debugpy
+code --install-extension ms-python.black-formatter
+code --install-extension charliermarsh.ruff
+#+END_SRC
+
+O que cada uma faz: Python (detecção de virtualenv, run/debug), Pylance (type checking rápido, autocomplete), Jupyter (notebooks dentro do VS Code), GitLens (git blame inline), Remote SSH (abre pasta em GPU remota como se fosse local), Debugpy (debug passo a passo), Black (formata ao salvar), Ruff (linting rápido).
+
+As settings que importam pra IA:
+
+#+BEGIN_SRC jsonc
+{
+    "python.analysis.typeCheckingMode": "basic",
+    "editor.formatOnSave": true,
+    "editor.rulers": [88, 120],
+    "notebook.output.scrolling": true,
+    "files.autoSave": "afterDelay"
+}
+#+END_SRC
+
+- /Type checking basic/: pega argumento errado antes de rodar. Salva horas de debug em shape mismatch de tensor.
+- /Format on save/: nunca mais pense em formatação. Black resolve.
+- /Rulers em 88 e 120/: Black quebra em 88 colunas. O marker de 120 mostra quando docstrings tão longas.
+- /Notebook output scrolling/: loop de treino imprime milhares de linhas. Sem scrolling, o painel explode.
+- /Auto-save/: você vai esquecer de salvar. Seu script de treino vai rodar código velho. Auto-save previne.
+
+O Remote SSH é a extensão mais importante. Você vai treinar em máquinas remotas. Ela deixa você abrir o filesystem remoto, editar arquivos, rodar terminais e debugar como se fosse local. Configura uma vez no ~~/.ssh/config~:
+
+#+BEGIN_SRC conf
+Host gpu-box
+    HostName 203.0.113.50
+    User ubuntu
+    IdentityFile ~/.ssh/id_ed25519
+    ForwardAgent yes
+#+END_SRC
+
+Depois ~Ctrl+Shift+P > Remote-SSH: Connect to Host > gpu-box~.
+
+#+BEGIN_QUOTE
+/Em miúdos:/ ~Type checking~ (verificação de tipos) é o editor inspecionando seu código /antes/ de rodar pra avisar que você passou uma string onde o modelo espera um tensor, pega shape mismatch antes de queimar 6 horas de treino. ~Linting~ é o Ruff ou Pylance analisando seu código por problemas de estilo e bugs comuns (variável não usada, import não utilizado). ~Format on save~ é o Black reformatando seu código automaticamente ao salvar, indentação, espaçamento, quebras de linha, pra você nunca mais pensar nisso. E ~Remote SSH~ é a extensão que instala um servidor leve na máquina remota e faz o VS Code da sua máquina se comportar como se estivesse rodando lá, você edita, debuga e usa o terminal como se a GPU box fosse local.
+#+END_QUOTE
+
+#+BEGIN_QUOTE
+/Saiba mais:/ se você já usa Vim ou Neovim e é produtivo, fique. O setup mínimo pra Python com IA: pyright (type checking via Mason), nvim-lspconfig, molten-nvim (execução estilo notebook), telescope.nvim (busca), none-ls.nvim com black e ruff. Se você /não/ usa Vim, não comece agora. A curva de aprendizado compete com aprender engenharia de IA. Use VS Code.
+#+END_QUOTE
+
+* Git: o mínimo que você precisa
+
+Você vai escrever centenas de arquivos de código. Sem controle de versão, você perde trabalho, quebra coisa sem poder desfazer e não tem como colaborar.
+
+O fluxo diário se resume a cinco comandos:
+
+| Comando | Quando |
+|---------+-------|
+| ~git clone~ | Clonar o repositório |
+| ~git add~ + ~git commit~ | Salvar seu progresso |
+| ~git push~ | Fazer backup no GitHub |
+| ~git checkout -b~ | Testar algo sem quebrar a main |
+| ~git log --oneline~ | Ver o que você fez |
+
+#+BEGIN_SRC bash
+git clone https://github.com/rohitg00/ai-engineering-from-scratch.git
+cd ai-engineering-from-scratch
+git checkout -b my-progress
+
+# trabalha nos arquivos, commita seu código
+git add meu-modelo.py
+git commit -m "Implementa perceptron do zero"
+git push origin my-progress
+#+END_SRC
+
+Três coisas pra lembrar: salve sempre (~commit~), faça backup (~push~), ramifique pra experimentos (~checkout -b~). Você não precisa de rebase, cherry-pick ou submodules.
+
+O ~.gitignore~ que evita commitar checkpoints e binários:
+
+#+BEGIN_SRC conf
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.onnx
+.venv/
+__pycache__/
+#+END_SRC
+
+* Dados: o combustível
+
+Modelo nenhum aprende sem dado. E dado de IA raramente vem num .csv arrumadinho, vem em formatos diferentes, tamanhos diferentes, de fontes diferentes. Você precisa saber carregar, converter, dividir e versionar tudo isso sem que vire uma bagunça.
+
+O que vamos fazer aqui: usar a biblioteca ~datasets~ da Hugging Face pra carregar datasets com uma linha, fazer streaming de arquivos que não cabem no disco, converter entre CSV, JSON, Parquet e Arrow, e criar splits de treino/validação/teste com seed fixa pra resultados reprodutíveis. No fim, você tem um pipeline de dados que funciona igual toda vez que roda.
+
+Modelo nenhum funciona sem dado. O ~datasets~ da Hugging Face é a biblioteca padrão pra carregar, fazer streaming, converter formatos e dividir dados:
+
+#+BEGIN_SRC python
+from datasets import load_dataset
+
+dataset = load_dataset("imdb")
+print(dataset["train"][0])
+#+END_SRC
+
+Depois do primeiro download, o cache em ~~/.cache/huggingface/datasets/~ resolve. Pra datasets grandes demais pra caber em disco, use streaming:
+
+#+BEGIN_SRC python
+dataset = load_dataset("wikimedia/wikipedia", "20220301.en",
+                        split="train", streaming=True)
+for i, example in enumerate(dataset):
+    print(example["title"])
+    if i >= 4: break
+#+END_SRC
+
+Streaming carrega linha por linha. A memória fica constante independente do tamanho do dataset.
+
+Formatos e quando usar cada um:
+
+| Formato | Tamanho | Leitura | Ideal para |
+|---------+---------+---------+------------|
+| CSV | Grande | Lenta | Legibilidade humana, planilhas |
+| JSON | Grande | Lenta | APIs, dados aninhados |
+| Parquet | Pequeno | Rápida | Analytics, queries colunares |
+| Arrow | Pequeno | Mais rápida | Processamento em memória (interno do datasets) |
+
+Pra IA, Parquet é o melhor formato de armazenamento. Arrow é o que você usa em memória. CSV e JSON são pra intercâmbio.
+
+O split de dados que todo projeto ML precisa:
+
+#+BEGIN_SRC python
+dataset = load_dataset("imdb", split="train")
+split = dataset.train_test_split(test_size=0.2, seed=42)
+train_val = split["train"].train_test_split(test_size=0.125, seed=42)
+
+train_ds = train_val["train"]   # 80% de 80% = 64%
+val_ds = train_val["test"]       # 20% de 80% = 16%
+test_ds = split["test"]          # 20%
+#+END_SRC
+
+Sempre fixe a seed. A mesma seed produz o mesmo split toda vez. Sem seed, cada execução embaralha diferente e você nunca sabe se o modelo melhorou ou se os dados mudaram.
+
+Pra versionar datasets grandes, três opções: ~.gitignore~ (pessoal, datasets que você pode refazer download), Git LFS (arquivos grandes no git, 1 GB grátis no GitHub), DVC (controle de versão de dados, integra com S3/GCS). ~.gitignore~ resolve na maioria dos casos.
+
+#+BEGIN_QUOTE
+/Em miúdos:/ ~Streaming~ é carregar dados sob demanda, linha por linha, sem baixar o dataset inteiro, ideal pra datasets de 100 GB que não cabem no seu disco. ~Seed~ é a semente do gerador de números aleatórios: fixar a seed (ex: ~seed=42~) faz o embaralhamento ser sempre igual, o que significa que seus resultados são reprodutíveis. ~Split~ é a divisão do dataset em treino (o modelo aprende), validação (você ajusta hiperparâmetros) e teste (avaliação final, intocada até o fim). ~Parquet~ é um formato colunar comprimido do ecossistema Apache, menor e mais rápido que CSV. ~Arrow~ é o formato em memória que o Parquet usa por baixo; a biblioteca ~datasets~ da Hugging Face carrega tudo como Arrow internamente pra acesso sem cópia. ~Git LFS~ (Large File Storage) troca arquivos grandes por ponteiros no git. ~DVC~ (Data Version Control) é tipo git pra dados e modelos, com backend em S3/GCS/Drive.
+#+END_QUOTE
+
+* Terminal: onde engenheiros de IA vivem
+
+Treinos rodam no terminal. Logs aparecem no terminal. GPU se monitora no terminal. Servidores remotos se acessam pelo terminal. Se você depende do mouse pra tudo, está deixando velocidade na mesa.
+
+O que vamos fazer aqui: dominar pipes e redirects pra processar logs sem abrir arquivo, usar tmux pra manter treinos rodando depois que você fecha o laptop, monitorar GPU e CPU em tempo real, transferir arquivos pra servidores remotos sem corromper nada, e criar aliases que economizam dezenas de digitações por dia. No fim, o terminal vira uma extensão dos seus dedos, não um obstáculo.
+
+/Piping e redirects/, o básico que você usa todo dia:
+
+#+BEGIN_SRC bash
+# Conta quantas vezes "loss" aparece no log
+cat train.log | grep "loss" | wc -l
+
+# Extrai só os valores de loss
+grep "loss:" train.log | awk '{print $NF}' > losses.txt
+
+# Monitora o log em tempo real filtrando erros
+tail -f train.log | grep --line-buffered "ERROR"
+
+# Redireciona stdout e stderr pra arquivos diferentes
+python train.py > output.log 2> errors.log
+
+# Ou pro mesmo arquivo
+python train.py > train_full.log 2>&1
+#+END_SRC
+
+/tmux/, a ferramenta mais útil pra gerenciar treinos longos. Cria sessões persistentes com múltiplos painéis. Você pode desconectar, ir pra casa, reconectar via SSH e o treino continua rodando:
+
+#+BEGIN_SRC bash
+tmux new -s training
+
+# Dentro do tmux:
+# Ctrl+B, " → divide horizontal
+# Ctrl+B, % → divide vertical
+# Ctrl+B, setas → navega entre painéis
+# Ctrl+B, d → desconecta (treino continua)
+
+# Depois:
+tmux attach -t training   # reconecta
+tmux ls                    # lista sessões
+#+END_SRC
+
+Um setup típico: painel 1 com ~python train.py~, painel 2 com ~watch -n1 nvidia-smi~ (ou ~watch -n1 rocm-smi~ pra AMD), painel 3 com ~tail -f logs/experiment.log~. Três coisas rodando, uma janela.
+
+/Monitoramento/, ~htop~ pra processos do sistema. Pra GPU:
+
+#+BEGIN_SRC bash
+# NVIDIA
+nvidia-smi
+watch -n1 nvidia-smi
+nvidia-smi --query-compute-apps=pid,name,used_memory --format=csv
+
+# AMD
+rocm-smi
+watch -n1 rocm-smi
+rocm-smi --showuse
+#+END_SRC
+
+O ~nvtop~ também funciona com ambos (NVIDIA e AMD) e mostra barras de uso em tempo real.
+
+/SSH e transferência de arquivos/, quando você aluga GPU na nuvem:
+
+#+BEGIN_SRC bash
+ssh user@gpu-box-ip
+scp model.pt user@gpu-box-ip:~/models/
+scp user@gpu-box-ip:~/results/metrics.json ./
+rsync -avz ./data/ user@gpu-box-ip:~/data/   # melhor que scp pra volumes grandes
+
+# Port forward pra acessar Jupyter/TensorBoard remoto localmente
+ssh -L 8888:localhost:8888 user@gpu-box-ip
+# Agora abre localhost:8888 no navegador
+#+END_SRC
+
+Use ~rsync~ em vez de ~scp~ pra qualquer coisa grande. Ele só transfere bytes alterados e retoma conexões interrompidas.
+
+#+BEGIN_QUOTE
+/Em miúdos:/ ~stdout~ (standard output) é a saída normal de um programa, o que aparece no terminal quando tudo funciona. ~stderr~ (standard error) é a saída de erro, logs de crash, warnings, exceções. O ~>~ redireciona stdout pra um arquivo; ~2>~ redireciona stderr. O pipe ~|~ conecta a saída de um comando à entrada do próximo, por isso ~cat log | grep "loss"~ funciona: o ~cat~ imprime o arquivo e o ~grep~ filtra o que recebeu. ~Port forward~ (encaminhamento de porta) cria um túnel SSH que mapeia uma porta do servidor remoto pra uma porta local, como se o serviço remoto estivesse rodando na sua máquina. ~Alias~ é um apelido que você dá pra um comando longo no seu ~.bashrc~ pra digitar menos.
+#+END_QUOTE
+
+Os aliases que economizam digitação (adicione ao ~~/.bashrc~ ou ~~/.zshrc~):
+
+#+BEGIN_SRC bash
+# NVIDIA
+alias gpu='nvidia-smi --query-gpu=index,name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader'
+# AMD
+alias gpu='rocm-smi --showuse --csv'
+alias killtraining='pkill -f "python.*train"'
+alias ae='source .venv/bin/activate'
+alias watchloss='tail -f logs/*.log | grep --line-buffered "loss"'
+#+END_SRC
+
+* Linux pra sobreviver
+
+Você desenvolve no macOS ou Windows. Mas no momento que você aluga uma GPU na nuvem, SSH vai te jogar num Ubuntu. Sem interface gráfica, sem Finder, sem Explorer, só você, o cursor piscando e a pressão de estar pagando por hora.
+
+O que vamos fazer aqui: aprender os 15 comandos que resolvem 95% das situações numa GPU box, navegar, criar e apagar arquivos, instalar pacotes, gerenciar permissões, monitorar processos e disco, transferir arquivos e manter sessões vivas com tmux. Também cobrimos as diferenças macOS vs Linux que mais derrubam gente (spoiler: ~sed~ no macOS é diferente) e como usar WSL2 no Windows. No fim, você não vai mais travar ao ver um terminal Ubuntu.
+
+Os 15 comandos que cobrem 95% do que você faz numa GPU box:
+
+#+BEGIN_SRC bash
+# Navegação
+pwd && ls -la && cd /path && cd ~ && cd ..
+
+# Arquivos
+mkdir -p a/b/c && cp file backup && mv old new && rm file && rm -rf dir/
+
+# Leitura
+cat file && head -20 file && tail -20 file && tail -f log.txt && less file
+
+# Busca
+grep "error" training.log && grep -r "learning_rate" . && find . -name "*.py"
+
+# Permissões (quando dá "Permission denied")
+chmod +x script.sh && chmod 755 deploy.sh && chmod 644 config.yaml
+
+# Pacotes
+sudo apt update && sudo apt install -y htop tmux build-essential git curl wget unzip
+
+# Processos
+htop && ps aux | grep python && kill 12345 && kill -9 12345
+
+# Disco
+df -h && du -sh * && du -sh ~/.cache
+
+# Rede
+wget https://example.com/model.bin && curl -O https://example.com/data.tar.gz
+
+# Sessões
+tmux new -s train && tmux attach -t train
+#+END_SRC
+
+As diferenças macOS vs Linux que mais derrubam gente:
+
+| macOS | Linux | Nota |
+|-------+-------+------|
+| ~brew install~ | ~sudo apt install~ | Alguns nomes de pacote diferem |
+| ~open file.txt~ | ~xdg-open file.txt~ | Mas você não tem GUI na box remota. Use ~cat~ ou ~less~. |
+| ~~/.zshrc~ | ~~/.bashrc~ | macOS default é zsh. Linux server geralmente é bash. |
+| ~sed -i '' 's/a/b/' file~ | ~sed -i 's/a/b/' file~ | macOS sed exige string vazia depois do ~-i~. |
+| Case-insensitive | Case-sensitive | ~Model.py~ e ~model.py~ são dois arquivos diferentes no Linux. |
+
+#+BEGIN_QUOTE
+/Saiba mais:/ se você está no Windows, o WSL2 te dá um ambiente Linux real sem dual-boot. ~wsl --install -d Ubuntu-24.04~ no PowerShell (admin). Tudo nessa seção funciona dentro dele. GPU passthrough funciona com drivers instalados no Windows: pra NVIDIA, instale o driver Windows (não o Linux) e o CUDA aparece no WSL2. Pra AMD, o ROCm no WSL2 está em preview, verifique a compatibilidade da sua placa com o programa [[https://www.amd.com/en/developer/rocm-hub.html][ROCm on Windows]].
+#+END_QUOTE
+
+* Debugging: quando o código não quebra, mas também não funciona
+
+Código de IA falha diferente de código normal. Uma aplicação web crasha com stack trace, você sabe exatamente onde quebrou. Um loop de treino mal configurado roda por 8 horas, queima $200 em GPU, termina com um sorriso e produz um modelo que prevê a média de todo input. O código nunca deu erro. O problema é silencioso: um tensor no device errado, um ~.detach()~ esquecido, labels vazando pros features de treino.
+
+O que vamos fazer aqui: aprender a debugar em três níveis, Python básico (print, pdb, logging), operações com tensores (shape, device, NaN) e dinâmica de treino (TensorBoard). Vamos construir um arsenal de funções utilitárias (debug_print, NaN detector, data leakage checker, device checker) e aprender a usá-las no momento certo. E tem um glossário com ~20 termos porque, convenhamos, ninguém nasce sabendo o que é backpropagation. No fim, você vai olhar pra um treino que não converge e saber exatamente onde cutucar.
+
+Debugging de IA opera em três níveis:
+
+#+BEGIN_SRC mermaid
+graph TD
+    L3["3. Dinâmica de treino<br/>Curvas de loss, gradientes, ativações"] --> L2
+    L2["2. Operações com tensores<br/>Shapes, dtypes, devices, NaN/Inf"] --> L1
+    L1["1. Python padrão<br/>Breakpoints, logging, profiling, memória"]
+
+    classDef l3d fill:#1a202e,stroke:#4a5a7b,color:#b0bcd0
+    classDef l2d fill:#1e2438,stroke:#526080,color:#b8c4d4
+    classDef l1d fill:#222842,stroke:#5a6888,color:#c0c8d8
+    class L3 l3d
+    class L2 l2d
+    class L1 l1d
+#+END_SRC
+
+A maioria pula direto pro nível 3 (olhando TensorBoard). Mas 80% dos bugs de IA vivem nos níveis 1 e 2.
+
+#+BEGIN_QUOTE
+/Em miúdos, o vocabulário do debugging de IA:/ ~Tensor~ é a estrutura de dados fundamental: uma matriz multidimensional de números (escalar = tensor 0D, vetor = 1D, matriz = 2D, e assim vai). Tudo no PyTorch é tensor. ~Shape~ são as dimensões, ~[32, 3, 224, 224]~ significa 32 imagens, 3 canais de cor (RGB), 224x224 pixels cada. ~Device~ é onde o tensor mora: ~cpu~ ou ~cuda:0~ (sim, ~cuda:0~ também pra AMD, o PyTorch usa o mesmo nome de device pros dois backends). ~Forward pass~ é o caminho de ida: os dados entram no modelo e saem como predição. ~Backward pass~ (ou backpropagation) é o caminho de volta: o erro da predição é propagado camada por camada pra ajustar os pesos. ~Gradiente~ é a seta que diz "ajuste o peso nessa direção e nessa intensidade". ~Loss function~ (função de perda) mede quão errada a predição está, o treino inteiro existe pra minimizar esse número. ~Optimizer~ é o algoritmo que decide /como/ ajustar os pesos com base nos gradientes (SGD, Adam, etc.). ~Learning rate~ (taxa de aprendizado, ~lr~) controla o tamanho do passo de ajuste, alto demais explode o treino, baixo demais não sai do lugar. ~Batch~ é um subconjunto do dataset processado de uma vez, em vez de passar 50 mil imagens, você passa lotes de 32. ~Batch size~ é o tamanho desse lote. ~NaN~ (Not a Number) aparece quando uma operação matemática produz algo indefinido (divisão por zero, log de negativo). ~Inf~ é infinito, gradientes explodindo. ~Epoch~ é uma passada completa por todo o dataset. ~Overfitting~ é quando o modelo decora o treino e vai mal no teste. ~Vanishing gradients~ é quando os gradientes encolhem tanto nas camadas iniciais que elas param de aprender, comum em redes muito profundas. ~Mixed precision~ treina com 16 bits em vez de 32, reduzindo a memória pela metade com perda mínima de qualidade. ~Gradient checkpointing~ troca computação por memória: recalcula ativações durante o backward em vez de guardá-las. E ~OOM~ (Out of Memory) é o temido "acabou a VRAM", seu modelo não cabe na GPU.
+#+END_QUOTE
+
+*Print debugging (sim, funciona)*
+
+Pra código com tensores, um print bem colocado bate stepping em debugger porque você precisa ver shapes, dtypes e intervalos de valores de uma vez:
+
+#+BEGIN_SRC python
+def debug_print(name, tensor):
+    print(f"{name}: shape={tensor.shape}, dtype={tensor.dtype}, "
+          f"device={tensor.device}, "
+          f"min={tensor.min().item():.4f}, max={tensor.max().item():.4f}, "
+          f"mean={tensor.mean().item():.4f}, "
+          f"has_nan={tensor.isnan().any().item()}")
+#+END_SRC
+
+Chame depois de toda operação suspeita. Quando o bug for encontrado, remova. Simples.
+
+*pdb e breakpoint condicional*
+
+~breakpoint()~ dentro do loop de treino com condição é uma das coisas mais subestimadas pra debug de IA. Você só para quando algo parece errado, não em todo passo de um treino de 10.000 iterações:
+
+#+BEGIN_SRC python
+def training_step(model, batch, criterion, optimizer):
+    inputs, labels = batch
+    outputs = model(inputs)
+    loss = criterion(outputs, labels)
+
+    if loss.item() > 100 or torch.isnan(loss):
+        breakpoint()   # só para aqui se algo explodiu
+
+    loss.backward()
+    optimizer.step()
+#+END_SRC
+
+Dentro do debugger: ~p outputs.shape~, ~p loss.item()~, ~p torch.isnan(outputs).sum()~, ~p model.fc1.weight.grad~. ~c~ pra continuar, ~q~ pra sair.
+
+*Logging (evolutivo)*
+
+Quando o debugging passa de uma checagem rápida, troque prints por logging. Logging te dá timestamps, níveis de severidade e saída em arquivo. Quando o treino falha às 3 da manhã, você quer um arquivo de log, não output de terminal que já scrollou:
+
+#+BEGIN_SRC python
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.FileHandler("training.log"), logging.StreamHandler()]
+)
+logger = logging.getLogger(__name__)
+
+logger.info("Iniciando treino: lr=%.4f, batch_size=%d", lr, batch_size)
+logger.warning("Spike de loss detectado: %.4f no passo %d", loss.item(), step)
+logger.error("NaN loss no passo %d, parando", step)
+#+END_SRC
+
+*Profiling: onde o tempo some*
+
+Saber onde o tempo vai é o primeiro passo pra otimizar:
+
+#+BEGIN_SRC python
+import time
+
+class Timer:
+    def __init__(self, name=""): self.name = name
+    def __enter__(self): self.start = time.perf_counter(); return self
+    def __exit__(self, *args):
+        print(f"[{self.name}] {time.perf_counter() - self.start:.4f}s")
+
+with Timer("data loading"): batch = next(dataloader_iter)
+with Timer("forward pass"): outputs = model(batch)
+with Timer("backward pass"): loss.backward()
+#+END_SRC
+
+Descoberta comum: data loading consome 60% do tempo de treino. A correção é ~num_workers > 0~ no DataLoader, não uma GPU mais rápida. Pra profiling mais pesado: ~python -m cProfile -s cumtime train.py~ (funções por tempo cumulativo) ou ~kernprof -l -v train.py~ com ~line_profiler~ (linha por linha).
+
+*Os cinco bugs de IA mais comuns*
+
+/1. Shape mismatch./ O tensor tem shape ~[batch, features]~ e o modelo espera ~[batch, channels, height, width]~. Use um hook de forward pra mapear toda transformação de shape do modelo uma vez com um batch de amostra.
+
+/2. NaN loss./ Algo explodiu. Causas: learning rate alto demais, divisão por zero na loss customizada, log de número negativo, gradientes explodindo em RNNs. Rodeie com:
+
+#+BEGIN_SRC python
+def detect_nan(model, loss, step):
+    if torch.isnan(loss):
+        print(f"NaN loss no passo {step}")
+        for name, param in model.named_parameters():
+            if param.grad is not None:
+                if torch.isnan(param.grad).any():
+                    print(f"  NaN gradient em {name}")
+                if torch.isinf(param.grad).any():
+                    print(f"  Inf gradient em {name}")
+        return True
+    return False
+#+END_SRC
+
+/3. Data leakage./ Seu modelo acerta 99% no teste na primeira época. Não é skill, é vazamento. Cheque se há sobreposição entre treino e teste:
+
+#+BEGIN_SRC python
+def check_data_leakage(train_set, test_set, id_column="id"):
+    train_ids = set(train_set[id_column].tolist())
+    test_ids = set(test_set[id_column].tolist())
+    overlap = train_ids & test_ids
+    if overlap:
+        print(f"DATA LEAKAGE: {len(overlap)} amostras em treino E teste")
+#+END_SRC
+
+/4. Tensor no device errado./ Tensores em dispositivos diferentes geram erro de runtime. Mas às vezes um tensor /silenciosamente/ fica na CPU enquanto tudo mais tá na GPU, e o treino só fica lento.
+
+#+BEGIN_SRC python
+def check_devices(model, *tensors):
+    model_device = next(model.parameters()).device
+    for i, t in enumerate(tensors):
+        if t.device != model_device:
+            print(f"  WARNING: tensor {i} em {t.device}, modelo em {model_device}")
+#+END_SRC
+
+/5. OOM (Out of Memory)./
+
+#+BEGIN_SRC python
+print(f"Alocado: {torch.cuda.memory_allocated() / 1e9:.2f} GB")
+print(f"Cache: {torch.cuda.memory_reserved() / 1e9:.2f} GB")
+#+END_SRC
+
+Respostas, em ordem: reduza batch size, ~torch.cuda.empty_cache()~, ~del tensor~ + ~empty_cache()~, mixed precision (~torch.cuda.amp~), gradient checkpointing.
+
+*TensorBoard*
+
+O TensorBoard mostra o que acontece /dentro/ do treino ao longo do tempo. Instala com ~pip install tensorboard~ e instrumenta:
+
+#+BEGIN_SRC python
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter("runs/experimento_1")
+
+for step in range(num_steps):
+    loss = train_step(model, batch)
+    writer.add_scalar("loss/train", loss.item(), step)
+    writer.add_scalar("lr", optimizer.param_groups[0]["lr"], step)
+    if step % 100 == 0:
+        for name, param in model.named_parameters():
+            writer.add_histogram(f"weights/{name}", param, step)
+            if param.grad is not None:
+                writer.add_histogram(f"grads/{name}", param.grad, step)
+writer.close()
+#+END_SRC
+
+Rodeia ~tensorboard --logdir=runs~ e abre ~localhost:6006~. O que olhar: loss não desce (lr baixo ou arquitetura errada), loss oscila (lr alto), loss vai pra NaN (instabilidade numérica), loss de treino desce e validação sobe (overfitting), histogramas de peso colapsando pra zero (vanishing gradients).
+
+#+BEGIN_QUOTE
+/Saiba mais:/ o fluxo de debugging que pega a maioria dos bugs de IA: 1) Antes de treinar, rode ~check_shapes~ com batch de amostra. 2) Nos primeiros 10 passos, use ~debug_print~ em loss, outputs e gradientes. 3) Durante o treino, faça log de loss, lr e gradientes. Use TensorBoard. 4) Quando algo quebrar, droppe ~breakpoint()~ condicional. 5) Pra performance, meça data loading vs forward vs backward. Profile memória se estiver perto de OOM.
+#+END_QUOTE
+
+* O que levar disso
+
+Setup não tem algoritmos, não tem paper, não tem modelo. Tem ~nvidia-smi~, ~tmux~, ~uv venv~, ~docker build~, ~breakpoint()~. As ferramentas que ninguém posta no Twitter mas que separam quem /entrega/ modelo de quem /debuga/ ambiente.
+
+Se você seguiu até aqui:
+
+- Seu ambiente de desenvolvimento tem Python, Node, Rust e Julia com gerenciadores de pacote que não brigam entre si.
+- Seu Git está configurado com o fluxo de add, commit, push e branch que você vai repetir 500 vezes.
+- Sua GPU (local, Colab ou cloud) responde a ~torch.cuda.is_available()~ e você sabe o speedup que ela te dá.
+- Suas chaves de API estão em variáveis de ambiente, nunca no código.
+- Seu Jupyter tem magic commands, atalhos de teclado e você sabe a diferença entre ~%timeit~ e ~%%time~.
+- Seus ambientes Python são isolados, versionados com lockfile e não vão quebrar quando você instalar PyTorch 2.5 daqui a seis meses.
+- Seu Dockerfile produz a mesma stack em qualquer máquina com GPU.
+- Seu VS Code formata ao salvar, faz type checking e conecta em GPU remota como se fosse local.
+- Seus datasets carregam com streaming, convertem pra Parquet e têm splits reprodutíveis.
+- Seu terminal tem tmux com três painéis, aliases que salvam digitação e ~rsync~ que não corrompe arquivo grande.
+- Seu Linux de sobrevivência cobre os 15 comandos que resolvem 95% dos perrengues em GPU box.
+- Seu debugging não depende de "rodar de novo pra ver se passa", você tem breakpoint condicional, NaN detector, data leakage checker e TensorBoard.
+
+O resto assume que isso funciona. E agora funciona.
+
+#+BEGIN_QUOTE
+Este artigo é baseado nas lições de setup do projeto open-source [[https://github.com/rohitg00/ai-engineering-from-scratch][ai-engineering-from-scratch]], de Rohit Ghumare. O material original está em inglês, eu reorganizei, traduzi e adaptei pro formato que você acabou de ler.
+#+END_QUOTE

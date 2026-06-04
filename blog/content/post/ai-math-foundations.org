@@ -1,0 +1,447 @@
++++
+title = "02 - AI Engineering from scratch: a matemática que a IA realmente usa"
+description = "De vetores a processos estocásticos, o que você precisa de matemática pra entender o que acontece dentro de uma rede neural"
+date = 2026-05-25T14:00:00-03:00
+tags = ["AI", "math", "linear-algebra", "calculus", "probability", "optimization", "python"]
+draft = true
+weight = 1
+author = "Vitor Lobo Ramos"
++++
+
+
+Matemática assusta. E matemática pra IA assusta mais ainda, porque você ouve termos como "decomposição em valores singulares", "retropropagação via regra da cadeia" e "amostragem de Metropolis-Hastings" antes mesmo de ter certeza do que é um autovalor. A sensação é de que você precisa de um doutorado antes de importar o PyTorch.
+
+Não precisa.
+
+A matemática que a IA usa de verdade cabe em quatro grandes blocos. Álgebra linear (tudo é tensor, tudo é multiplicação de matriz). Cálculo e otimização (como o modelo aprende, como a loss desce o morro). Probabilidade e estatística (como o modelo lida com incerteza, como você avalia se ele presta). E um quarto bloco de tópicos aplicados que conectam esses três ao mundo real: teoria da informação, redução de dimensionalidade, estabilidade numérica, Fourier.
+
+Este artigo percorre os quatro blocos. Cada seção explica o conceito, mostra a fórmula (sem abuso de notação), conecta com a IA e, onde couber, traz código Python ou Go. O objetivo não é te transformar em matemático. É te dar vocabulário e intuição pra ler um paper, debugar um gradiente que explodiu e saber o que está acontecendo quando o ~torch.linalg.svd~ roda.
+
+Nada de magia. Vamos lá.
+
+* Álgebra linear: a língua franca da IA
+
+Tudo no PyTorch é tensor. Toda camada de rede neural é multiplicação de matriz. Todo score de atenção é produto escalar. Se você entende álgebra linear, você entende o esqueleto de qualquer modelo.
+
+** Vetores, matrizes e o que eles representam
+
+Um vetor é uma lista de números. Pode ser um ponto no espaço (~[x, y, z]~), uma direção, ou um embedding de palavra. Uma matriz é uma tabela de números: linhas e colunas. Pode ser uma transformação (rotacionar vetores), um lote de embeddings, ou os pesos de uma camada densa.
+
+O produto escalar mede similaridade: ~a·b = Σ a_i b_i~. Se o resultado é alto, os vetores apontam na mesma direção. Se é zero, são ortogonais. Toda atenção de transformer usa produto escalar: a query e a key são vetores, e o score de atenção é o produto escalar entre eles.
+
+O produto matriz-vetor ~W @ x~ aplica uma transformação linear. Toda camada fully-connected de rede neural é exatamente isso: ~output = ReLU(W @ x + b)~. O ~W~ são os pesos que o treino ajusta.
+
+#+BEGIN_SRC python
+import numpy as np
+
+# Produto escalar: quão similares são dois vetores?
+a = np.array([1, 0, 1])
+b = np.array([0, 1, 1])
+similaridade = np.dot(a, b)  # 1
+
+# Produto matriz-vetor: toda camada densa de rede neural
+W = np.random.randn(128, 784)  # pesos
+x = np.random.randn(784)        # input (imagem achatada)
+output = W @ x                   # shape (128,)
+#+END_SRC
+
+** Transformações: rotacionar, escalar, cisalhar
+
+Multiplicar por uma matriz transforma o espaço. Uma matriz de rotação gira vetores sem mudar o comprimento. Uma matriz diagonal escala cada eixo independentemente. Uma matriz de cisalhamento inclina.
+
+Essa intuição visual importa porque autovalores e autovetores descrevem as direções que uma transformação "preserva". Se ~A @ v = λ v~, então aplicar A ao vetor v só multiplica ele por λ, sem mudar a direção. Autovalores são a chave do PCA (os componentes principais são os autovetores da matriz de covariância). E são também o diagnóstico de vanishing/exploding gradients em RNNs: se o maior autovalor da matriz de recorrência for maior que 1, gradientes explodem; se for menor, desaparecem.
+
+#+BEGIN_SRC python
+import numpy as np
+
+theta = np.pi / 4  # 45 graus
+R = np.array([[np.cos(theta), -np.sin(theta)],
+              [np.sin(theta),  np.cos(theta)]])
+v = np.array([1, 0])
+print(R @ v)  # [0.707, 0.707], girado 45 graus
+
+# Autovalores e autovetores
+A = np.array([[2, 1], [1, 2]])
+eigenvalues, eigenvectors = np.linalg.eig(A)
+print(eigenvalues)  # [3, 1], as direções preservadas
+#+END_SRC
+
+#+BEGIN_QUOTE
+/Em miúdos:/ ~Autovalor~ é o fator pelo qual uma transformação estica ou encolhe um vetor numa direção específica. ~Autovetor~ é a direção que não muda (só estica ou encolhe). Pense numa foto sendo ampliada: as bordas crescem, mas as linhas do chão continuam paralelas. ~Determinante~ é o fator de escala do volume: se ~det(A) = 0~, a matriz achata o espaço numa dimensão menor e não tem inversa. ~Posto (rank)~ é quantas dimensões a matriz realmente ocupa depois da transformação.
+#+END_QUOTE
+
+** SVD: a decomposição que explica tudo
+
+A decomposição em valores singulares (SVD) fatura qualquer matriz em três pedaços: ~A = U Σ V^T~. O ~U~ são os vetores singulares esquerdos, o ~V^T~ os direitos, e o ~Σ~ é uma matriz diagonal com os valores singulares em ordem decrescente de importância.
+
+O SVD é onipresente na IA: compressão de imagens (joga fora os valores singulares pequenos), sistemas de recomendação (fatoração de matriz usuário-item, o que a Netflix usava), LSA em NLP (fatoração da matriz termo-documento), e o PCA do scikit-learn é implementado com SVD por baixo.
+
+#+BEGIN_SRC python
+import numpy as np
+
+A = np.random.randn(5, 3)
+U, S, Vt = np.linalg.svd(A, full_matrices=False)
+
+# Reconstrução com k=2 componentes
+k = 2
+A_approx = U[:, :k] @ np.diag(S[:k]) @ Vt[:k, :]
+erro = np.linalg.norm(A - A_approx)
+print(f"Erro de reconstrução com k={k}: {erro:.4f}")
+#+END_SRC
+
+** Tensores e einsum
+
+Tensor é a generalização de matriz pra N dimensões. Escalar é tensor 0D, vetor é 1D, matriz é 2D, e assim vai. Uma imagem RGB em batch é um tensor 4D: ~[batch, canais, altura, largura]~. Toda operação no PyTorch preserva ou contrai dimensões.
+
+O ~einsum~ é uma notação compacta que substitue dezenas de linhas de reshape/transpose/matmul. Ele usa a convenção de Einstein: índices repetidos são somados.
+
+#+BEGIN_SRC python
+import numpy as np
+
+# Matmul: ik,kj -> ij
+A = np.random.randn(3, 4)
+B = np.random.randn(4, 5)
+C = np.einsum('ik,kj->ij', A, B)  # mesmo que A @ B
+
+# Atenção multi-cabeça: bhtd,bhsd -> bhts
+Q = np.random.randn(2, 8, 10, 64)  # batch, heads, tokens, dim
+K = np.random.randn(2, 8, 10, 64)
+scores = np.einsum('bhtd,bhsd->bhts', Q, K)
+#+END_SRC
+
+** Sistemas lineares e regressão
+
+No fundo, regressão linear é resolver ~X @ w = y~ pra encontrar os pesos ~w~. As equações normais dão a solução fechada: ~w = (X^T X)^(-1) X^T y~. Adicionar regularização L2 (Ridge) vira ~w = (X^T X + λI)^(-1) X^T y~.
+
+Na prática, ninguém inverte matriz grande. Usa-se decomposições: LU (matrizes quadradas), Cholesky (simétricas positivas definidas, como kernels de Gaussian Processes), QR (mínimos quadrados estáveis, inicialização ortogonal de pesos). O número de condição ~κ(A) = σ_max / σ_min~ mede quão sensível o sistema é a erros numéricos: se for alto, pequenas variações nos dados produzem grandes variações na solução (multicolinearidade).
+
+#+BEGIN_SRC python
+import numpy as np
+
+X = np.random.randn(100, 5)
+y = X @ np.array([1, -2, 3, -4, 5]) + np.random.randn(100) * 0.1
+
+# Equações normais
+w = np.linalg.inv(X.T @ X) @ X.T @ y
+print(w)
+
+# Ridge
+lam = 1.0
+w_ridge = np.linalg.inv(X.T @ X + lam * np.eye(5)) @ X.T @ y
+print(w_ridge)
+#+END_SRC
+
+** Grafos e GNNs
+
+Um grafo é um monte de nós conectados por arestas. A matriz de adjacência ~A~ tem ~A[i][j] = 1~ se o nó i conecta ao j. O Laplaciano ~L = D - A~ (onde D é a matriz de graus) concentra toda a estrutura do grafo. O segundo menor autovalor do Laplaciano (o /Fiedler vector/) indica como partir o grafo em duas comunidades, isso é spectral clustering.
+
+Graph Neural Networks (GNNs) operam por passagem de mensagem: cada nó agrega informação dos vizinhos, aplica uma transformação linear e passa adiante. A fórmula da GCN é ~H^(l+1) = σ(D_hat^(-½) A_hat D_hat^(-½) H^(l) W^(l))~. No fundo, é multiplicação de matriz esparsa com pesos aprendidos.
+
+#+BEGIN_SRC python
+import numpy as np
+
+# Grafo: 4 nós, arestas 0-1, 1-2, 2-3
+A = np.array([[0, 1, 0, 0],
+              [1, 0, 1, 0],
+              [0, 1, 0, 1],
+              [0, 0, 1, 0]])
+D = np.diag(A.sum(axis=1))
+L = D - A  # Laplaciano
+
+# Spectral clustering: segundo menor autovalor
+eigenvalues, eigenvectors = np.linalg.eigh(L)
+fiedler = eigenvectors[:, 1]
+particao = fiedler > 0
+print(particao)  # [False, False, True, True], dois grupos
+#+END_SRC
+
+* Cálculo e otimização: como o modelo aprende
+
+Se álgebra linear é o esqueleto, cálculo é o sistema nervoso. É ele que diz "ajuste o peso 0.003 pra esquerda e 0.001 pra baixo". Toda rede neural aprende descendo o gradiente da função de perda.
+
+** Derivadas, gradientes e gradiente descendente
+
+A derivada mede a taxa de variação instantânea: se ~f(x) = x²~, então ~f'(x) = 2x~. Em ~x = 3~, a derivada é 6: um passo infinitesimal pra direita aumenta a função 6 vezes mais rápido. O gradiente é a derivada pra funções de múltiplas variáveis: um vetor que aponta na direção de maior crescimento. O gradiente descendente anda na direção oposta (a de maior /decrescimento/).
+
+#+BEGIN_SRC python
+import numpy as np
+
+def gradiente_descendente(f_grad, x0, lr=0.01, steps=100):
+    x = x0.copy()
+    for _ in range(steps):
+        x -= lr * f_grad(x)
+    return x
+
+# Minimizar f(x,y) = x² + y²
+f_grad = lambda x: 2 * x
+minimo = gradiente_descendente(f_grad, np.array([5.0, 5.0]))
+print(minimo)  # [~0, ~0]
+#+END_SRC
+
+** A regra da cadeia e a retropropagação
+
+Quando você tem funções compostas ~f(g(h(x)))~, a derivada é o produto das derivadas de cada camada: ~f'(g(h(x))) * g'(h(x)) * h'(x)~. Isso é a regra da cadeia.
+
+Redes neurais são composições gigantes de funções. A retropropagação (backprop) aplica a regra da cadeia da saída pra entrada, calculando o gradiente de cada peso em relação à loss. O PyTorch faz isso automaticamente com o grafo computacional: cada operação (~+~, ~*~, ~matmul~) registra como desfazê-la, e o ~.backward()~ percorre o grafo de trás pra frente.
+
+A ideia central: /forward mode/ calcula derivadas da entrada pra saída (bom pra funções com poucas entradas e muitas saídas). /Reverse mode/ calcula da saída pra entrada (bom pra muitas entradas e uma saída, exatamente o caso de uma rede neural com milhões de parâmetros e uma loss escalar). PyTorch, JAX e TensorFlow usam reverse mode.
+
+#+BEGIN_SRC python
+import torch
+
+x = torch.tensor([2.0], requires_grad=True)
+y = x**3 + 2*x**2 + x  # f(x) = x³ + 2x² + x
+y.backward()
+print(x.grad)  # 3*4 + 4*2 + 1 = 21, a derivada em x=2
+#+END_SRC
+
+** Otimizadores: SGD, Momentum, Adam
+
+O gradiente descendente puro (SGD) é ~w = w - lr * grad~. Funciona, mas é lento e fica preso em saddle points. Momentum adiciona inércia: ~v = β*v + grad; w = w - lr*v~. O acúmulo de velocidade ajuda a atravessar platôs.
+
+Adam (Adaptive Moment Estimation) é o padrão da indústria. Ele mantém duas médias móveis: uma do gradiente (~m~, "momentum") e uma do gradiente ao quadrado (~v~, "escala adaptativa"). Cada parâmetro ganha sua própria taxa de aprendizado efetiva. Isso faz o Adam ser robusto a escalas diferentes dos gradientes (comum quando uma camada tem pesos 1000x maiores que outra).
+
+#+BEGIN_SRC python
+import numpy as np
+
+class Adam:
+    def __init__(self, lr=0.001, beta1=0.9, beta2=0.999, eps=1e-8):
+        self.lr, self.b1, self.b2, self.eps = lr, beta1, beta2, eps
+        self.m, self.v, self.t = None, None, 0
+
+    def step(self, w, grad):
+        if self.m is None:
+            self.m = np.zeros_like(w)
+            self.v = np.zeros_like(w)
+        self.t += 1
+        self.m = self.b1 * self.m + (1 - self.b1) * grad
+        self.v = self.b2 * self.v + (1 - self.b2) * grad**2
+        m_hat = self.m / (1 - self.b1**self.t)
+        v_hat = self.v / (1 - self.b2**self.t)
+        return w - self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
+#+END_SRC
+
+** Otimização convexa e por que redes neurais funcionam mesmo sem ser
+
+Uma função convexa tem um único mínimo global (pense numa tigela). Regressão linear, regressão logística e SVMs são convexos. Isso significa que o gradiente descendente /sempre/ converge pro melhor resultado possível, devagar ou rápido.
+
+Redes neurais não são convexas. A superfície de loss tem milhares de mínimos locais e saddle points. Então por que funcionam? Dois motivos: (1) em altas dimensões, a maioria dos pontos críticos são saddle points (onde o gradiente é zero mas não é mínimo), não mínimos locais; (2) redes superparametrizadas (mais parâmetros que dados) tendem a ter paisagens de loss mais "suaves", com muitos mínimos de qualidade similar. Na prática, o Adam acha um deles e a validação confirma se é bom.
+
+Multiplicadores de Lagrange e condições KKT são a teoria por trás de restrições: L1/L2 podem ser vistas como "minimize a loss, mas mantenha os pesos dentro de uma bola de raio R". É assim que SVMs derivam o kernel trick via formulação dual.
+
+#+BEGIN_QUOTE
+/Em miúdos:/ ~Gradiente~ é a seta que aponta pro topo do morro; você anda no sentido contrário pra descer. ~Learning rate~ é o tamanho do passo: grande demais, você pula o vale; pequeno demais, não sai do lugar. ~Momentum~ é inércia: continue andando na direção que você já estava, mesmo que o chão esteja plano. ~Convexidade~ é garantia de que não tem vale falso: toda descida leva ao fundo de verdade. ~Saddle point~ é um ponto plano que não é mínimo nem máximo: o gradiente é zero, mas você não está no fundo e precisa de momentum pra escapar.
+#+END_QUOTE
+
+* Probabilidade e estatística: como a IA lida com incerteza
+
+Modelos de IA fazem previsões, e previsões são probabilidades. "Este pixel é um gato com 87% de confiança". "A próxima palavra provável é 'cachorro' com probabilidade 0.23". Toda essa confiança é modelada com probabilidade.
+
+** Distribuições, esperança e entropia
+
+Uma distribuição de probabilidade descreve quão provável cada resultado é. A normal (Gaussiana) reina na natureza e nos pesos iniciais de redes neurais (inicialização de Kaiming/He). A categórica reina nas saídas de classificação.
+
+A /entropia/ mede incerteza: ~H(P) = -Σ p(x) log(p(x))~. Uma moeda justa (50/50) tem entropia máxima. Uma moeda viciada (100/0) tem entropia zero. A entropia cruzada ~H(P, Q)~ mede quão bem a distribuição Q aproxima a verdadeira P. E é exatamente isso que a loss de classificação minimiza: ~CrossEntropy(y_true, y_pred)~.
+
+A /divergência KL/ mede a diferença entre duas distribuições: ~KL(P||Q) = H(P,Q) - H(P)~. É usada em VAEs (Variational Autoencoders: aproxime a distribuição latente da normal), RLHF (alinhar o modelo com preferências humanas) e compressão de modelos.
+
+#+BEGIN_SRC python
+import numpy as np
+
+def entropia(p):
+    p = p[p > 0]
+    return -np.sum(p * np.log2(p))
+
+def entropia_cruzada(p, q):
+    q = np.clip(q, 1e-12, 1.0)
+    return -np.sum(p * np.log(q))
+
+# Moeda justa vs viciada
+p_justa = np.array([0.5, 0.5])
+p_viciada = np.array([0.9, 0.1])
+print(entropia(p_justa))    # 1.0 bit
+print(entropia(p_viciada))  # 0.47 bits
+print(entropia_cruzada(p_justa, p_viciada))  # alto = predição ruim
+#+END_SRC
+
+** Bayes: o teorema que atualiza crenças
+
+O teorema de Bayes diz como atualizar o que você acredita quando aparece evidência nova: ~P(A|B) = P(B|A) * P(A) / P(B)~. O ~P(A)~ é o prior (o que você acreditava antes). O ~P(B|A)~ é a verossimilhança (quão bem a evidência se encaixa na sua crença). O ~P(A|B)~ é o posterior (sua crença atualizada).
+
+Naive Bayes é o classificador mais simples que existe. Apesar do pressuposto ingênuo de independência entre features ("a palavra 'grátis' não tem nada a ver com 'dinheiro'"), ele funciona surpreendentemente bem pra classificação de texto e spam.
+
+Na prática de deep learning, Bayes aparece discretamente: regularização L2 é equivalente a um prior Gaussiano nos pesos (MAP, Maximum A Posteriori). Dropout é uma aproximação Bayesiana (MC Dropout). O aprendizado online é literalmente atualização Bayesiana sequencial.
+
+#+BEGIN_SRC python
+import numpy as np
+
+class NaiveBayes:
+    def fit(self, X, y, n_classes):
+        self.prior = np.bincount(y) / len(y)
+        self.likelihood = np.zeros((n_classes, X.shape[1]))
+        for c in range(n_classes):
+            X_c = X[y == c]
+            self.likelihood[c] = (X_c.sum(axis=0) + 1) / (X_c.sum() + X.shape[1])
+
+    def predict(self, X):
+        log_posterior = X @ np.log(self.likelihood.T) + np.log(self.prior)
+        return np.argmax(log_posterior, axis=1)
+#+END_SRC
+
+** Estatística pra ML: como saber se seu modelo presta
+
+Acurácia sozinha engana. Se 99% dos seus dados são da classe A, um modelo que sempre chuta A tem 99% de acurácia e zero utilidade. Você precisa de mais.
+
+O /teste t pareado/ compara dois modelos nos mesmos folds de validação cruzada: o modelo A é significativamente melhor que o B ou foi sorte? O /bootstrap/ reconstrói o intervalo de confiança de qualquer métrica reamostrando os dados com reposição. O /tamanho de efeito/ (Cohen's d) mede a magnitude da diferença, não só se ela existe: um modelo pode ser "significativamente" melhor com p < 0.001 mas a diferença prática ser irrelevante.
+
+O Teorema Central do Limite (CLT) é o que faz tudo isso funcionar: médias de amostras tendem a uma distribuição normal conforme o tamanho da amostra cresce, independentemente da distribuição original. É por isso que o SGD funciona: o gradiente de um mini-batch é uma média, e o CLT diz que essa média é aproximadamente normal em torno do gradiente verdadeiro.
+
+** Amostragem: como gerar dados sintéticos
+
+Às vezes você precisa gerar amostras de uma distribuição complicada. A inversão da CDF resolve quando você conhece a cumulativa. Amostragem por rejeição resolve quando você conhece a densidade e pode envolvê-la numa distribuição mais simples.
+
+MCMC (Markov Chain Monte Carlo) resolve quando a distribuição é complexa demais pra qualquer envelope simples. O Metropolis-Hastings propõe um passo aleatório e aceita ou rejeita baseado em quão melhor o novo ponto é. O Gibbs faz isso coordenada por coordenada. São a base da inferência Bayesiana moderna.
+
+E as técnicas de amostragem são o coração dos LLMs: /temperature/ achata ou afia a distribuição de probabilidade (T > 1 = mais criativo, T < 1 = mais determinístico). /top-k/ restringe às k palavras mais prováveis. /top-p/ (nucleus sampling) acumula probabilidade até bater um limiar. O /reparameterization trick/ (z = μ + σ·ε) faz sampling diferenciável, o que torna VAEs treináveis. E /diffusion models/ são literalmente cadeias de amostragem iterativa: parta do ruído puro e vá removendo ruído passo a passo guiado por uma rede neural.
+
+#+BEGIN_SRC python
+import numpy as np
+
+def temperatura(logits, T=1.0):
+    probs = np.exp(logits / T)
+    return probs / probs.sum()
+
+def top_k(logits, k=10):
+    indices = np.argpartition(logits, -k)[-k:]
+    mask = np.ones_like(logits) * -np.inf
+    mask[indices] = logits[indices]
+    probs = np.exp(mask - mask.max())
+    return probs / probs.sum()
+
+logits = np.array([0.1, 0.5, 2.0, 0.3, 1.5])
+
+print("T=1.0:", temperatura(logits, 1.0))  # normal
+print("T=0.5:", temperatura(logits, 0.5))  # mais determinístico
+print("T=2.0:", temperatura(logits, 2.0))  # mais criativo
+print("top-3:", top_k(logits, 3))
+#+END_SRC
+
+** Processos estocásticos
+
+Um processo estocástico é uma sequência de variáveis aleatórias indexadas no tempo. O mais simples é o passeio aleatório: a cada passo, jogue uma moeda e ande pra esquerda ou direita. A distância esperada depois de ~n~ passos é ~√n~ (não ~n~, porque os passos se cancelam parcialmente).
+
+Cadeias de Markov são processos onde o próximo estado só depende do atual (não de toda a história). A geração de tokens em LLMs é uma cadeia de Markov: cada token é amostrado condicionado no contexto da janela, e o próximo depende do que foi gerado. O movimento browniano (versão contínua do passeio aleatório) é a base matemática dos modelos de difusão.
+
+#+BEGIN_SRC python
+import numpy as np
+
+def random_walk(steps=1000):
+    pos = np.cumsum(np.random.choice([-1, 1], size=steps))
+    return np.sqrt(np.mean(pos**2))  # deve ser ~sqrt(steps)
+
+print(f"Distância esperada: ~{np.sqrt(1000):.1f}")
+print(f"Distância observada: ~{random_walk():.1f}")
+#+END_SRC
+
+* Tópicos aplicados: o que conecta a teoria ao treino real
+
+Os três blocos anteriores cobrem a espinha dorsal. O último bloco cobre ferramentas matemáticas que aparecem em situações específicas de treino e inferência.
+
+** Estabilidade numérica
+
+Computadores representam números com precisão finita (float32, float16, bfloat16). Quando você soma números de magnitudes muito diferentes, os pequenos desaparecem (underflow). Quando multiplica números grandes, o resultado excede o representável (overflow). Quando subtrai números quase iguais, perde precisão (cancelamento catastrófico).
+
+O log-sum-exp trick é a solução mais importante: ~log(Σ exp(x_i)) = max(x) + log(Σ exp(x_i - max(x)))~. Subtrair o máximo antes de exponenciar evita overflow. Toda ~CrossEntropyLoss~ do PyTorch faz isso internamente.
+
+Mixed precision (AMP) treina com float16 nas operações pesadas (forward, backward) e float32 nas críticas (atualização de pesos). Acelera o treino sem perder qualidade. Bfloat16 é ainda melhor: mesma faixa do float32 (8 bits de expoente), menos precisão nos 7 bits de mantissa, mas o bastante pra gradientes.
+
+#+BEGIN_SRC python
+import numpy as np
+
+def softmax_estavel(x):
+    x_max = np.max(x)
+    exp_x = np.exp(x - x_max)
+    return exp_x / exp_x.sum()
+
+def cross_entropy_estavel(logits, target):
+    log_probs = logits - np.log(np.sum(np.exp(logits - logits.max())))
+    return -log_probs[target]
+
+x = np.array([1000, 1000, 1000])  # valores grandes
+print(softmax_estavel(x))  # [0.33, 0.33, 0.33], correto e sem NaN
+#+END_SRC
+
+** Normas e distâncias
+
+A distância entre dois vetores pode ser medida de vários jeitos, e a escolha muda tudo. Distância Euclidiana (L2) é a mais comum: hipotenusa, menor caminho. Distância Manhattan (L1) soma as diferenças absolutas: como andar em quarteirões. Distância Chebyshev (L∞) pega só a maior diferença entre coordenadas.
+
+Similaridade de cosseno mede o ângulo, não a magnitude. É a métrica dominante em NLP e embeddings porque dois textos sobre o mesmo assunto têm vetores que apontam na mesma direção, mesmo que um seja muito mais longo que o outro (magnitudes diferentes). Todo banco vetorial (Qdrant, Pinecone, Weaviate) usa similaridade de cosseno como padrão.
+
+A regularização L1 (LASSO) produz pesos esparsos: muitos pesos viram exatamente zero, o que é seleção automática de features. L2 (Ridge) encolhe todos os pesos proporcionalmente, o que é bom pra multicolinearidade.
+
+#+BEGIN_SRC python
+import numpy as np
+
+a, b = np.array([1, 0]), np.array([0, 1])
+
+print("L1:", np.sum(np.abs(a - b)))                 # 2 (Manhattan)
+print("L2:", np.sqrt(np.sum((a - b)**2)))           # 1.414 (Euclidiana)
+print("Cosseno:", 1 - np.dot(a,b)/(np.linalg.norm(a)*np.linalg.norm(b)))  # 1.0 (ortogonais)
+#+END_SRC
+
+** Redução de dimensionalidade
+
+PCA (Principal Component Analysis) encontra as direções de maior variância nos dados e projeta tudo nelas. Você centraliza os dados, calcula a matriz de covariância, extrai os autovetores (componentes principais) e projeta. O gráfico de variância explicada acumulada mostra quantos componentes você precisa pra reter 95% da informação.
+
+t-SNE e UMAP são não-lineares: eles preservam distâncias locais (pontos próximos no espaço original ficam próximos na projeção 2D/3D), mas distorcem as globais. São ferramentas de visualização, não de pré-processamento. Não use t-SNE pra reduzir features antes de treinar; use PCA.
+
+#+BEGIN_SRC python
+import numpy as np
+
+def pca(X, n_components=2):
+    X_centered = X - X.mean(axis=0)
+    cov = (X_centered.T @ X_centered) / (len(X) - 1)
+    eigenvalues, eigenvectors = np.linalg.eigh(cov)
+    idx = np.argsort(eigenvalues)[::-1]
+    return X_centered @ eigenvectors[:, idx[:n_components]]
+
+X = np.random.randn(200, 10)
+X_proj = pca(X, 2)
+print(X_proj.shape)  # (200, 2)
+#+END_SRC
+
+** Complexos e Fourier
+
+Números complexos (~a + bi~) são uma ferramenta elegante pra representar rotações. Euler mostrou que ~e^(iθ) = cos(θ) + i·sin(θ)~: a exponencial complexa é um ponto no círculo unitário. Multiplicar por ~e^(iθ)~ gira um vetor em θ radianos.
+
+Os positional encodings dos Transformers usam senos e cossenos de diferentes frequências, que, na forma complexa, são simplesmente ~e^(i·pos·freq)~, rotações de ângulos proporcionais à posição da palavra. RoPE (Rotary Position Embedding) leva isso ao extremo: gira os vetores de atenção por um ângulo que depende da posição, aplicando uma matriz de rotação 2D a pares de dimensões.
+
+A Transformada de Fourier decompõe um sinal em suas frequências constituintes. A FFT (Cooley-Tukey) faz isso em O(N log N) dividindo e conquistando. O teorema da convolução diz que convolução no domínio do tempo = multiplicação no domínio da frequência: ~conv(x, h) = IFFT(FFT(x) * FFT(h))~. Pra kernels grandes, é mais rápido fazer via FFT. O FNet é um transformer que substitui atenção por FFT, indo de O(N²) pra O(N log N).
+
+#+BEGIN_SRC python
+import numpy as np
+
+def dft(x):
+    N = len(x)
+    n = np.arange(N)
+    k = n.reshape((N, 1))
+    return np.dot(np.exp(-2j * np.pi * k * n / N), x)
+
+signal = np.array([1, 2, 3, 4, 3, 2, 1, 0])
+frequencias = np.abs(dft(signal))
+print(frequencias)  # pico na frequência dominante
+#+END_SRC
+
+* O que levar disso
+
+Matemática pra IA não é decoreba de fórmula. É um conjunto de ferramentas mentais que te deixam ler um paper, entender por que seu treino divergiu e saber a diferença entre "tente Adam" e "seu gradiente está explodindo porque os autovalores da RNN passaram de 1".
+
+Se você chegou até aqui, você tem intuição sobre:
+
+- Álgebra linear: vetores, matrizes, transformações, SVD, tensores, einsum, sistemas lineares, grafos e GNNs.
+- Cálculo e otimização: derivadas, gradiente descendente, backpropagation, SGD/Momentum/Adam, convexidade.
+- Probabilidade e estatística: distribuições, entropia, Bayes, Naive Bayes, testes estatísticos, bootstrap.
+- Amostragem: CDF, rejeição, MCMC, temperature/top-k/top-p, reparameterization trick, difusão, processos estocásticos.
+- Tópicos aplicados: estabilidade numérica (log-sum-exp, mixed precision), normas e distâncias (L1/L2/cosseno), PCA/SVD/t-SNE, Fourier/FFT, complexos e RoPE.
+
+Nada disso exige um doutorado. Exige sentar, escrever um ~np.einsum~ de atenção multi-cabeça, ver o output com shape errado, corrigir, e repetir até fazer sentido. A matemática da IA se aprende fazendo.

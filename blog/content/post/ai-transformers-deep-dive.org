@@ -1,0 +1,191 @@
++++
+title = "07 - AI Engineering from scratch: do self-attention ao speculative decoding"
+description = "Como a arquitetura que domina 2026 funciona, peça por peça, do zero"
+date = 2026-05-28T17:00:00-03:00
+tags = ["AI", "transformers", "attention", "gpt", "bert", "llm", "pytorch", "python"]
+draft = true
+weight = 1
+author = "Vitor Lobo Ramos"
++++
+
+
+Todo modelo que você usa em 2026, do GPT ao Claude, do Whisper ao Stable Diffusion, é um transformer. A arquitetura não mudou fundamentalmente desde 2017. O que mudou foi escala, dados e truques de engenharia que transformaram O(N²) de "impraticável" em "roda no celular".
+
+Este artigo vai do zero ao speculative decoding em 16 tópicos. Você vai implementar self-attention em Python puro, entender por que RoPE substituiu embeddings posicionais, ver como Mixture of Experts empacota 671 bilhões de parâmetros em 37 bilhões ativos, e aprender o truque matemático que faz speculative decoding acelerar inferência 4x sem perder qualidade. Stack: Python pra treino, Go pra servir.
+
+* Por que transformers?
+
+RNNs processam tokens um por um. O passo 100 espera o passo 99. Isso é O(N) em profundidade serial, e GPU detesta serial. Transformers processam todos os tokens em paralelo. O tradeoff é O(N²) de memória por O(1) de profundidade serial. A atenção é um broadcast: cada token olha pra todos os outros simultaneamente, e a GPU come isso com uma multiplicação de matrizes.
+
+Isso explica por que transformers dominam toda modalidade. O(N²) parecia um problema em 2017 (sequências de 512 tokens). Em 2026, com Flash Attention, KV cache, GQA e janelas deslizantes, sequências de 128k tokens são rotina. RNNs e state-space models (Mamba) ainda ganham em streaming e dispositivos mínimos, mas o transformer é o tronco principal da árvore.
+
+* Self-attention: o tijolo atômico
+
+Self-attention é um lookup suave de banco de dados. Cada token projeta três vetores: Query ("o que estou procurando?"), Key ("o que eu contenho?") e Value ("o que eu ofereço?"). O produto Q·K diz quão relevante cada par de tokens é. O softmax transforma isso em pesos. O output é a soma ponderada dos Values.
+
+A fórmula: ~Attention(Q,K,V) = softmax(Q @ K^T / sqrt(d_k)) @ V~. A divisão por ~sqrt(d_k)~ evita que o softmax sature quando a dimensionalidade é alta (sem isso, os gradientes desaparecem). O resultado é uma matriz N×N onde cada célula (i,j) é o quanto o token i presta atenção no token j. Cada token de saída é uma mistura ponderada de todos os tokens de entrada.
+
+#+BEGIN_SRC python
+import numpy as np
+
+def self_attention(X, W_q, W_k, W_v, causal=False):
+    Q, K, V = X @ W_q, X @ W_k, X @ W_v
+    d_k = Q.shape[-1]
+    scores = Q @ K.T / np.sqrt(d_k)
+    if causal:
+        mask = np.triu(np.ones_like(scores) * -1e9, k=1)
+        scores += mask
+    weights = np.exp(scores - scores.max(axis=-1, keepdims=True))
+    weights /= weights.sum(axis=-1, keepdims=True)
+    return weights @ V, weights
+
+# Exemplo com 4 tokens, d_model=8
+X = np.random.randn(4, 8)
+W_q, W_k, W_v = [np.random.randn(8, 8) * 0.02 for _ in range(3)]
+output, attn_weights = self_attention(X, W_q, W_k, W_v)
+#+END_SRC
+
+** Multi-head: muitas atenções em paralelo**
+
+Um único head de atenção aprende um tipo de relação (sujeito-verbo, por exemplo). Multi-head attention roda ~h~ heads em paralelo, cada um com dimensão reduzida (~d_k = d_model / h~), e concatena os resultados. Heads diferentes especializam em padrões diferentes, e a GPU executa tudo como uma única multiplicação de matrizes em lote. Adicionar heads é computacionalmente grátis.
+
+Grouped-Query Attention (GQA) é a variante de produção: todos os heads de query compartilham um conjunto menor de heads de key/value. Se você tem 32 heads de query e 8 heads de KV, o cache de inferência encolhe 4x. Llama 3, Qwen 2 e Mistral usam GQA. Multi-Query Attention (MQA) leva ao extremo com 1 head de KV. Multi-head Latent Attention (MLA, DeepSeek-V3) comprime KV ainda mais com projeções de baixo posto.
+
+** Posicional encoding: onde cada token está**
+
+Atenção é invariante à permutação. "O gato comeu o rato" e "O rato comeu o gato" produzem a mesma matriz de atenção porque os tokens são os mesmos. Algo precisa injetar posição.
+
+Sinusoidal (Vaswani 2017) adiciona senos e cossenos de frequências diferentes diretamente aos embeddings. É histórica. RoPE (Su 2021) gira os vetores Q e K por ângulos que dependem da posição, de modo que o produto escalar entre Q na posição m e K na posição n depende apenas da diferença relativa (m - n). É o padrão universal de 2026: Llama, Qwen, Mistral, DeepSeek, todos usam RoPE. ALiBi (Press 2022) adiciona uma penalidade linear de distância aos scores de atenção, permitindo extrapolação de contexto sem custo de treino. Foi usada pelo BLOOM e MPT.
+
+#+BEGIN_SRC python
+def rope_rotate(q, k, pos, base=10000):
+    d = q.shape[-1]
+    theta = 1.0 / (base ** (np.arange(0, d, 2) / d))
+    angles = pos * theta
+    cos, sin = np.cos(angles), np.sin(angles)
+    q_rot = q.copy(); k_rot = k.copy()
+    q_rot[..., 0::2], q_rot[..., 1::2] = q[..., 0::2]*cos - q[..., 1::2]*sin, q[..., 0::2]*sin + q[..., 1::2]*cos
+    k_rot[..., 0::2], k_rot[..., 1::2] = k[..., 0::2]*cos - k[..., 1::2]*sin, k[..., 0::2]*sin + k[..., 1::2]*cos
+    return q_rot, k_rot
+#+END_SRC
+
+* O bloco transformer completo
+
+O bloco transformer são seis peças, e todo modelo que você já ouviu falar é uma combinação delas:
+
+- Embedding + sinal posicional (token + RoPE)
+- Self-attention (multi-head, com máscara causal se for decoder)
+- Feed-Forward Network (duas camadas densas com ativação)
+- Residual connections (soma o input ao output de cada subcamada)
+- Layer Normalization (estabiliza o treino)
+- Cross-attention (só no decoder de encoder-decoder: olha pro output do encoder)
+
+A modernização de 2017 pra 2026: LayerNorm virou RMSNorm (sem subtração da média, 10% mais rápida). ReLU virou SwiGLU (três matrizes em vez de duas, melhor uso de parâmetros). Sinusoidal virou RoPE. Multi-head completo virou GQA. Bias terms foram removidos (não ajudam e ocupam memória). O bloco moderno é: RMSNorm, GQA com RoPE, residual, RMSNorm, SwiGLU FFN, residual.
+
+#+BEGIN_QUOTE
+/Em miúdos:/ ~FFN~ (Feed-Forward Network) é uma mini-rede densa dentro do bloco transformer. Enquanto a atenção mistura informação entre tokens, a FFN processa cada token individualmente. Juntas, atenção + FFN formam o ciclo "olhe pros outros, pense sozinho". ~SwiGLU~ é uma FFN com três projeções lineares e ativação Swish com gate: ~Swish(W1·x) * W3·x, depois W2~. ~Residual connection~ é somar a entrada à saída (~y = x + F(x)~). Isso dá ao gradiente um caminho direto de volta e permite empilhar 100+ camadas.
+#+END_QUOTE
+
+** Três famílias de transformers**
+
+Encoder-only (BERT, ModernBERT): self-attention bidirecional, sem máscara causal. Cada token vê todos os outros. Ideal pra classificação, NER, embeddings de busca, reranking cross-encoder. O [CLS] agrega a representação da frase inteira.
+
+Decoder-only (GPT, Llama, Claude, Qwen, Mistral, DeepSeek): self-attention causal com máscara triangular superior. Cada token só vê o passado. É o que gera texto token a token. Domina 2026. O treino é paralelo (teacher forcing sobre a sequência inteira); a inferência é serial (um token por vez).
+
+Encoder-decoder (T5, BART, Whisper): o encoder processa a entrada bidirecionalmente; o decoder gera a saída autoregressivamente, com cross-attention ao output do encoder em cada camada. Ideal pra tradução, sumarização, speech-to-text. O encoder roda uma vez; o decoder faz cross-attention ao mesmo output do encoder a cada passo.
+
+* BERT, GPT, T5: as três escolas
+
+** BERT: prever tokens mascarados**
+
+BERT mascara 15% dos tokens e treina pra prever os originais usando contexto bidirecional. A regra 80/10/10: dos 15% mascarados, 80% viram [MASK], 10% viram tokens aleatórios, 10% permanecem iguais. Isso evita que o modelo decore o token [MASK] e force aprendizado real de linguagem. A loss é cross-entropy só nas posições mascaradas.
+
+O [CLS] no início agrega a representação da frase inteira pra tarefas de classificação. O [SEP] separa segmentos (duas frases em tarefas de inferência). ModernBERT (2024) modernizou: RoPE, GeGLU, RMSNorm, atenção alternada local/global, contexto de 8k tokens.
+
+BERT ainda é o backbone pra embeddings de recuperação (sentence-transformers), classificação, NER e reranking cross-encoder. Pra essas tarefas, atenção bidirecional é estritamente melhor que causal.
+
+** GPT: prever o próximo token**
+
+GPT é decoder-only. Uma máscara triangular superior de -inf nos scores de atenção é todo o mecanismo. O treino desloca a sequência em um: input = [t1..tk], target = [t2..t_{k+1}], cross-entropy em todas as posições. É paralelo porque teacher forcing dá a resposta correta em cada passo.
+
+A geração é serial. Cinco estratégias de decoding controlam o equilíbrio entre qualidade e diversidade. Greedy (argmax, determinístico, repetitivo). Temperature (achata ou afia a distribuição; T>1 mais criativo, T<1 mais conservador). Top-k (restringe às k palavras mais prováveis). Top-p / nucleus (acumula probabilidade até bater um limiar). Min-p (filtra tokens com probabilidade abaixo de p_base * p_max).
+
+Todo LLM moderno é um decoder-only causal. A arquitetura não mudou desde o GPT-2. O que mudou foi escala de dados, tamanho do modelo, e pós-treinamento (RLHF, DPO).
+
+** T5 e BART: encoder-decoder**
+
+Encoder-decoder é a arquitetura certa quando entrada e saída têm estruturas diferentes. O encoder processa a fonte bidirecionalmente (como BERT). O decoder gera autoregressivamente (como GPT), mas com cross-attention ao output do encoder em cada camada. Isso dá ao decoder acesso direto e repetido à fonte inteira, algo que decoder-only não tem.
+
+T5 usa span corruption: substitui trechos aleatórios do texto por tokens sentinela (<X>, <Y>) e treina o decoder pra gerar os trechos originais. BART corrompe o input de cinco formas diferentes (máscara, deleção, permutação, rotação, infilling) e treina o decoder pra reconstruir o original. Text infilling + sentence permutation foi a combinação vencedora.
+
+Whisper, Google Translate e Flan-T5 usam encoder-decoder. Decoder-only está absorvendo essas tarefas, mas encoder-decoder ainda ganha onde a modalidade de entrada é diferente ou beam search importa.
+
+* Transformers além do texto
+
+** Vision Transformers (ViT)**
+
+Corte a imagem em patches 16x16. Achate cada patch num vetor. Alimente um transformer encoder padrão. Sem convoluções, sem inductive bias de visão. O patch size é a alavanca principal: patches menores dão mais tokens e melhor resolução, mas custo quadrático.
+
+ViT precisa de muitos dados (originalmente JFT-300M) porque não tem os priors que CNNs têm (invariância à translação, localidade). DINOv2 (2023) resolveu isso com pré-treinamento auto-supervisionado, produzindo embeddings que são o padrão pra features visuais genéricas em 2026. DeiT mostrou que data augmentation pesada (RandAugment, Mixup, CutMix) treina ViT no ImageNet sem dados externos.
+
+** Whisper: transformer para áudio**
+
+Áudio vira espectrograma log-mel (80 bins, 10 ms de stride, 3000 frames pra 30 segundos). Uma Conv1D reduz a dimensão temporal pela metade. O encoder transformer processa isso como se fossem tokens visuais. O decoder gera texto autoregressivamente com cross-attention ao encoder.
+
+Tokens de prompt (~<|en|><|transcribe|>~) controlam tarefa e idioma. Um prefixo de 4 tokens é toda a superfície de controle. Beam search com largura 5 decodifica. Whisper-turbo (4 camadas no decoder) habilita voice agents em tempo real. A variante large-v3 atinge 1.6% WER em inglês.
+
+* Mixture of Experts: mais parâmetros, mesmo custo
+
+Substitua cada FFN por E especialistas independentes + um roteador que escolhe k por token. Parâmetros totais = E x FFN_size. Parâmetros ativos = k x FFN_size. Isso desacopla capacidade de conhecimento de custo computacional por token.
+
+O roteador é uma camada linear que pontua cada token contra cada especialista. Top-k seleciona os melhores. Softmax sobre os escolhidos produz pesos de mistura. O output é a soma ponderada das saídas dos especialistas escolhidos. O desafio é balanceamento de carga: sem intervenção, o roteador colapsa em poucos especialistas e o resto nunca treina.
+
+DeepSeek-V3 resolveu isso com aux-loss-free balancing: cada especialista tem um bias ajustável fora da loss de treino. Especialistas sobre-utilizados ganham bias negativo; sub-utilizados ganham bias positivo. O bias afeta a seleção (top-k), mas não os pesos do gate (softmax). Especialistas finos (256 especialistas, cada token combina 8) dão C(256,8) = 400 trilhões de combinações possíveis por token.
+
+A fronteira de 2026 é quase toda MoE: DeepSeek-V3 (671B/37B ativos), Mixtral, Qwen-MoE, Llama 4, Kimi K2. O top 10 de modelos abertos nos benchmarks independentes é todo MoE.
+
+* Inferência rápida: KV cache, Flash Attention, speculative decoding
+
+Treino é FLOP-bound (limitado por computação). Inferência é memory-bound (limitado por largura de banda de memória). Cada token gerado precisa acessar os pesos do modelo inteiro e o cache de todas as chaves e valores dos tokens anteriores. Otimizar inferência é otimizar acesso à memória.
+
+** KV cache**
+
+Durante a geração autoregressiva, você recalcula Q, K e V pra todos os tokens a cada passo. Mas K e V dos tokens passados não mudam. Guarde-os. Cada novo token computa Q novo contra o cache de K/V acumulado. Isso reduz a atenção de O(N²) por passo pra O(N). Com GQA, o cache encolhe proportionalmente ao número de heads KV.
+
+** Flash Attention**
+
+O bottleneck não é computar a matriz N×N de atenção. É mover ela entre HBM (memória da GPU, 3 TB/s na H100) e SRAM (cache on-chip, 30 TB/s). Flash Attention mantém a computação em SRAM. Carrega tiles de Q, K, V pra SRAM, computa S = Q @ K^T no tile, agrega softmax incrementalmente com running max e running sum, e só escreve o output final na HBM. Uma viagem de ida e volta por tile em vez de três por matriz N×N inteira. O resultado é exatamente igual ao attention padrão, bit a bit, mas 2-4x mais rápido e com pico de memória O(N) em vez de O(N²).
+
+** PagedAttention e continuous batching**
+
+vLLM aloca o KV cache em blocos de 16 tokens com tabelas de páginas (como memória virtual). Isso elimina fragmentação e permite compartilhar cache entre requisições (prefix caching). Continuous batching troca requisições no meio do voo: quando uma requisição termina de gerar, outra entra imediatamente no mesmo batch, sem esperar as outras terminarem. Ganho de 5-10x em throughput.
+
+** Speculative decoding**
+
+Um modelo draft barato (pequeno) propõe N tokens. O modelo verificador (grande) checa todos os N tokens em um único forward pass. Quando o draft acerta, você ganha N tokens pelo custo de 1. O truque matemático: aceite cada token do draft com probabilidade ~min(1, q(token)/p(token))~, onde q é a distribuição do draft e p a do verificador. Se rejeitar, sampleie da distribuição residual ~(p - q)_+ normalizada~. Isso garante que a distribuição final de saída é exatamente a do modelo verificador. Zero perda de qualidade, 2-4x de aceleração.
+
+Quatro famílias: vanilla (modelo draft separado, como Llama-70M + Llama-70B), Medusa (cabeças extras de LM que preveem t+1..t+k), EAGLE (transformer minúsculo condicionado nos hidden states do verificador, taxa de aceitação 0.85+), e lookahead (iteração de Jacobi, sem modelo draft). EAGLE-2/3 é o padrão pra Llama 3/4 e Qwen 3.
+
+* Scaling laws: quanto maior, melhor?
+
+A lei de Chinchilla (Hoffmann 2022): ~L(N,D) = A/N^α + B/D^β + E~, com α≈0.34, β≈0.28. Pra um orçamento fixo de compute C ≈ 6ND, a razão ótima tokens/parâmetros é ~20. O GPT-3 tinha ~2 tokens/parâmetro. Estava 10x sub-treinado.
+
+Mas a Llama 3 8B foi treinada com 1.875 tokens/parâmetro, 94x além do Chinchilla-ótimo. Por quê? Porque custo de inferência domina. Over-trainar um modelo menor gasta mais uma vez no treino, mas economiza em toda chamada de inferência pra sempre. Um modelo menor e mais treinado é mais barato de servir que um modelo maior e sub-treinado, mesmo que o custo de treino seja maior.
+
+Scaling laws também respondem perguntas práticas: seus dados de fine-tune são suficientes? (<20 tokens/parâmetro = saturação). Vale a pena treinar mais tempo? (além de 1000x Chinchilla-ótimo, ganhos de log-loss viram ruído). Devo aumentar o modelo ou os dados? (dados primeiro, modelo depois, se o orçamento de inferência permitir).
+
+* O que levar disso
+
+O transformer não mudou desde 2017. O que mudou foi engenharia:
+
+- Self-attention é Q·K^T com softmax. Multi-head roda isso em paralelo. GQA reduz o cache de inferência.
+- RoPE codifica posição como rotação. É o padrão universal de 2026.
+- O bloco moderno é RMSNorm, GQA+RoPE, residual, RMSNorm, SwiGLU, residual.
+- BERT (encoder) é bidirecional. GPT (decoder) é causal. T5 (encoder-decoder) tem cross-attention.
+- ViT aplica transformers a imagens (patches como tokens). Whisper aplica a áudio (log-mel como tokens).
+- MoE empacota 671B parâmetros em 37B ativos com roteamento top-k.
+- KV cache + Flash Attention + PagedAttention + continuous batching fazem inferência viável.
+- Speculative decoding acelera 2-4x com zero perda de qualidade.
+- Scaling laws dizem: over-treine modelos menores. Dados primeiro, parâmetros depois.
+
+Da matriz N×N de atenção ao token gerado no seu chat, o caminho passa por cada uma dessas ideias.

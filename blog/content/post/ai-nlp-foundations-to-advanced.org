@@ -1,0 +1,248 @@
+﻿+++
+title = "05 - AI Engineering from scratch: do token ao diálogo, fundamentos e fronteira"
+description = "Como texto vira número, número vira significado, e significado vira conversa"
+date = 2026-05-27T10:00:00-03:00
+tags = ["AI", "nlp", "transformers", "embeddings", "rag", "tokenization", "python"]
+draft = true
+weight = 1
+author = "Vitor Lobo Ramos"
++++
+
+
+Texto é a forma mais natural de comunicação humana. E a mais difícil de processar computacionalmente. Uma imagem de 224x224 tem 150 mil números. Uma frase de 10 palavras pode ter 10 milhões de interpretações diferentes, dependendo de contexto, entonação, ironia, referências implícitas e conhecimento de mundo.
+
+Processamento de Linguagem Natural (NLP) é o campo que constrói a ponte entre texto bruto e significado computável. Este artigo percorre 29 tópicos, dos fundamentos (tokenização, TF-IDF) até a fronteira de 2026 (RAG com chunking estratégico, avaliação de LLMs, tracking de diálogo). A stack é Python para experimentação e Go para APIs de produção.
+
+* Como texto vira número
+
+Antes de qualquer modelo, o texto precisa virar algo que um computador entenda: números. Esse pipeline de pré-processamento parece burocrático, mas cada decisão nele ecoa até a acurácia final.
+
+** Tokenização, stemming e lematização
+
+Tokenização é quebrar o texto em pedaços. Parece trivial ("é só split no espaço"), mas não é: "don't" são dois tokens ou um? "New York" é uma entidade ou duas palavras? O ponto final é fim de frase ou abreviação? Um tokenizador de regex cobre 80% dos casos; os 20% restantes são o que separa um pipeline que funciona de um que produz lixo silenciosamente.
+
+Stemming corta sufixos com regras: "running", "runs", "ran" vira "run" (ou quase). É rápido, agressivo e frequentemente erra ("university" vira "univers"). Lematização usa conhecimento gramatical: "ran" vira "run", "better" vira "good". É mais lento, mais preciso. A regra de produção: stemming pra busca (recall importa mais que precisão), lematização pra classificação (precisão importa).
+
+O erro mais comum: pré-processar durante o treino com uma biblioteca e durante a inferência com outra. A versão do spaCy mudou? O tokenizador produz tokens diferentes? A acurácia cai e ninguém sabe por quê. Sempre serialize o pipeline de pré-processamento junto com o modelo.
+
+** Bag of Words e TF-IDF
+
+Bag of Words (BoW) é a representação mais simples: conte quantas vezes cada palavra aparece e jogue num vetor. "O gato comeu o rato" e "O rato comeu o gato" produzem o mesmo vetor, porque ordem não importa. Isso é uma limitação e uma feature: pra classificação de tópico, as palavras "gato" e "rato" são o sinal; a ordem é ruído.
+
+TF-IDF refina o BoW. O TF (Term Frequency) é a contagem normalizada. O IDF (Inverse Document Frequency) penaliza palavras comuns: "o", "de", "que" aparecem em todo documento, então ganham peso zero. Palavras raras e discriminativas ("gato", "rato") ganham peso alto. O resultado é um vetor esparso onde cada dimensão é uma palavra e o valor é sua importância relativa.
+
+#+BEGIN_SRC python
+import numpy as np
+from collections import Counter
+
+def compute_tfidf(documents):
+    vocab = sorted(set(w for doc in documents for w in doc.lower().split()))
+    N = len(documents)
+    df = Counter(w for doc in documents for w in set(doc.lower().split()))
+    vectors = np.zeros((N, len(vocab)))
+    for i, doc in enumerate(documents):
+        words = doc.lower().split()
+        tf = Counter(words)
+        for j, word in enumerate(vocab):
+            tf_idf = (tf[word] / len(words)) * np.log((N + 1) / (df[word] + 1))
+            vectors[i, j] = tf_idf
+    return vectors
+#+END_SRC
+
+Em 2026, TF-IDF + regressão logística ainda ganha de embeddings densos em tarefas de classificação estreita (spam, tópico) onde presença de palavras importa mais que semântica profunda. E os coeficientes são interpretáveis: você sabe exatamente qual palavra empurrou a classificação.
+
+** Word2Vec: o significado como geometria
+
+A hipótese distribucional: palavras que aparecem em contextos similares têm significados similares. "Cachorro" e "cão" aparecem perto de "latir", "passear", "ração". "Gato" também, mas menos. O Word2Vec (skip-gram com negative sampling) explora isso: treine uma rede rasa pra prever palavras de contexto a partir de uma palavra central, depois descarte a saída e fique com os pesos escondidos como embedding.
+
+O resultado é um espaço vetorial onde operações aritméticas fazem sentido semântico: ~rei - homem + mulher ≈ rainha~. "Paris - França + Itália ≈ Roma". Cada dimensão codifica uma propriedade latente (gênero, realeza, geografia) que emergiu dos dados, sem supervisão.
+
+A limitação: embeddings estáticos. "Banco" tem um único vetor, seja banco de sentar, banco financeiro ou banco de dados. Isso motiva embeddings contextuais (BERT, GPT), onde cada ocorrência de uma palavra ganha um vetor diferente dependendo da frase.
+
+** GloVe, FastText e subword embeddings
+
+GloVe fatoriza a matriz de co-ocorrência palavra-palavra com uma loss de mínimos quadrados ponderada. O insight: a razão de co-ocorrências carrega mais informação que as probabilidades brutas. Se "gelo" co-ocorre muito com "sólido" e pouco com "gás", e "vapor" é o oposto, a razão P(sólido|gelo)/P(sólido|vapor) é enorme e captura a distinção semântica.
+
+FastText representa cada palavra como a soma dos embeddings de seus character n-gramas. "gato" = "ga" + "at" + "to" + "<gat" + "ato>". Isso resolve o problema de palavras fora do vocabulário (OOV): mesmo "gatinho", nunca vista, tem n-gramas que o modelo conhece. E captura morfologia: "gato", "gata", "gatos", "gatinho" compartilham n-gramas e ficam próximos no espaço.
+
+BPE (Byte-Pair Encoding) é o esquema por trás de todo tokenizador de LLM moderno. Comece com caracteres individuais como vocabulário. Iterativamente, encontre o par adjacente mais frequente no corpus e funda num novo token. Repita até atingir o tamanho de vocabulário desejado (50k tokens é típico). O resultado é um vocabulário de subpalavras que garante zero tokens desconhecidos: qualquer palavra é decomponível em subpalavras conhecidas.
+
+* Tarefas clássicas de NLP
+
+Antes dos transformers resolverem tudo com uma arquitetura só, cada tarefa de NLP tinha sua própria arquitetura especializada. Entender essas tarefas é entender o que os LLMs estão fazendo por baixo quando você pede "classifique esse texto".
+
+** Análise de sentimento
+
+A tarefa mais comum e mais enganosamente difícil do NLP. "O filme foi incrível" é positivo. "O filme não foi nada incrível" também é positivo? Não, a negação inverteu. "O filme foi incrível... de tão ruim" é sarcasmo. "O filme foi incrível para os padrões do diretor" é uma facada disfarçada de elogio.
+
+Naive Bayes multinomial com suavização de Laplace é o baseline que nunca morre: rápido, interpretável, funciona com poucos dados. Regressão logística com L2 adiciona calibração de probabilidade. Um truque simples que adiciona 1-2% de acurácia: prefixe tokens após palavras de negação com ~NOT_~ ("não gostei" vira "não NOT_gostei"), ensinando o modelo que a polaridade inverteu. Avalie com macro-F1, não com acurácia bruta: classes desbalanceadas são a regra, não a exceção.
+
+** NER: extraindo entidades do texto
+
+Named Entity Recognition (NER) identifica pessoas, organizações, locais, datas e valores no texto. "Maria comprou um iPhone na loja da Apple em São Paulo em janeiro" tem quatro entidades: Maria (pessoa), iPhone (produto), Apple (organização), São Paulo (local), janeiro (data).
+
+A abordagem clássica é BIO tagging: cada token recebe um rótulo B (begin), I (inside) ou O (outside). "Maria" = B-PER, "Apple" = B-ORG. Isso transforma NER num problema de classificação sequencial, onde o contexto importa: "Apple" depois de "comprei um" é produto; depois de "trabalho na" é organização.
+
+O baseline de 2026: teste zero-shot com um LLM antes de anotar dados. Se o GPT-4o acerta 80% das entidades, você precisa de muito dado anotado pra bater isso. Pra baixa latência ou compliance, CRF (Conditional Random Fields) com features manuais ainda é deployado em produção. E sempre avalie com entity-level F1, nunca token-level: acertar 90% dos tokens O (fácil) infla a métrica artificialmente.
+
+** POS tagging e parsing sintático
+
+Part-of-Speech tagging atribui categorias gramaticais a cada token: substantivo, verbo, adjetivo, preposição. Dependency parsing constrói uma árvore de dependências: cada palavra tem um "pai" sintático e um tipo de relação gramatical (sujeito, objeto, modificador).
+
+Em 2026, POS e parsing raramente são o produto final. Mas são infraestrutura invisível: lematização precisa de POS, validação de extração estruturada usa dependências, decomposição de queries usa árvores sintáticas, transferência cross-lingual usa anotações universais. O baseline de ~85% de acurácia é um tagger que sempre chuta a classe mais frequente da palavra. Um HMM bigrama com Viterbi sobe pra ~93%. O resto é engenharia de features.
+
+* A era pré-transformer
+
+Antes de "Attention is All You Need", NLP era uma colcha de retalhos de arquiteturas especializadas. Cada uma delas deixou uma lição que sobreviveu à era transformer.
+
+** CNNs e RNNs para texto
+
+TextCNN aplica convoluções 1D sobre sequências de embeddings: kernels de tamanho 2, 3, 4, 5 funcionam como detectores de n-gramas aprendidos. Max-pooling global sobre o tempo extrai o feature mais forte de cada kernel. O resultado é um classificador paralelo, rápido e leve que ainda é a escolha certa pra on-device e edge.
+
+RNNs (LSTM, GRU) processam tokens sequencialmente com estado oculto que persiste no tempo. A LSTM resolve o vanishing gradient com um "cell state" que funciona como uma highway de informação: gates de forget, input e output controlam o que é lembrado, adicionado e exposto. A GRU simplifica com dois gates (reset e update) e performance similar com menos parâmetros.
+
+O legado: BiLSTM-CRF ainda é o estado da arte pra sequence labeling com poucos dados. E LSTMs são a arquitetura certa pra streaming (você não pode esperar a frase inteira chegar pra processar).
+
+#+BEGIN_QUOTE
+/Em miúdos:/ ~Vanishing gradient~ em RNNs é quando o sinal de erro que chega no início da sequência é tão atenuado que a rede não aprende dependências de longo prazo. A LSTM resolve com o cell state: um caminho linear onde o gradiente flui sem multiplicações repetidas. ~Teacher forcing~ é dar a resposta correta como input do próximo passo durante o treino, em vez de usar a predição do modelo. Acelera a convergência, mas cria um gap entre treino e inferência (o modelo nunca pratica recuperação de erros).
+#+END_QUOTE
+
+** Seq2Seq e o nascimento da atenção
+
+O modelo sequence-to-sequence (seq2seq) conecta duas RNNs: um encoder lê a entrada e produz um vetor de contexto fixo; um decoder gera a saída token a token a partir desse vetor. Funciona pra tradução, sumarização, diálogo.
+
+O gargalo: tudo que o encoder sabe sobre a frase inteira precisa caber num único vetor de contexto. Se a frase tem 100 tokens, as primeiras palavras já foram "esquecidas" quando o decoder começa. Numa tarefa de cópia (reproduzir a entrada na saída), a acurácia colapsa com o comprimento da sequência.
+
+A atenção resolve isso. Em vez de um vetor fixo, o decoder olha pra todos os estados do encoder e calcula uma média ponderada por relevância a cada passo. É como se o decoder perguntasse "quais palavras da entrada são relevantes pra esse token que vou gerar agora?". A atenção é alinhamento explícito e aprendido.
+
+O mapeamento pra terminologia transformer: query = estado do decoder (o que estou procurando?), key = estados do encoder (o que está disponível?), value = estados do encoder (o que vou extrair?). Self-attention é o caso especial onde query, key e value vêm da mesma sequência, cada uma com projeções diferentes.
+
+* Aplicações clássicas de NLP
+
+** Tradução automática
+
+O pipeline de produção em 2026: modelo encoder-decoder multilíngue pré-treinado (NLLB-200, suporta 200 línguas), tokenização subword com language tags, decodificação por beam search (mantenha os k melhores caminhos em paralelo). Avaliação em três níveis: sacreBLEU + chrF (heurísticas rápidas), COMET (modelo neural treinado em julgamentos humanos), e LLM-as-judge (qualidade subjetiva).
+
+Cinco modos de falha: alucinação (inventa conteúdo ausente na fonte), off-target (gera na língua errada), desvio de terminologia (traduz termo técnico como leigo), mismatch de formalidade (trata cliente como amigo), explosão de comprimento (gera 3x mais tokens que a entrada). Fine-tuning com poucos milhares de pares de alta qualidade bate centenas de milhares de pares ruidosos.
+
+** Sumarização
+
+Dois problemas diferentes sob o mesmo nome. Sumarização extrativa seleciona e ordena frases existentes do texto. TextRank aplica PageRank sobre um grafo de similaridade entre frases: frases centrais (similares a muitas outras) viram o sumário. É seguro (nunca alucina), mas não consegue fundir informação distribuída em várias frases.
+
+Sumarização abstrativa gera texto novo com um transformer (BART, Pegasus). É fluente e compressiva, mas propensa a alucinação: troca entidades ("João" vira "Maria"), desvia números ("30%" vira "50%"), inventa fatos. A regra de produção: extrativa pra conteúdo com implicações legais ou de compliance; abstrativa só com um gate de factualidade que verifica claims contra a fonte.
+
+** Question Answering
+
+Três arquiteturas. Extractive QA encontra um span de resposta dentro de um texto dado: "O texto diz que X, a resposta começa no token 42 e termina no 45". Open-domain QA adiciona retrieval: primeiro busque passagens relevantes, depois extraia a resposta. Generative QA (closed-book) responde diretamente da memória paramétrica do modelo, sem documentos externos.
+
+RAG (Retrieval-Augmented Generation) é o padrão de 2026: retrieval + geração num loop. O RAGAS avalia com quatro métricas sem necessidade de ground truth: faithfulness (a resposta é suportada pelo contexto?), answer relevance (a resposta é pertinente à pergunta?), context precision (o contexto relevante está no topo?), context recall (todo o contexto necessário foi recuperado?).
+
+** Busca e recuperação de informação
+
+A stack de retrieval tem quatro camadas. Sparse (BM25) para matching exato de termos: rápido, interpretável, bom pra queries curtas. Dense (bi-encoder) para similaridade semântica: embedding da query vs embeddings dos documentos, similaridade de cosseno. RRF (Reciprocal Rank Fusion) combina rankings sem precisar calibrar scores. Cross-encoder reranking refaz o top-30 com um modelo que processa query e documento juntos.
+
+As lições de 2026: 80% das falhas de RAG vêm do chunking, não do modelo. O padrão parent-document (indexe chunks pequenos, retorne o documento pai inteiro) consistentemente melhora qualidade. Versionar tudo: prompts, estratégia de chunking, modelo de embedding, reranker. Com RRF, k=60 é um bom ponto de partida. Rerank com cross-encoder nos top-30.
+
+** Modelagem de tópicos
+
+Duas famílias. LDA (2003) modela cada documento como mistura de tópicos latentes e cada tópico como distribuição sobre palavras. É Bayesiano, produz tópicos interpretáveis (cada tópico é uma lista de palavras com probabilidades) e permite pertencimento parcial (um documento é 60% esporte, 40% política). BERTopic (2020) codifica documentos com transformer, reduz com UMAP, clusteriza com HDBSCAN e extrai palavras representativas com c-TF-IDF.
+
+Regra prática: LDA pra documentos longos com mistura de tópicos; BERTopic pra textos curtos e agrupamento semântico. Avalie com coerência c_v (quão semanticamente coeso é cada tópico) e diversidade de tópicos (quão diferentes eles são entre si).
+
+* Infraestrutura moderna de NLP
+
+Os blocos de construção que todo pipeline de NLP moderno usa, independentemente da tarefa final.
+
+** Modelagem de língua antes dos transformers
+
+Modelos de n-gramas estimam ~P(palavra | contexto)~ contando ocorrências de sequências e suavizando os zeros. A suavização de Kneser-Ney é o insight profundo: use probabilidade de continuação (em quantos contextos diferentes uma palavra aparece?) em vez de frequência bruta. "Francisco" aparece muito, mas quase sempre depois de "São"; tem baixa probabilidade de continuação. "Cachorro" aparece em muitos contextos diferentes; tem alta probabilidade de continuação.
+
+Perplexidade é a métrica: ~exp(-média log P(palavra | contexto))~. Um modelo de 4-gramas com Kneser-Ney atinge ~140 de perplexidade. Transformers modernos atingem 15-30. A perplexidade mede quão "surpreso" o modelo fica com o texto real: quanto menor, melhor.
+
+** Multilinguismo e a taxação do tokenizador
+
+Modelos multilíngues (XLM-R, NLLB-200) funcionam por transferência cross-lingual: um espaço de embedding compartilhado emerge durante o pré-treinamento multilingual, e frases semanticamente similares em línguas diferentes naturalmente se agrupam. Fine-tune o modelo em inglês, e a classificação zero-shot funciona em 100+ línguas.
+
+A escolha da língua fonte importa. Uma língua tipologicamente próxima e de altos recursos frequentemente supera o inglês como fonte de fine-tuning. E existe o "tokenization tax": línguas de baixos recursos podem precisar de 3-5x mais tokens por palavra que o inglês porque o BPE foi treinado majoritariamente em dados latinos. Isso silenciosamente consome contexto, eficiência de treino e acurácia.
+
+** Tokenização subword: BPE, Unigram e SentencePiece
+
+Três algoritmos, um propósito: quebrar texto em subpalavras pra garantir cobertura total de vocabulário com tamanho fixo. BPE (GPT, LLaMA) funde iterativamente os pares adjacentes mais frequentes. Unigram (T5, Gemma) começa com um vocabulário grande e vai podando probabilisticamente os tokens menos úteis. WordPiece (BERT) usa máxima verossimilhança em vez de frequência bruta pra decidir os merges.
+
+As bibliotecas: tiktoken (encoding rápido, sem treino), SentencePiece (treina BPE ou Unigram em texto puro, sem necessidade de pré-tokenização), HF Tokenizers (ambos, com API Python idiomática). As armadilhas: tokenizer drift (modelo treinado com vocabulário A, deployado com vocabulário B), ambiguidade de whitespace, e subtreinamento multilíngue que faz scripts não-latinos explodirem em contagem de tokens.
+
+** Saídas estruturadas e decodificação restrita
+
+Três camadas pra garantir que um LLM produza JSON válido, não "claro, aqui está o JSON:" seguido de alucinação. Prompt engineering funciona ~80% das vezes. APIs nativas (response_format da OpenAI, tool use da Anthropic) são confiáveis mas vendor-locked. Decodificação restrita (Outlines, XGrammar) mascara tokens inválidos a cada passo da geração: o modelo fisicamente não pode emitir tokens que quebram o schema. É 100% garantido e frequentemente mais rápido que geração livre, porque o espaço de busca é menor.
+
+A armadilha contra-intuitiva: a ordem dos campos no schema importa. Coloque raciocínio antes da resposta. Se o schema tem ~{reasoning, answer}~, o modelo pensa e depois responde. Se tem ~{answer, reasoning}~, o modelo se compromete com uma resposta antes de raciocinar.
+
+* Compreensão profunda e conhecimento
+
+As camadas de NLP que transformam texto em fatos verificáveis e conhecimento estruturado.
+
+** NLI e implicação textual
+
+Natural Language Inference é a tarefa de determinar se uma hipótese é consequência lógica de uma premissa: entailment (a premissa implica a hipótese), contradiction (a premissa contradiz a hipótese) ou neutral (nem implica nem contradiz). Parece acadêmico, mas é a fita adesiva do NLP moderno.
+
+Três usos em produção: detecção de alucinação (premissa = documento fonte, hipótese = afirmação gerada), QA fundamentada (premissa = passagem recuperada, hipótese = resposta gerada), e classificação zero-shot (verbalize rótulos como hipóteses, escolha o de maior entailment). NLI é o verificador semântico mais barato disponível; está sob o capô do RAGAS, DeepEval e toda métrica de faithfulness.
+
+** Embeddings em 2026: BGE-M3, Matryoshka e o fim do one-size-fits-all
+
+Escolher um modelo de embedding envolve cinco eixos: denso vs esparso vs multi-vetor (ColBERT), cobertura de línguas, comprimento de contexto (anunciado vs efetivo), orçamento de dimensão (Matryoshka), e aberto vs hospedado. BGE-M3 é o padrão de 2026: um único modelo produz embeddings densos, esparsos e multi-vetor simultaneamente, combináveis por soma ponderada.
+
+Matryoshka representation learning permite truncar um vetor de 1536 dimensões pra 256 com 1% de perda de acurácia e 6x de economia de armazenamento. As armadilhas: esquecer o prefixo de query (modelos BGE precisam de "Represent this sentence for searching relevant passages:"), cortar dimensão demais, truncar contexto silenciosamente sem aviso.
+
+** Chunking para RAG: a configuração que importa mais que o modelo
+
+Seis estratégias. Fixed (tamanho fixo, simples e previsível). Recursive (divide por parágrafos, frases, palavras até caber no limite, padrão de 2026). Semantic (divide em fronteiras de tópico usando similaridade de embeddings). Parent-document (indexe chunks pequenos pra busca, retorne o documento pai pro LLM). Late chunking (embeda o documento inteiro, depois faça pooling por chunk, preservando contexto global). Contextual retrieval (prefixe cada chunk com um resumo gerado por LLM do documento pai).
+
+Os benchmarks de 2026 surpreendem: recursive 512 bate semantic. Overlap frequentemente não traz benefício mensurável. Qualidade de resposta cai por volta de 2500 tokens de contexto acumulado. Match o tamanho do chunk ao tipo de query: 256-512 pra factoides, 512-1024 pra análise.
+
+** Coreferência, linking e extração de relações
+
+Coreferência liga todas as menções à mesma entidade: "Maria", "ela", "a diretora", "a responsável" são a mesma pessoa. O estado da arte (Lee et al., 2017) é span-based: enumere todos os spans possíveis, ranqueie pares (menção, antecedente) com uma rede neural, e resolva clusters. Cinco métricas existem porque nenhuma captura qualidade de clustering sozinha.
+
+Entity linking resolve "Jordan" pra Michael Jordan (basquete), Jordânia (país) ou Michael I. Jordan (professor de Berkeley). É um pipeline de duas etapas: geração de candidatos (índice de aliases da Wikipedia) e desambiguação (score de similaridade contextual). Modelos generativos modernos (GENRE) decodificam nomes de entidade token a token com saída restrita por trie.
+
+Extração de relações transforma texto livre em triplas (sujeito, relação, objeto). Três abordagens: padrões Hearst ("X, como Y" implica que Y é um tipo de X), supervised seq2seq (REBEL), e LLM-prompted com AEVS (Anchor-Extraction-Verification-Supplement) que verifica cada tripla contra spans da fonte pra evitar alucinação. O pipeline completo: NER, coref, entity linking, extração de relações, mapeamento de ontologia, carregamento no grafo.
+
+* Avaliação e produção
+
+As camadas finais: como saber se seu sistema de NLP funciona e como mantê-lo funcionando.
+
+** Frameworks de avaliação: RAGAS, DeepEval, G-Eval
+
+Três frameworks pra avaliar saídas de LLM em escala. RAGAS fornece quatro métricas reference-free para RAG. DeepEval integra com pytest pra CI/CD, suportando métricas G-Eval customizadas (LLM-as-judge com rubricas chain-of-thought). G-Eval usa um LLM juiz que avalia saídas numa escala Likert com rubrica definida pelo usuário.
+
+LLM-as-judge precisa ser calibrado contra anotadores humanos (Spearman rho > 0.7). Precisa evitar viés de auto-avaliação (o mesmo modelo não pode julgar a si mesmo). E precisa reportar falhas do quantil inferior, não se esconder atrás de médias. Uma chamada de juiz custa ~$0.003; 1000 amostras de regressão saem por menos de $5.
+
+** Avaliação de contexto longo
+
+Janelas de contexto anunciadas (1M, 10M tokens) raramente se traduzem em contexto utilizável. NIAH (Needle In A Haystack) planta um fato aleatório num texto enorme e pergunta sobre ele. É o baseline necessário, mas insuficiente: modelos de fronteira saturam o teste. RULER adiciona 13 tipos de tarefa (rastreamento multi-hop, agregação, recuperação multi-chave) que revelam degradação abrupta além de ~128k tokens.
+
+O comprimento efetivo de raciocínio é tipicamente 25-50% da janela anunciada. Para seus próprios dados, monte um NIAH customizado com varreduras de profundidade × comprimento, variantes multi-needle e rastreamento de variáveis. Sempre combine NIAH com pelo menos uma tarefa de raciocínio antes de confiar em claims de contexto.
+
+** Dialogue State Tracking
+
+Mantém um dicionário de slots (culinária, área, preço, pessoas) ao longo de múltiplos turnos de diálogo orientado a tarefa. O usuário diz "quero italiano", depois "aliás, mude pra tailandês", depois "pra dois". O estado precisa refletir cada correção, negação e confirmação implícita.
+
+A progressão de arquiteturas: extratores baseados em regex (baseline forte pra domínios estreitos), TripPy/BERT (cópia generativa), LDST (LLaMA + LoRA), e o padrão de 2026: LLM com schema Pydantic + decodificação restrita pra estados garantidamente válidos. Avaliado por Joint Goal Accuracy (todos os slots corretos, tudo ou nada). O tradeoff principal: regeneração com histórico completo lida naturalmente com correções mas custa O(n²) tokens; atualização incremental é mais barata mas frágil em correções.
+
+* O que levar disso
+
+NLP em 2026 é uma disciplina madura com um arco claro:
+
+- Texto vira número via tokenização, e a tokenização errada quebra tudo silenciosamente.
+- TF-IDF ainda ganha em classificação estreita; Word2Vec mostrou que significado é geometria; BPE resolveu o problema do vocabulário.
+- NER, sentimento e parsing são as tarefas clássicas que sobrevivem como infraestrutura invisível dos LLMs.
+- Atenção resolveu o gargalo do seq2seq e virou a arquitetura universal.
+- RAG é o padrão de QA em produção; chunking é a configuração que mais importa; RAGAS avalia sem ground truth.
+- Embeddings multi-vetor (BGE-M3) e Matryoshka são o padrão de 2026.
+- NLI é o verificador semântico mais barato; está sob o capô de toda métrica de faithfulness.
+- Coref, entity linking e extração de relações transformam texto em grafo de conhecimento.
+- Decodificação restrita garante JSON válido; LLM-as-judge calibrado avalia em escala.
+- Contexto anunciado ≠ contexto utilizável; meça o efetivo com NIAH + RULER.
+- Diálogo é um dicionário de slots que evolui com correções; tracking de estado é o que separa um chatbot de um assistente.
+
+Do token ao diálogo, o caminho passa por cada uma dessas ideias. E cada uma delas é, no fundo, texto virando número, número virando significado, significado virando ação.
