@@ -2,66 +2,66 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>lobovit</title>
-    <link>http://localhost:1313/</link>
+    <link>https://lobovit.github.io/</link>
     <description>Recent content on lobovit</description>
     <generator>Hugo</generator>
     <language>pt-br</language>
     <lastBuildDate>Fri, 08 May 2026 18:40:00 -0300</lastBuildDate>
-    <atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://lobovit.github.io/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>O predicado que ninguém chamou</title>
-      <link>http://localhost:1313/fixgo02/</link>
+      <link>https://lobovit.github.io/fixgo02/</link>
       <pubDate>Fri, 08 May 2026 18:40:00 -0300</pubDate>
-      <guid>http://localhost:1313/fixgo02/</guid>
+      <guid>https://lobovit.github.io/fixgo02/</guid>
       <description>&lt;p&gt;&#xA;O &lt;a href=&#34;https://tree-sitter.github.io/tree-sitter/&#34;&gt;Tree-sitter&lt;/a&gt; é uma biblioteca que produz árvores sintáticas concretas para dezenas de linguagens. Diferente de um parser tradicional que produz AST, tree-sitter foi projetado para editores de código e ele é incremental, tolerante a erros e capaz de reanalisar um arquivo em milissegundos após uma edição. O &lt;a href=&#34;https://neovim.io/&#34;&gt;Neovim&lt;/a&gt;, &lt;a href=&#34;https://atom.io/&#34;&gt;Atom&lt;/a&gt; (RIP), &lt;a href=&#34;https://zed.dev/&#34;&gt;Zed&lt;/a&gt; e o próprio &lt;a href=&#34;https://github.blog/engineering/user-experience/remodeling-the-github-code-editor/&#34;&gt;GitHub&lt;/a&gt; usam tree-sitter para syntax highlighting, folding e code navigation.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;O &lt;a href=&#34;https://github.com/lobovit/ollanta&#34;&gt;Ollanta&lt;/a&gt; usa tree-sitter de uma forma diferente: para &lt;em&gt;análise estática&lt;/em&gt;. Em vez de realçar sintaxe, ele usa S-expressions para detectar padrões problemáticos no código-fonte:&lt;/p&gt;</description>
     </item>
     <item>
       <title>Resolução de um bug silencioso em Go</title>
-      <link>http://localhost:1313/fixgo01/</link>
+      <link>https://lobovit.github.io/fixgo01/</link>
       <pubDate>Thu, 07 May 2026 10:00:00 -0300</pubDate>
-      <guid>http://localhost:1313/fixgo01/</guid>
+      <guid>https://lobovit.github.io/fixgo01/</guid>
       <description>&lt;div id=&#34;outline-container-headline-1&#34; class=&#34;outline-2&#34;&gt;&#xA;&lt;h2 id=&#34;headline-1&#34;&gt;&#xA;Um canal que não escuta&#xA;&lt;/h2&gt;&#xA;&lt;div id=&#34;outline-text-headline-1&#34; class=&#34;outline-text-2&#34;&gt;&#xA;&lt;p&gt;&#xA;&lt;a href=&#34;https://go.dev/tour/concurrency/2&#34;&gt;Canais&lt;/a&gt; em Go é uma daquelas features que parecem simples até você precisar usá-la em produção com centenas de &lt;a href=&#34;https://go.dev/tour/concurrency/1&#34;&gt;goroutines&lt;/a&gt; concorrentes. E é aí que &amp;#34;a jiripoca começa a piar&amp;#34;.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Este artigo conta a história de um bug silencioso que encontrei durante uma revisão de código no &lt;a href=&#34;https://github.com/lobovit/Ollanta&#34;&gt;Ollanta&lt;/a&gt;, um projeto pessoal de análise de código estático multi-linguagem escrito em Go. O bug não quebrava testes, não produzia &lt;a href=&#34;https://go.dev/blog/defer-panic-and-recover&#34;&gt;panic&lt;/a&gt;, não gerava erro no &lt;a href=&#34;https://golangci-lint.run&#34;&gt;linter&lt;/a&gt;. Mas, em condições específicas, impedia o &lt;a href=&#34;https://learn.microsoft.com/pt-br/dotnet/core/extensions/graceful-shutdown&#34;&gt;graceful shutdown&lt;/a&gt; do scanner por tempo indeterminado.&lt;/p&gt;</description>
     </item>
     <item>
       <title>A Batalha dos Milissegundos</title>
-      <link>http://localhost:1313/tps/</link>
+      <link>https://lobovit.github.io/tps/</link>
       <pubDate>Tue, 05 May 2026 19:41:45 -0300</pubDate>
-      <guid>http://localhost:1313/tps/</guid>
+      <guid>https://lobovit.github.io/tps/</guid>
       <description>&lt;div id=&#34;outline-container-headline-1&#34; class=&#34;outline-2&#34;&gt;&#xA;&lt;h2 id=&#34;headline-1&#34;&gt;&#xA;Como reduzi 62 consultas ao banco para 4 e ganhei 8× de throughput&#xA;&lt;/h2&gt;&#xA;&lt;div id=&#34;outline-text-headline-1&#34; class=&#34;outline-text-2&#34;&gt;&#xA;&lt;p&gt;&#xA;Quando você atinge dezenas de milhares de transações por segundo, a pergunta mais perigosa que você pode fazer é &lt;span style=&#34;text-decoration: underline;&#34;&gt;&amp;#34;qual formato de serialização devo usar?&amp;#34;&lt;/span&gt;. Não porque a resposta seja irrelevante, mas porque ela quase nunca é o gargalo real. Esta é a história de como, durante o desenvolvimento do &lt;em&gt;&lt;a href=&#34;https://github.com/lobovit/Ollanta&#34;&gt;Ollanta&lt;/a&gt;&lt;/em&gt;, uma plataforma de análise estática multilinguagem escrita em Go, eu quase caí na armadilha de otimizar o problema errado.&lt;/p&gt;</description>
     </item>
     <item>
       <title>Sobre</title>
-      <link>http://localhost:1313/page/about/</link>
+      <link>https://lobovit.github.io/page/about/</link>
       <pubDate>Mon, 28 Jul 2025 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/page/about/</guid>
+      <guid>https://lobovit.github.io/page/about/</guid>
       <description>&lt;p&gt;&#xA;Olá, eu sou &lt;strong&gt;Vitor Lobo&lt;/strong&gt;, ou simplesmente Lobo.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Sou desenvolvedor com mais de 15 anos de experiência e já passei por infraestrutura, engenharia de plataforma e SRE. Mas é no código que me encontro: construir soluções e entregar valor, seja corporativo ou social, é o que me move. Comecei em 2009 nas comunidades open source do IRC (falecida freenode). Foi ali que aprendi sobre colaboração, compartilhamento e a cultura do software livre e open source. Mantenho este blog para compartilhar descobertas, aprendizados e conhecimento em geral.&lt;/p&gt;</description>
     </item>
     <item>
       <title>Como o compilador do Rust funciona?</title>
-      <link>http://localhost:1313/rustcomp/</link>
+      <link>https://lobovit.github.io/rustcomp/</link>
       <pubDate>Mon, 21 Jul 2025 12:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/rustcomp/</guid>
+      <guid>https://lobovit.github.io/rustcomp/</guid>
       <description>&lt;div id=&#34;outline-container-headline-1&#34; class=&#34;outline-2&#34;&gt;&#xA;&lt;h2 id=&#34;headline-1&#34;&gt;&#xA;Introdução&#xA;&lt;/h2&gt;&#xA;&lt;div id=&#34;outline-text-headline-1&#34; class=&#34;outline-text-2&#34;&gt;&#xA;&lt;p&gt;&#xA;O Rust é famoso por ser uma linguagem que evita muitos erros de memória sem precisar de um coletor de lixo rodando em segundo plano. Mas como ele faz isso? O segredo está no compilador, que passa seu código por várias etapas até virar um programa que o computador entende.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Neste artigo, explicarei de forma simples cada fase desse processo: desde a leitura do código &lt;em&gt;&lt;a href=&#34;https://en.wikipedia.org/wiki/Lexical_analysis&#34;&gt;lexing&lt;/a&gt;&lt;/em&gt;, passando pela análise da estrutura &lt;em&gt;&lt;a href=&#34;https://en.wikipedia.org/wiki/Parsing&#34;&gt;parsing&lt;/a&gt;&lt;/em&gt;, até a geração do código final pelo &lt;em&gt;&lt;a href=&#34;https://llvm.org/&#34;&gt;LLVM&lt;/a&gt;&lt;/em&gt;.&lt;/p&gt;</description>
     </item>
     <item>
       <title></title>
-      <link>http://localhost:1313/page/contact/</link>
+      <link>https://lobovit.github.io/page/contact/</link>
       <pubDate>Mon, 28 Jul 2025 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/page/contact/</guid>
+      <guid>https://lobovit.github.io/page/contact/</guid>
       <description>&lt;p&gt;Entre em contato comigo através dos canais abaixo:&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;strong&gt;Email:&lt;/strong&gt; &lt;a href=&#34;mailto:lobocode@gmail.com&#34;&gt;lobocode@gmail.com&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;LinkedIn:&lt;/strong&gt; &lt;a href=&#34;https://linkedin.com/in/vitor-lobo&#34;&gt;linkedin.com/in/vitor-lobo&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;GitHub:&lt;/strong&gt; &lt;a href=&#34;https://github.com/lobovit&#34;&gt;github.com/lobovit&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Mastodon:&lt;/strong&gt; &lt;a href=&#34;https://hachyderm.io/@lobocode&#34;&gt;@lobocode&lt;/a&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;</description>
     </item>
     <item>
       <title>About</title>
-      <link>http://localhost:1313/en/page/about/</link>
+      <link>https://lobovit.github.io/en/page/about/</link>
       <pubDate>Mon, 15 Jan 2024 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/en/page/about/</guid>
+      <guid>https://lobovit.github.io/en/page/about/</guid>
       <description>&lt;h1 id=&#34;about&#34;&gt;About&lt;/h1&gt;&#xA;&lt;p&gt;Hello! I&amp;rsquo;m &lt;strong&gt;Vitor Lobo&lt;/strong&gt;, a developer passionate about technology and programming.&lt;/p&gt;&#xA;&lt;h2 id=&#34;about-me&#34;&gt;About Me&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;🚀 &lt;strong&gt;Full Stack Developer&lt;/strong&gt;&lt;/li&gt;&#xA;&lt;li&gt;💻 &lt;strong&gt;JavaScript/TypeScript Specialist&lt;/strong&gt;&lt;/li&gt;&#xA;&lt;li&gt;🌐 &lt;strong&gt;Modern Web Technologies Enthusiast&lt;/strong&gt;&lt;/li&gt;&#xA;&lt;li&gt;📚 &lt;strong&gt;Always learning and sharing knowledge&lt;/strong&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;technologies&#34;&gt;Technologies&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;strong&gt;Frontend&lt;/strong&gt;: React, Vue.js, Angular&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Backend&lt;/strong&gt;: Node.js, Python, Go&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Database&lt;/strong&gt;: PostgreSQL, MongoDB, Redis&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Cloud&lt;/strong&gt;: AWS, Google Cloud, Azure&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;DevOps&lt;/strong&gt;: Docker, Kubernetes, CI/CD&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;contact&#34;&gt;Contact&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;📧 &lt;strong&gt;Email&lt;/strong&gt;: &lt;a href=&#34;mailto:lobocode@gmail.com&#34;&gt;lobocode@gmail.com&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;💼 &lt;strong&gt;LinkedIn&lt;/strong&gt;: &lt;a href=&#34;https://linkedin.com/in/vitor-lobo&#34;&gt;vitor-lobo&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;🐙 &lt;strong&gt;GitHub&lt;/strong&gt;: &lt;a href=&#34;https://github.com/lobovit&#34;&gt;lobovit&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;🐘 &lt;strong&gt;Mastodon&lt;/strong&gt;: &lt;a href=&#34;https://hachyderm.io/@lobocode&#34;&gt;@lobocode&lt;/a&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;blog&#34;&gt;Blog&lt;/h2&gt;&#xA;&lt;p&gt;This blog is a space to share knowledge about:&lt;/p&gt;</description>
     </item>
     <item>
       <title>Contact</title>
-      <link>http://localhost:1313/en/page/contact/</link>
+      <link>https://lobovit.github.io/en/page/contact/</link>
       <pubDate>Mon, 15 Jan 2024 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/en/page/contact/</guid>
+      <guid>https://lobovit.github.io/en/page/contact/</guid>
       <description>&lt;h1 id=&#34;contact&#34;&gt;Contact&lt;/h1&gt;&#xA;&lt;p&gt;Get in touch with me through the channels below:&lt;/p&gt;&#xA;&lt;h2 id=&#34;-email&#34;&gt;📧 Email&lt;/h2&gt;&#xA;&lt;p&gt;&lt;strong&gt;&lt;a href=&#34;mailto:lobocode@gmail.com&#34;&gt;lobocode@gmail.com&lt;/a&gt;&lt;/strong&gt;&lt;/p&gt;&#xA;&lt;h2 id=&#34;-linkedin&#34;&gt;💼 LinkedIn&lt;/h2&gt;&#xA;&lt;p&gt;&lt;a href=&#34;https://linkedin.com/in/vitor-lobo&#34;&gt;Vitor Lobo&lt;/a&gt;&lt;/p&gt;&#xA;&lt;h2 id=&#34;-github&#34;&gt;🐙 GitHub&lt;/h2&gt;&#xA;&lt;p&gt;&lt;a href=&#34;https://github.com/lobovit&#34;&gt;lobovit&lt;/a&gt;&lt;/p&gt;&#xA;&lt;h2 id=&#34;-mastodon&#34;&gt;🐘 Mastodon&lt;/h2&gt;&#xA;&lt;p&gt;&lt;a href=&#34;https://hachyderm.io/@lobocode&#34;&gt;@lobocode&lt;/a&gt;&lt;/p&gt;&#xA;&lt;h2 id=&#34;-social-media&#34;&gt;📱 Social Media&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;strong&gt;Twitter&lt;/strong&gt;: &lt;a href=&#34;https://twitter.com/lobocode&#34;&gt;@lobocode&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Instagram&lt;/strong&gt;: &lt;a href=&#34;https://instagram.com/lobocode&#34;&gt;@lobocode&lt;/a&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;-direct-message&#34;&gt;💬 Direct Message&lt;/h2&gt;&#xA;&lt;p&gt;Feel free to send a direct message through any of the channels above. I&amp;rsquo;m always open to:&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;strong&gt;Collaborations&lt;/strong&gt; on interesting projects&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Discussions&lt;/strong&gt; about technology&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Mentoring&lt;/strong&gt; for beginner developers&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Job opportunities&lt;/strong&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;-availability&#34;&gt;⏰ Availability&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;strong&gt;Response&lt;/strong&gt;: Usually respond within 24 hours&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Hours&lt;/strong&gt;: Monday to Friday, 9am to 6pm (BRT)&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Languages&lt;/strong&gt;: Portuguese and English&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;hr&gt;&#xA;&lt;p&gt;&lt;em&gt;Thank you for your interest in getting in touch!&lt;/em&gt;&lt;/p&gt;</description>
     </item>
   </channel>

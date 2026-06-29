@@ -2,17 +2,17 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Arquitetura De Software on lobovit</title>
-    <link>http://localhost:1313/tags/arquitetura-de-software/</link>
+    <link>https://lobovit.github.io/tags/arquitetura-de-software/</link>
     <description>Recent content in Arquitetura De Software on lobovit</description>
     <generator>Hugo</generator>
     <language>pt-br</language>
     <lastBuildDate>Tue, 05 May 2026 19:41:45 -0300</lastBuildDate>
-    <atom:link href="http://localhost:1313/tags/arquitetura-de-software/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://lobovit.github.io/tags/arquitetura-de-software/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>A Batalha dos Milissegundos</title>
-      <link>http://localhost:1313/tps/</link>
+      <link>https://lobovit.github.io/tps/</link>
       <pubDate>Tue, 05 May 2026 19:41:45 -0300</pubDate>
-      <guid>http://localhost:1313/tps/</guid>
+      <guid>https://lobovit.github.io/tps/</guid>
       <description>&lt;div id=&#34;outline-container-headline-1&#34; class=&#34;outline-2&#34;&gt;&#xA;&lt;h2 id=&#34;headline-1&#34;&gt;&#xA;Como reduzi 62 consultas ao banco para 4 e ganhei 8× de throughput&#xA;&lt;/h2&gt;&#xA;&lt;div id=&#34;outline-text-headline-1&#34; class=&#34;outline-text-2&#34;&gt;&#xA;&lt;p&gt;&#xA;Quando você atinge dezenas de milhares de transações por segundo, a pergunta mais perigosa que você pode fazer é &lt;span style=&#34;text-decoration: underline;&#34;&gt;&amp;#34;qual formato de serialização devo usar?&amp;#34;&lt;/span&gt;. Não porque a resposta seja irrelevante, mas porque ela quase nunca é o gargalo real. Esta é a história de como, durante o desenvolvimento do &lt;em&gt;&lt;a href=&#34;https://github.com/lobovit/Ollanta&#34;&gt;Ollanta&lt;/a&gt;&lt;/em&gt;, uma plataforma de análise estática multilinguagem escrita em Go, eu quase caí na armadilha de otimizar o problema errado.&lt;/p&gt;</description>
     </item>
   </channel>

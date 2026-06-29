@@ -2,136 +2,136 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Tags on lobovit</title>
-    <link>http://localhost:1313/tags/</link>
+    <link>https://lobovit.github.io/tags/</link>
     <description>Recent content in Tags on lobovit</description>
     <generator>Hugo</generator>
     <language>pt-br</language>
     <lastBuildDate>Fri, 08 May 2026 18:40:00 -0300</lastBuildDate>
-    <atom:link href="http://localhost:1313/tags/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://lobovit.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>CGo</title>
-      <link>http://localhost:1313/tags/cgo/</link>
+      <link>https://lobovit.github.io/tags/cgo/</link>
       <pubDate>Fri, 08 May 2026 18:40:00 -0300</pubDate>
-      <guid>http://localhost:1313/tags/cgo/</guid>
+      <guid>https://lobovit.github.io/tags/cgo/</guid>
       <description></description>
     </item>
     <item>
       <title>Go</title>
-      <link>http://localhost:1313/tags/go/</link>
+      <link>https://lobovit.github.io/tags/go/</link>
       <pubDate>Fri, 08 May 2026 18:40:00 -0300</pubDate>
-      <guid>http://localhost:1313/tags/go/</guid>
+      <guid>https://lobovit.github.io/tags/go/</guid>
       <description></description>
     </item>
     <item>
       <title>Ollanta</title>
-      <link>http://localhost:1313/tags/ollanta/</link>
+      <link>https://lobovit.github.io/tags/ollanta/</link>
       <pubDate>Fri, 08 May 2026 18:40:00 -0300</pubDate>
-      <guid>http://localhost:1313/tags/ollanta/</guid>
+      <guid>https://lobovit.github.io/tags/ollanta/</guid>
       <description></description>
     </item>
     <item>
       <title>Static-Analysis</title>
-      <link>http://localhost:1313/tags/static-analysis/</link>
+      <link>https://lobovit.github.io/tags/static-analysis/</link>
       <pubDate>Fri, 08 May 2026 18:40:00 -0300</pubDate>
-      <guid>http://localhost:1313/tags/static-analysis/</guid>
+      <guid>https://lobovit.github.io/tags/static-analysis/</guid>
       <description></description>
     </item>
     <item>
       <title>Tree-Sitter</title>
-      <link>http://localhost:1313/tags/tree-sitter/</link>
+      <link>https://lobovit.github.io/tags/tree-sitter/</link>
       <pubDate>Fri, 08 May 2026 18:40:00 -0300</pubDate>
-      <guid>http://localhost:1313/tags/tree-sitter/</guid>
+      <guid>https://lobovit.github.io/tags/tree-sitter/</guid>
       <description></description>
     </item>
     <item>
       <title>Channels</title>
-      <link>http://localhost:1313/tags/channels/</link>
+      <link>https://lobovit.github.io/tags/channels/</link>
       <pubDate>Thu, 07 May 2026 10:00:00 -0300</pubDate>
-      <guid>http://localhost:1313/tags/channels/</guid>
+      <guid>https://lobovit.github.io/tags/channels/</guid>
       <description></description>
     </item>
     <item>
       <title>Concurrency</title>
-      <link>http://localhost:1313/tags/concurrency/</link>
+      <link>https://lobovit.github.io/tags/concurrency/</link>
       <pubDate>Thu, 07 May 2026 10:00:00 -0300</pubDate>
-      <guid>http://localhost:1313/tags/concurrency/</guid>
+      <guid>https://lobovit.github.io/tags/concurrency/</guid>
       <description></description>
     </item>
     <item>
       <title>Arquitetura De Software</title>
-      <link>http://localhost:1313/tags/arquitetura-de-software/</link>
+      <link>https://lobovit.github.io/tags/arquitetura-de-software/</link>
       <pubDate>Tue, 05 May 2026 19:41:45 -0300</pubDate>
-      <guid>http://localhost:1313/tags/arquitetura-de-software/</guid>
+      <guid>https://lobovit.github.io/tags/arquitetura-de-software/</guid>
       <description></description>
     </item>
     <item>
       <title>Compressão</title>
-      <link>http://localhost:1313/tags/compress%C3%A3o/</link>
+      <link>https://lobovit.github.io/tags/compress%C3%A3o/</link>
       <pubDate>Tue, 05 May 2026 19:41:45 -0300</pubDate>
-      <guid>http://localhost:1313/tags/compress%C3%A3o/</guid>
+      <guid>https://lobovit.github.io/tags/compress%C3%A3o/</guid>
       <description></description>
     </item>
     <item>
       <title>Latência</title>
-      <link>http://localhost:1313/tags/lat%C3%AAncia/</link>
+      <link>https://lobovit.github.io/tags/lat%C3%AAncia/</link>
       <pubDate>Tue, 05 May 2026 19:41:45 -0300</pubDate>
-      <guid>http://localhost:1313/tags/lat%C3%AAncia/</guid>
+      <guid>https://lobovit.github.io/tags/lat%C3%AAncia/</guid>
       <description></description>
     </item>
     <item>
       <title>Performance</title>
-      <link>http://localhost:1313/tags/performance/</link>
+      <link>https://lobovit.github.io/tags/performance/</link>
       <pubDate>Tue, 05 May 2026 19:41:45 -0300</pubDate>
-      <guid>http://localhost:1313/tags/performance/</guid>
+      <guid>https://lobovit.github.io/tags/performance/</guid>
       <description></description>
     </item>
     <item>
       <title>Protobuf</title>
-      <link>http://localhost:1313/tags/protobuf/</link>
+      <link>https://lobovit.github.io/tags/protobuf/</link>
       <pubDate>Tue, 05 May 2026 19:41:45 -0300</pubDate>
-      <guid>http://localhost:1313/tags/protobuf/</guid>
+      <guid>https://lobovit.github.io/tags/protobuf/</guid>
       <description></description>
     </item>
     <item>
       <title>Zstd</title>
-      <link>http://localhost:1313/tags/zstd/</link>
+      <link>https://lobovit.github.io/tags/zstd/</link>
       <pubDate>Tue, 05 May 2026 19:41:45 -0300</pubDate>
-      <guid>http://localhost:1313/tags/zstd/</guid>
+      <guid>https://lobovit.github.io/tags/zstd/</guid>
       <description></description>
     </item>
     <item>
       <title>Compiladores</title>
-      <link>http://localhost:1313/tags/compiladores/</link>
+      <link>https://lobovit.github.io/tags/compiladores/</link>
       <pubDate>Mon, 21 Jul 2025 12:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/tags/compiladores/</guid>
+      <guid>https://lobovit.github.io/tags/compiladores/</guid>
       <description></description>
     </item>
     <item>
       <title>LLVM</title>
-      <link>http://localhost:1313/tags/llvm/</link>
+      <link>https://lobovit.github.io/tags/llvm/</link>
       <pubDate>Mon, 21 Jul 2025 12:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/tags/llvm/</guid>
+      <guid>https://lobovit.github.io/tags/llvm/</guid>
       <description></description>
     </item>
     <item>
       <title>Memória</title>
-      <link>http://localhost:1313/tags/mem%C3%B3ria/</link>
+      <link>https://lobovit.github.io/tags/mem%C3%B3ria/</link>
       <pubDate>Mon, 21 Jul 2025 12:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/tags/mem%C3%B3ria/</guid>
+      <guid>https://lobovit.github.io/tags/mem%C3%B3ria/</guid>
       <description></description>
     </item>
     <item>
       <title>Rust</title>
-      <link>http://localhost:1313/tags/rust/</link>
+      <link>https://lobovit.github.io/tags/rust/</link>
       <pubDate>Mon, 21 Jul 2025 12:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/tags/rust/</guid>
+      <guid>https://lobovit.github.io/tags/rust/</guid>
       <description></description>
     </item>
     <item>
       <title>Segurança</title>
-      <link>http://localhost:1313/tags/seguran%C3%A7a/</link>
+      <link>https://lobovit.github.io/tags/seguran%C3%A7a/</link>
       <pubDate>Mon, 21 Jul 2025 12:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/tags/seguran%C3%A7a/</guid>
+      <guid>https://lobovit.github.io/tags/seguran%C3%A7a/</guid>
       <description></description>
     </item>
   </channel>

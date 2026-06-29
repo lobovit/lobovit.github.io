@@ -2,97 +2,97 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>http://localhost:1313/fixgo02/</loc>
+    <loc>https://lobovit.github.io/fixgo02/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/fixgo01/</loc>
+    <loc>https://lobovit.github.io/fixgo01/</loc>
     <lastmod>2026-05-07T10:00:00-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tps/</loc>
+    <loc>https://lobovit.github.io/tps/</loc>
     <lastmod>2026-05-05T19:41:45-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/page/about/</loc>
+    <loc>https://lobovit.github.io/page/about/</loc>
     <lastmod>2025-07-28T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/rustcomp/</loc>
+    <loc>https://lobovit.github.io/rustcomp/</loc>
     <lastmod>2025-07-21T12:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/cgo/</loc>
+    <loc>https://lobovit.github.io/tags/cgo/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/go/</loc>
+    <loc>https://lobovit.github.io/tags/go/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/</loc>
+    <loc>https://lobovit.github.io/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/ollanta/</loc>
+    <loc>https://lobovit.github.io/tags/ollanta/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/post/</loc>
+    <loc>https://lobovit.github.io/post/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/static-analysis/</loc>
+    <loc>https://lobovit.github.io/tags/static-analysis/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/</loc>
+    <loc>https://lobovit.github.io/tags/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/tree-sitter/</loc>
+    <loc>https://lobovit.github.io/tags/tree-sitter/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/channels/</loc>
+    <loc>https://lobovit.github.io/tags/channels/</loc>
     <lastmod>2026-05-07T10:00:00-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/concurrency/</loc>
+    <loc>https://lobovit.github.io/tags/concurrency/</loc>
     <lastmod>2026-05-07T10:00:00-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/arquitetura-de-software/</loc>
+    <loc>https://lobovit.github.io/tags/arquitetura-de-software/</loc>
     <lastmod>2026-05-05T19:41:45-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/compress%C3%A3o/</loc>
+    <loc>https://lobovit.github.io/tags/compress%C3%A3o/</loc>
     <lastmod>2026-05-05T19:41:45-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/lat%C3%AAncia/</loc>
+    <loc>https://lobovit.github.io/tags/lat%C3%AAncia/</loc>
     <lastmod>2026-05-05T19:41:45-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/performance/</loc>
+    <loc>https://lobovit.github.io/tags/performance/</loc>
     <lastmod>2026-05-05T19:41:45-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/protobuf/</loc>
+    <loc>https://lobovit.github.io/tags/protobuf/</loc>
     <lastmod>2026-05-05T19:41:45-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/zstd/</loc>
+    <loc>https://lobovit.github.io/tags/zstd/</loc>
     <lastmod>2026-05-05T19:41:45-03:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/page/contact/</loc>
+    <loc>https://lobovit.github.io/page/contact/</loc>
     <lastmod>2025-07-28T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/page/</loc>
+    <loc>https://lobovit.github.io/page/</loc>
     <lastmod>2025-07-28T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/compiladores/</loc>
+    <loc>https://lobovit.github.io/tags/compiladores/</loc>
     <lastmod>2025-07-21T12:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/llvm/</loc>
+    <loc>https://lobovit.github.io/tags/llvm/</loc>
     <lastmod>2025-07-21T12:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/mem%C3%B3ria/</loc>
+    <loc>https://lobovit.github.io/tags/mem%C3%B3ria/</loc>
     <lastmod>2025-07-21T12:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/rust/</loc>
+    <loc>https://lobovit.github.io/tags/rust/</loc>
     <lastmod>2025-07-21T12:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/tags/seguran%C3%A7a/</loc>
+    <loc>https://lobovit.github.io/tags/seguran%C3%A7a/</loc>
     <lastmod>2025-07-21T12:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/en/page/about/</loc>
+    <loc>https://lobovit.github.io/en/page/about/</loc>
     <lastmod>2024-01-15T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/en/page/contact/</loc>
+    <loc>https://lobovit.github.io/en/page/contact/</loc>
     <lastmod>2024-01-15T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/en/</loc>
+    <loc>https://lobovit.github.io/en/</loc>
     <lastmod>2024-01-15T00:00:00+00:00</lastmod>
   </url>
 </urlset>

@@ -2,24 +2,24 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>Pages on lobovit</title>
-    <link>http://localhost:1313/page/</link>
+    <link>https://lobovit.github.io/page/</link>
     <description>Recent content in Pages on lobovit</description>
     <generator>Hugo</generator>
     <language>pt-br</language>
     <lastBuildDate>Mon, 28 Jul 2025 00:00:00 +0000</lastBuildDate>
-    <atom:link href="http://localhost:1313/page/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://lobovit.github.io/page/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Sobre</title>
-      <link>http://localhost:1313/page/about/</link>
+      <link>https://lobovit.github.io/page/about/</link>
       <pubDate>Mon, 28 Jul 2025 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/page/about/</guid>
+      <guid>https://lobovit.github.io/page/about/</guid>
       <description>&lt;p&gt;&#xA;Olá, eu sou &lt;strong&gt;Vitor Lobo&lt;/strong&gt;, ou simplesmente Lobo.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Sou desenvolvedor com mais de 15 anos de experiência e já passei por infraestrutura, engenharia de plataforma e SRE. Mas é no código que me encontro: construir soluções e entregar valor, seja corporativo ou social, é o que me move. Comecei em 2009 nas comunidades open source do IRC (falecida freenode). Foi ali que aprendi sobre colaboração, compartilhamento e a cultura do software livre e open source. Mantenho este blog para compartilhar descobertas, aprendizados e conhecimento em geral.&lt;/p&gt;</description>
     </item>
     <item>
       <title></title>
-      <link>http://localhost:1313/page/contact/</link>
+      <link>https://lobovit.github.io/page/contact/</link>
       <pubDate>Mon, 28 Jul 2025 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/page/contact/</guid>
+      <guid>https://lobovit.github.io/page/contact/</guid>
       <description>&lt;p&gt;Entre em contato comigo através dos canais abaixo:&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;strong&gt;Email:&lt;/strong&gt; &lt;a href=&#34;mailto:lobocode@gmail.com&#34;&gt;lobocode@gmail.com&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;LinkedIn:&lt;/strong&gt; &lt;a href=&#34;https://linkedin.com/in/vitor-lobo&#34;&gt;linkedin.com/in/vitor-lobo&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;GitHub:&lt;/strong&gt; &lt;a href=&#34;https://github.com/lobovit&#34;&gt;github.com/lobovit&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Mastodon:&lt;/strong&gt; &lt;a href=&#34;https://hachyderm.io/@lobocode&#34;&gt;@lobocode&lt;/a&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;</description>
     </item>
   </channel>
