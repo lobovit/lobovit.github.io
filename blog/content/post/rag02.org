@@ -15,7 +15,7 @@ Olá pessoal! 👋
 
 Nos artigos anteriores, exploramos como [[/post/rag/][implementar um RAG básico em Clojure]] em memória e como [[/post/semantic-postgresql/][construir um sistema de busca semântica com PostgreSQL e Ollama]]. Agora, vamos dar o próximo passo: transformar nosso protótipo em um sistema RAG pronto para produção.
 
-Como muitos desenvolvedores já descobriram, criar um protótipo funcional de [[https://en.wikipedia.org/wiki/Retrieval-augmented_generation][RAG]] com alguns documentos é relativamente simples. O verdadeiro desafio começa quando precisamos escalar esse sistema para lidar com milhares de documentos, garantir respostas precisas e manter o desempenho sob carga. Neste artigo, vamos explorar técnicas avançadas para superar esses desafios e levar nosso [[https://github.com/scovl/docai][DocAI]] para um novo patamar de qualidade e confiabilidade.
+Como muitos desenvolvedores já descobriram, criar um protótipo funcional de [[https://en.wikipedia.org/wiki/Retrieval-augmented_generation][RAG]] com alguns documentos é relativamente simples. O verdadeiro desafio começa quando precisamos escalar esse sistema para lidar com milhares de documentos, garantir respostas precisas e manter o desempenho sob carga. Neste artigo, vamos explorar técnicas avançadas para superar esses desafios e levar nosso [[https://github.com/lobovit/docai][DocAI]] para um novo patamar de qualidade e confiabilidade.
 
 ** Da Teoria à Produção: Os Desafios Reais
 
@@ -51,7 +51,7 @@ Mesmo com o avanço dos [[https://en.wikipedia.org/wiki/Large_language_model][LL
 
 ** Armadilhas Comuns e Como Evitá-las
 
-Baseado na nossa experiência com o [[https://github.com/scovl/docai][DocAI]] e nos desafios relatados pela comunidade, identificamos quatro armadilhas principais que podem comprometer sistemas RAG:
+Baseado na nossa experiência com o [[https://github.com/lobovit/docai][DocAI]] e nos desafios relatados pela comunidade, identificamos quatro armadilhas principais que podem comprometer sistemas RAG:
 
 *** Armadilha 1: A Falsa Sensação de Relevância
 
@@ -1276,7 +1276,7 @@ Esta implementação representa um componente crucial de um sistema LLMOps madur
 Agora que exploramos várias técnicas avançadas, vamos ver como elas são implementadas no projeto DocAI. Nosso sistema atual já incorpora muitas dessas técnicas para criar um pipeline RAG avançado.
 
 #+BEGIN_QUOTE
-Caso não saiba o que é o DocAI, você pode ver os artigos anteriores [[https://scovl.github.io/2025/03/23/rag/][RAG Simples com Clojure e Ollama]] e [[https://scovl.github.io/2025/03/25/semantic-postgresql/][Busca Semântica com Ollama e PostgreSQL]].
+Caso não saiba o que é o DocAI, você pode ver os artigos anteriores [[https://lobovit.github.io/2025/03/23/rag/][RAG Simples com Clojure e Ollama]] e [[https://lobovit.github.io/2025/03/25/semantic-postgresql/][Busca Semântica com Ollama e PostgreSQL]].
 #+END_QUOTE
 
 *** Arquitetura Atual do DocAI
@@ -1434,7 +1434,7 @@ Documentos legais, por exemplo, recebem chunks maiores (1500 tokens) devido à s
   (def agent-cache (atom {}))
 #+END_SRC
 
-O sistema implementa uma estratégia de [[https://en.wikipedia.org/wiki/Cache_hierarchy][cache multinível]] para otimizar o desempenho e reduzir custos operacionais. Utilizando estruturas de dados atômicas [[https://en.wikipedia.org/wiki/Atom_(data_structure][(~atom~)]]), o [[https://github.com/scovl/docai][DocAI]] mantém três camadas distintas de cache: para embeddings, respostas completas e resultados de agentes. Esta abordagem permite reutilizar cálculos computacionalmente intensivos como a geração de embeddings, evitando processamento redundante de textos idênticos. 
+O sistema implementa uma estratégia de [[https://en.wikipedia.org/wiki/Cache_hierarchy][cache multinível]] para otimizar o desempenho e reduzir custos operacionais. Utilizando estruturas de dados atômicas [[https://en.wikipedia.org/wiki/Atom_(data_structure][(~atom~)]]), o [[https://github.com/lobovit/docai][DocAI]] mantém três camadas distintas de cache: para embeddings, respostas completas e resultados de agentes. Esta abordagem permite reutilizar cálculos computacionalmente intensivos como a geração de embeddings, evitando processamento redundante de textos idênticos. 
 
 O cache de respostas armazena resultados finais para consultas frequentes, enquanto o cache de agentes preserva resultados intermediários de subtarefas específicas. Esta implementação reduz significativamente a latência do sistema, especialmente para consultas recorrentes, e diminui custos associados a chamadas de API para modelos externos. A estrutura atômica escolhida garante [[https://en.wikipedia.org/wiki/Thread_safety][thread-safety]] em ambientes concorrentes, permitindo atualizações seguras do cache mesmo com múltiplas consultas simultâneas.
 
@@ -1468,7 +1468,7 @@ O código acima implementa um sistema de verificação e melhoria automática de
 
 A implementação utiliza uma abordagem elegante de [[https://en.wikipedia.org/wiki/Prompt_engineering][prompt engineering]], onde o sistema solicita explicitamente uma avaliação crítica da resposta original. O prompt estruturado inclui a consulta do usuário, um resumo do contexto (limitado a 300 caracteres para evitar sobrecarga) e a resposta gerada, orientando o modelo a realizar uma análise meticulosa. A função então analisa o resultado da verificação, mantendo a resposta original quando considerada adequada ou extraindo uma versão aprimorada quando necessário, utilizando expressões regulares para limpar metadados desnecessários da resposta melhorada.
 
-Este mecanismo de verificação representa uma implementação prática do conceito de [[https://en.wikipedia.org/wiki/Constitutional_AI][Constitutional AI]] ou "AI com princípios orientadores", onde um sistema é projetado para avaliar criticamente suas próprias saídas. Ao incorporar esta camada de verificação no pipeline [[https://en.wikipedia.org/wiki/Retrieval-Augmented_Generation][RAG]], o [[https://github.com/scovl/docai][DocAI]] consegue oferecer respostas mais confiáveis e precisas, reduzindo significativamente o risco de fornecer informações incorretas ou incompletas. Esta abordagem reflexiva é particularmente valiosa em domínios onde a precisão é crucial, como documentação técnica, informações médicas ou análises legais.
+Este mecanismo de verificação representa uma implementação prática do conceito de [[https://en.wikipedia.org/wiki/Constitutional_AI][Constitutional AI]] ou "AI com princípios orientadores", onde um sistema é projetado para avaliar criticamente suas próprias saídas. Ao incorporar esta camada de verificação no pipeline [[https://en.wikipedia.org/wiki/Retrieval-Augmented_Generation][RAG]], o [[https://github.com/lobovit/docai][DocAI]] consegue oferecer respostas mais confiáveis e precisas, reduzindo significativamente o risco de fornecer informações incorretas ou incompletas. Esta abordagem reflexiva é particularmente valiosa em domínios onde a precisão é crucial, como documentação técnica, informações médicas ou análises legais.
 
 
 - /Métricas Detalhadas/: Sistema de monitoramento que registra todos os aspectos das interações:
@@ -1545,7 +1545,7 @@ Esta arquitetura modular permite que o DocAI se mantenha flexível e adaptável,
 
 Transformar um sistema [[https://en.wikipedia.org/wiki/Retrieval-Augmented_Generation][RAG]] de protótipo para produção requer mais do que apenas escolher as melhores ferramentas - exige uma compreensão profunda de cada componente e como eles trabalham juntos para produzir resultados confiáveis.
 
-O projeto [[https://github.com/scovl/docai][DocAI]] representa uma implementação robusta das técnicas avançadas de RAG discutidas neste artigo. Sua arquitetura modular, com componentes especializados em diferentes aspectos do processo (como Core, LLM, PostgreSQL, Sistema de Agentes e Métricas), demonstra a importância de um design bem estruturado para sistemas RAG em produção.
+O projeto [[https://github.com/lobovit/docai][DocAI]] representa uma implementação robusta das técnicas avançadas de RAG discutidas neste artigo. Sua arquitetura modular, com componentes especializados em diferentes aspectos do processo (como Core, LLM, PostgreSQL, Sistema de Agentes e Métricas), demonstra a importância de um design bem estruturado para sistemas RAG em produção.
 
 As técnicas que exploramos - desde re-ranqueamento e chunking dinâmico até workflows com agentes e monitoramento avançado - representam as práticas que separam implementações amadoras de sistemas robustos e prontos para uso em escala.
 
@@ -1562,9 +1562,9 @@ flowchart LR
     style AGT fill:#ffd,stroke:#333,stroke-width:2px
 #+END_SRC
 
-Nossa jornada com o [[https://github.com/scovl/docai][DocAI]] evoluiu significativamente, de uma implementação básica com TF-IDF, passando por um sistema com PostgreSQL e embeddings, e agora para uma arquitetura avançada com agentes que pode lidar com casos de uso complexos do mundo real. O próximo passo, conforme detalhado no plano de evolução, será expandir ainda mais essas capacidades para criar um sistema RAG Agêntico completo.
+Nossa jornada com o [[https://github.com/lobovit/docai][DocAI]] evoluiu significativamente, de uma implementação básica com TF-IDF, passando por um sistema com PostgreSQL e embeddings, e agora para uma arquitetura avançada com agentes que pode lidar com casos de uso complexos do mundo real. O próximo passo, conforme detalhado no plano de evolução, será expandir ainda mais essas capacidades para criar um sistema RAG Agêntico completo.
 
-O futuro dos sistemas de IA não está em modelos cada vez maiores, mas na combinação inteligente de componentes especializados que trabalham juntos para superar limitações individuais. O [[https://github.com/scovl/docai][DocAI]] exemplifica esta abordagem, demonstrando como a integração de técnicas avançadas de RAG pode resultar em um sistema mais inteligente, preciso e útil para seus usuários.
+O futuro dos sistemas de IA não está em modelos cada vez maiores, mas na combinação inteligente de componentes especializados que trabalham juntos para superar limitações individuais. O [[https://github.com/lobovit/docai][DocAI]] exemplifica esta abordagem, demonstrando como a integração de técnicas avançadas de RAG pode resultar em um sistema mais inteligente, preciso e útil para seus usuários.
 
 -----
 
@@ -1586,4 +1586,4 @@ O futuro dos sistemas de IA não está em modelos cada vez maiores, mas na combi
 - [[https://docs.llamaindex.ai/en/stable/examples/multi_modal/][MultiModal RAG com LlamaIndex]] - Exemplos de implementação multimodal.
 - [[https://ollama.com/][Ollama - Rodando LLMs localmente]] - Ferramenta para executar LLMs localmente.
 - [[https://www.postgresql.org/][PostgreSQL]] - Sistema de gerenciamento de banco de dados relacional.
-- [[https://github.com/scovl/docai][Projeto DocAI]] - Repositório do projeto DocAI.
+- [[https://github.com/lobovit/docai][Projeto DocAI]] - Repositório do projeto DocAI.

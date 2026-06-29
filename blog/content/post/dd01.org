@@ -1685,7 +1685,7 @@ Essa função é /bem simples/, mas já dá pra ter uma ideia de como a gente po
 /   E /muito* mais!
 
 #+BEGIN_QUOTE
-Inclusive, tenho um artigo sobre AST chamado [[https://dev.to/scovl/explorando-abordagens-ast-3mml][Explorando abordagens AST]].
+Inclusive, tenho um artigo sobre AST chamado [[https://dev.to/lobovit/explorando-abordagens-ast-3mml][Explorando abordagens AST]].
 #+END_QUOTE
 
 *** Grafo de Fluxo de Controle (CFG): O "Mapa" da Execução

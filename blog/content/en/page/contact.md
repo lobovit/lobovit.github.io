@@ -18,7 +18,7 @@ Get in touch with me through the channels below:
 
 ## 🐙 GitHub
 
-[scovl](https://github.com/scovl)
+[lobovit](https://github.com/lobovit)
 
 ## 🐘 Mastodon
 

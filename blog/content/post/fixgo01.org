@@ -12,7 +12,7 @@ author = "Vitor Lobo Ramos"
 
 [[https://go.dev/tour/concurrency/2][Canais]] em Go é uma daquelas features que parecem simples até você precisar usá-la em produção com centenas de [[https://go.dev/tour/concurrency/1][goroutines]] concorrentes. E é aí que "a jiripoca começa a piar".
 
-Este artigo conta a história de um bug silencioso que encontrei durante uma revisão de código no [[https://github.com/scovl/Ollanta][Ollanta]], um projeto pessoal de análise de código estático multi-linguagem escrito em Go. O bug não quebrava testes, não produzia [[https://go.dev/blog/defer-panic-and-recover][panic]], não gerava erro no [[https://golangci-lint.run][linter]]. Mas, em condições específicas, impedia o [[https://learn.microsoft.com/pt-br/dotnet/core/extensions/graceful-shutdown][graceful shutdown]] do scanner por tempo indeterminado.
+Este artigo conta a história de um bug silencioso que encontrei durante uma revisão de código no [[https://github.com/lobovit/Ollanta][Ollanta]], um projeto pessoal de análise de código estático multi-linguagem escrito em Go. O bug não quebrava testes, não produzia [[https://go.dev/blog/defer-panic-and-recover][panic]], não gerava erro no [[https://golangci-lint.run][linter]]. Mas, em condições específicas, impedia o [[https://learn.microsoft.com/pt-br/dotnet/core/extensions/graceful-shutdown][graceful shutdown]] do scanner por tempo indeterminado.
 
 ![[/post/images/fixgo01.png][ollanta]]
 
@@ -323,5 +323,5 @@ Antes, 184 goroutines ociosas ficavam empilhadas no semáforo; depois, elas saem
 No Ollanta, essa correção de duas linhas eliminou 184 goroutines ociosas que sobreviviam ao ~Ctrl+C~ sem propósito, reduzindo o consumo de memória durante o shutdown e evitando a cascata de passagens pelo semáforo após os workers terminarem. Se você está escrevendo um worker pool em Go, lembre-se: o semáforo bloqueia. E bloqueio sem ~select~ não escuta o cancelamento.
 
 #+BEGIN_QUOTE
-Este artigo foi escrito a partir de uma correção real no repositório do [[https://github.com/scovl/Ollanta][Ollanta]]. O diff completo está em [[https://github.com/scovl/Ollanta/commit/3d95d5399b5cb0143637cce51e787ce8bb752285][https://github.com/scovl/Ollanta/blob/main/application/scan/executor.go]].
+Este artigo foi escrito a partir de uma correção real no repositório do [[https://github.com/lobovit/Ollanta][Ollanta]]. O diff completo está em [[https://github.com/lobovit/Ollanta/commit/3d95d5399b5cb0143637cce51e787ce8bb752285][https://github.com/lobovit/Ollanta/blob/main/application/scan/executor.go]].
 #+END_QUOTE

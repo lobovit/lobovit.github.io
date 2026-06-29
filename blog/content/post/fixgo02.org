@@ -11,7 +11,7 @@ author = "Vitor Lobo Ramos"
 
 O [[https://tree-sitter.github.io/tree-sitter/][Tree-sitter]] é uma biblioteca que produz árvores sintáticas concretas para dezenas de linguagens. Diferente de um parser tradicional que produz AST, tree-sitter foi projetado para editores de código e ele é incremental, tolerante a erros e capaz de reanalisar um arquivo em milissegundos após uma edição. O [[https://neovim.io/][Neovim]], [[https://atom.io/][Atom]] (RIP), [[https://zed.dev/][Zed]] e o próprio [[https://github.blog/engineering/user-experience/remodeling-the-github-code-editor/][GitHub]] usam tree-sitter para syntax highlighting, folding e code navigation.
 
-O [[https://github.com/scovl/ollanta][Ollanta]] usa tree-sitter de uma forma diferente: para /análise estática/. Em vez de realçar sintaxe, ele usa S-expressions para detectar padrões problemáticos no código-fonte:
+O [[https://github.com/lobovit/ollanta][Ollanta]] usa tree-sitter de uma forma diferente: para /análise estática/. Em vez de realçar sintaxe, ele usa S-expressions para detectar padrões problemáticos no código-fonte:
 
 #+BEGIN_SRC scheme
 ;; Encontra chamadas a eval() em JavaScript
@@ -327,5 +327,5 @@ A documentação do tree-sitter C diz "predicates are not evaluated by default".
 A linha ~m = cursor.FilterPredicates(m, f.Source)~ não é complexa. Não envolve algoritmos, estruturas de dados ou padrões de concorrência. É uma chamada de método que faltava e que, por faltar, transformou um analisador estático em um gerador de ruídos.
 
 #+BEGIN_QUOTE
-Este artigo foi escrito a partir de uma correção real no repositório do [[https://github.com/scovl/Ollanta][Ollanta]]. O diff completo está em [[https://github.com/scovl/Ollanta/commit/0a73aa2ec05c1dfa7c7a0b0e750cb05c841cb4f9][https://github.com/scovl/Ollanta/commit/0a73aa2ec05c1dfa7c7a0b0e750cb05c841cb4f9]].
+Este artigo foi escrito a partir de uma correção real no repositório do [[https://github.com/lobovit/Ollanta][Ollanta]]. O diff completo está em [[https://github.com/lobovit/Ollanta/commit/0a73aa2ec05c1dfa7c7a0b0e750cb05c841cb4f9][https://github.com/lobovit/Ollanta/commit/0a73aa2ec05c1dfa7c7a0b0e750cb05c841cb4f9]].
 #+END_QUOTE

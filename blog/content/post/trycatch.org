@@ -74,7 +74,7 @@ A seguir, vamos analisar como o ~try/catch~ evoluiu historicamente, quais proble
 
 O exemplo abaixo ilustra como isso pode levar a situações indesejadas , a função ~read_int()~ retorna um código indicando erro ou sucesso, mas se quem a chamou não conferir esse código, um valor inválido poderá ser usado em cálculo a seguir:
 
-[[https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/01.png]]
+[[https://raw.githubusercontent.com/lobovit/lobovit.github.io/refs/heads/main/blog/content/post/images/trycatch/01.png]]
 
 No diagrama, vê-se um fluxo onde ~read_int()~ pode indicar uma falha, mas esse retorno não é verificado ao atribuir o resultado à variável ~x~. Em consequência, o programa segue seu curso normal, calculando ~y = x * 2~ mesmo que ~x~ possa conter um valor inválido. Isso resulta em uma operação com dado incorreto no final do fluxo, demonstrando como a falta de verificação de erros pode propagar problemas silenciosamente pelo programa.
 
@@ -83,7 +83,7 @@ No diagrama, vê-se um fluxo onde ~read_int()~ pode indicar uma falha, mas esse 
 
 O diagrama abaixo ilustra essa separação: o caminho principal (em azul) representa a execução bem-sucedida , inicia, processa dados, salva resultados, envia notificação e finaliza com sucesso. Porém, se em qualquer dessas etapas ocorrer uma exceção, o fluxo é desviado para o bloco de tratamento de erros (em vermelho), onde o erro é registrado e o programa termina de forma controlada.
 
-[[https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/02.png]]
+[[https://raw.githubusercontent.com/lobovit/lobovit.github.io/refs/heads/main/blog/content/post/images/trycatch/02.png]]
 
 Esse diagrama destaca como o código principal pode se concentrar na lógica de negócio, enquanto o tratamento de erro fica isolado no bloco ~catch~. Essa é a essência do ~try/catch~: permitir que o fluxo “normal” do programa permaneça legível e que todo o código referente a erros esteja agrupado e bem definido em outro lugar. O resultado é um código mais organizado e de fácil manutenção.
 
@@ -92,7 +92,7 @@ Esse diagrama destaca como o código principal pode se concentrar na lógica de 
 
 O diagrama a seguir mostra dois fluxos possíveis de um programa simples: no caminho normal, a função é executada e imprime uma mensagem ("Esta linha...") antes de retornar ao ~main~ e encerrar normalmente; já no caminho de erro, a função lança uma exceção (~std::runtime_error~), que não é capturada em nenhuma parte do programa, resultando na /chamada imediata de ~std::terminate()~/ e encerramento abrupto da aplicação. Note que no diagrama, o caminho vermelho representa o comportamento típico no GCC/Clang: ~std::terminate()~ é chamado, e o unwinding pode ser incompleto (dependendo da implementação).
 
-[[https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/trycatch/03.png]]
+[[https://raw.githubusercontent.com/lobovit/lobovit.github.io/refs/heads/main/blog/content/post/images/trycatch/03.png]]
 
 Podemos observar, em rosa, o ponto onde "dá ruim" (onde a exceção é lançada) e, em vermelho, o caminho do erro levando à chamada de ~std::terminate()~. Esse comportamento é intencional: como o próprio [[https://en.wikipedia.org/wiki/Bjarne_Stroustrup][Stroustrup]] explica, /"se uma função encontrar um erro que não consiga resolver, ela lança uma exceção; alguma função acima na hierarquia de chamadas pode capturá-la, mas, se ninguém o fizer, o programa termina"/.
 

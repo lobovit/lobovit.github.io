@@ -870,7 +870,7 @@ DEBUG - Amostra do contexto: "Para implementar autenticação JWT em Clojure..."
 #+END_SRC
 
 #+BEGIN_QUOTE
-/NOTA:/ A propósito, o projeto docai está disponível no [[https://github.com/scovl/docai][https://github.com/scovl/docai]] caso você queira contribuir com o projeto ou usar em outro projeto.
+/NOTA:/ A propósito, o projeto docai está disponível no [[https://github.com/lobovit/docai][https://github.com/lobovit/docai]] caso você queira contribuir com o projeto ou usar em outro projeto.
 #+END_QUOTE
 
 -----

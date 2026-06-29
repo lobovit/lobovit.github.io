@@ -40,19 +40,19 @@ Ou seja, "intermediária" é só um jeito de dizer que essas linguagens consegue
 
 Quando a gente fala de compilador, normalmente ele é dividido em três partes: /frontend/ (a parte que entende o seu código e transforma em uma estrutura de árvore chamada AST), /middle-end/ (que faz otimizações que valem pra qualquer computador) e /backend/ (que transforma tudo em código de máquina pra rodar no seu PC). O Rust segue esse modelo, mas adiciona umas etapas extras só pra garantir que ninguém vai fazer besteira com a memória.
 
-[[https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/rustcomp01.png]]
+[[https://raw.githubusercontent.com/lobovit/lobovit.github.io/refs/heads/main/blog/content/post/images/rustcomp01.png]]
 
 A imagem acima mostra que o compilador do Rust funciona como uma linha de montagem em três etapas: primeiro ele lê e entende seu código (frontend), depois faz uma checagem rigorosa das regras de segurança de memória (middle, onde entra o [[https://doc.rust-lang.org/reference/borrow-checker.html][borrow checker]]), e por fim transforma tudo em código de máquina que o computador entende (backend); assim, cada parte cuida de um tipo de problema e, no final, seu programa sai rápido e seguro, sem aquelas dores de cabeça típicas de bugs de memória.
 
 Quando você manda o Rust compilar seu arquivo ~.rs~, a primeira coisa que acontece é que o compilador lê o texto e separa tudo em "palavrinhas" chamadas /tokens/ (nomes de variáveis, números, símbolos, etc). Isso é o trabalho do /[[https://en.wikipedia.org/wiki/Lexical_analysis][analisador léxico]]/.
 
-[[https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/rustcomp02.png]]
+[[https://raw.githubusercontent.com/lobovit/lobovit.github.io/refs/heads/main/blog/content/post/images/rustcomp02.png]]
 
 A imagem acima mostra, de forma bem simples, como o compilador do Rust começa a entender seu código: primeiro ele lê o texto do programa e separa tudo em "palavrinhas" chamadas tokens (tipo nomes de variáveis, números, símbolos), e depois organiza esses tokens em uma espécie de árvore que mostra como as partes do seu código se encaixam — como se fosse um esqueleto do programa (a /[[https://en.wikipedia.org/wiki/Abstract_syntax_tree][AST]]/).
 
 Ou seja, a figura mostra que o compilador transforma o texto que você escreveu em uma estrutura organizada, facilitando para as próximas etapas encontrarem erros e entenderem o que o programa realmente faz.
 
-[[https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/rustcomp03.png]]
+[[https://raw.githubusercontent.com/lobovit/lobovit.github.io/refs/heads/main/blog/content/post/images/rustcomp03.png]]
 
 Nessa etapa, o compilador também já expande as /macros/. Ou seja, se você usou algum "atalho" ou macro, ele já troca pelo código real, pra facilitar as próximas fases. Agora vem uma etapa crucial: o compilador pega a AST (que ainda tem comandos de alto nível, tipo o ~for~) e faz um "rebaixamento" /[[https://en.wikipedia.org/wiki/Code_lowering][lowering]]/: transforma a AST numa versão mais simples chamada /[[https://en.wikipedia.org/wiki/High-level_intermediate_representation][HIR]]/ (High-level IR).
 
@@ -64,7 +64,7 @@ Antes de seguir, o compilador faz uma checagem de segurança chamada /unsafety/:
 
 A /[[https://en.wikipedia.org/wiki/Mid-level_intermediate_representation][MIR]]/ converte o programa num /[[https://en.wikipedia.org/wiki/Control-flow_graph][Grafo de Fluxo de Controle (CFG)]]/ explícito. Esse grafo permite ao /[[https://doc.rust-lang.org/reference/borrow-checker.html][borrow checker]]/ rastrear, ao longo de todos os caminhos de execução, o estado de cada valor: possuído, emprestado mutável, emprestado imutável ou movido.
 
-[[https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/rustcomp04.png]]
+[[https://raw.githubusercontent.com/lobovit/lobovit.github.io/refs/heads/main/blog/content/post/images/rustcomp04.png]]
 
 A imagem acima ilustra um exemplo simplificado de um /Grafo de Fluxo de Controle (CFG)/. Nela, o círculo azul no topo representa um ponto de decisão ou condição no seu código (como um ~if~ ou ~match~). As setas que partem dele mostram os possíveis caminhos que o programa pode seguir: um para o caso ~True~ (círculo vermelho à esquerda) e outro para o caso ~False~ (círculo vermelho à direita).
 
@@ -84,7 +84,7 @@ Após otimizações em MIR (eliminação de código morto, /[[https://en.wikiped
 
 É nela que o Rust traduz tudo o que foi checado e otimizado até aqui, para que a LLVM possa realizar o trabalho pesado de otimização de código. A LLVM IR não é literalmente "entendida pelo processador" — ela serve como uma representação intermediária que o LLVM usa para gerar o código nativo específico da arquitetura de destino (como x86-64, ARM, etc.).
 
-[[https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/rustcomp05.png]]
+[[https://raw.githubusercontent.com/lobovit/lobovit.github.io/refs/heads/main/blog/content/post/images/rustcomp05.png]]
 
 O LLVM aplica otimizações específicas de arquitetura e, por fim, gera código objeto para a plataforma‑alvo, como x86‑64 ou AArch64. Como consequência, um binário Rust é normalmente específico à arquitetura de destino, a menos que se utilize camadas de emulação.
 

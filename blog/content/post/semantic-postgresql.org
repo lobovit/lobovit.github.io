@@ -305,7 +305,7 @@ O objetivo deste artigo é mostrar como é fácil construir um sistema de busca 
 #+END_SRC
 
 #+BEGIN_QUOTE
-/NOTA/: O código acima é um exemplo de como integrar a busca semântica no PostgreSQL com uma aplicação Clojure. O código completo está disponível no [[https://github.com/scovl/docai][https://github.com/scovl/docai]].
+/NOTA/: O código acima é um exemplo de como integrar a busca semântica no PostgreSQL com uma aplicação Clojure. O código completo está disponível no [[https://github.com/lobovit/docai][https://github.com/lobovit/docai]].
 #+END_QUOTE
 
 ** Configuração de Contêineres e Resolução de Problemas
@@ -369,7 +369,7 @@ Esta abordagem tenta vários endpoints diferentes e usa o primeiro que funcionar
 
 A implementação segue um padrão de fallback, onde a função retorna o resultado da primeira conexão bem-sucedida ou uma mensagem de erro caso todas as tentativas falhem. Este método é particularmente útil em ambientes containerizados, onde os endereços de rede podem variar dependendo da configuração do [[https://www.docker.com/][Docker]] ou [[https://podman.io/][Podman]] e da rede interna, garantindo maior resiliência à aplicação.
 
-Acessando [[https://github.com/scovl/docai][https://github.com/scovl/docai]], você pode ver o código completo e testar a aplicação. Ao executar por exemplo ~./run.bat postgres~ temos o seguinte output:
+Acessando [[https://github.com/lobovit/docai][https://github.com/lobovit/docai]], você pode ver o código completo e testar a aplicação. Ao executar por exemplo ~./run.bat postgres~ temos o seguinte output:
 
 #+BEGIN_SRC bash
 Inicializando DocAI...
@@ -515,7 +515,7 @@ Vimos como configurar o ambiente usando Docker/Podman, como lidar com desafios c
 
 Para quem já trabalhou com RAG usando abordagens mais simples, como TF-IDF, esta implementação representa um salto significativo em termos de capacidades, mantendo a simplicidade operacional graças às ferramentas modernas que utilizamos.
 
-Quer saber mais sobre como implementar sistemas RAG avançados em seus projetos? Confira nossos outros artigos sobre o assunto e experimente o código completo disponível no [[https://github.com/scovl/docai][repositório do DocAI]]. Estamos ansiosos para ver o que você vai construir!
+Quer saber mais sobre como implementar sistemas RAG avançados em seus projetos? Confira nossos outros artigos sobre o assunto e experimente o código completo disponível no [[https://github.com/lobovit/docai][repositório do DocAI]]. Estamos ansiosos para ver o que você vai construir!
 
 -----
 

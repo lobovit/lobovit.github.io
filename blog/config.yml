@@ -1,13 +1,13 @@
-baseURL: 'https://scovl.github.io/'
+baseURL: 'https://lobovit.github.io/'
 locale: 'pt-br'
-title: 'scovl'
-theme: 'scovl'
+title: 'lobovit'
+theme: 'lobovit'
 publishDir: '..'
 
 params:
   author: Vitor Lobo
   email: lobocode@gmail.com
-  github: https://github.com/scovl
+  github: https://github.com/lobovit
   linkedin: https://linkedin.com/in/vitor-lobo
   description: engenharia de software, compiladores, sistemas e programacao
 

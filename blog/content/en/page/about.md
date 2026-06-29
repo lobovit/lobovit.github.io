@@ -27,7 +27,7 @@ Hello! I'm **Vitor Lobo**, a developer passionate about technology and programmi
 
 - 📧 **Email**: lobocode@gmail.com
 - 💼 **LinkedIn**: [vitor-lobo](https://linkedin.com/in/vitor-lobo)
-- 🐙 **GitHub**: [scovl](https://github.com/scovl)
+- 🐙 **GitHub**: [lobovit](https://github.com/lobovit)
 - 🐘 **Mastodon**: [@lobocode](https://hachyderm.io/@lobocode)
 
 ## Blog

@@ -23,7 +23,7 @@ Tradicionalmente, linguagens estáticas exigem que o programador declare explici
 Importante notar que os tipos continuam existindo e sendo checados – a inferência atua apenas na omissão segura das anotações redundantes.
 #+END_QUOTE
 
-[[https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/retropc01.png]]
+[[https://raw.githubusercontent.com/lobovit/lobovit.github.io/refs/heads/main/blog/content/post/images/retropc01.png]]
 
 Linguagens modernas incorporaram inferência de tipos de formas variadas. A ideia remonta à pesquisa acadêmica dos anos 1960 e 1970 (trabalhos de /[[https://en.wikipedia.org/wiki/J._Roger_Hindley][Hindley]]/ e /[[https://en.wikipedia.org/wiki/Robin_Milner][Milner]]/, entre outros) e tornou-se um pilar em linguagens funcionais como [[https://en.wikipedia.org/wiki/ML_(programming_language][ML]]) e [[https://en.wikipedia.org/wiki/Haskell_(programming_language][Haskell]]), que conseguem inferir tipos para praticamente todas as expressões sem nenhuma anotação do programador.
 
@@ -145,7 +145,7 @@ No trecho acima, tanto ~x~ quanto ~y~ são inicializados com ~Vec::new()~ (um ve
 
 Analogamente, ~y~ é deduzido como ~Vec<String>~ porque é passado para ~bar~. Assim, /o mesmo código de inicialização resultou em dois tipos diferentes/ para as variáveis, dependendo do uso posterior de cada uma. Esse comportamento seria impossível em C++ ou Go, mas em [[https://www.rust-lang.org/][Rust]] ele é natural dentro do modelo de inferência contextual.
 
-[[https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/retropc02.png]]
+[[https://raw.githubusercontent.com/lobovit/lobovit.github.io/refs/heads/main/blog/content/post/images/retropc02.png]]
 
 Podemos perceber que o compilador Rust efetua um /raciocínio bidirecional/: ele propaga informações de tipo tanto /para frente/ (do ponto onde algo é declarado para onde é usado) quanto /para trás/ (do contexto de uso de volta para a declaração original). Em termos práticos, o Rust consegue frequentemente inferir o tipo exato de quase todas as variáveis locais apenas olhando o contexto, sem nenhuma anotação explícita por parte do programador.
 

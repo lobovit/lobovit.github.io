@@ -666,7 +666,7 @@ Devo admitir que me sinto muito mais confortável programando em [[https://zigla
 
 Onde [[https://www.rust-lang.org/][Rust]] me força a repensar completamente minha forma de gerenciar memória e ownership, [[https://ziglang.org/][Zig]] preserva o modelo mental familiar, apenas adicionando garantias e ferramentas modernas. Isso se traduz em uma curva de aprendizado muito mais suave para quem vem do [[https://en.wikipedia.org/wiki/C_(programming_language][C]]).
 
-Para experimentação prática, desenvolvi este projeto: [[https://github.com/scovl/zInputs][https://github.com/scovl/zInputs]] - uma API de interceptação para dispositivos de entrada.
+Para experimentação prática, desenvolvi este projeto: [[https://github.com/lobovit/zInputs][https://github.com/lobovit/zInputs]] - uma API de interceptação para dispositivos de entrada.
 
 -----
 

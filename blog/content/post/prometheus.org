@@ -43,7 +43,7 @@ Além desses tipos principais, o Prometheus expõe métricas especiais de estado
 
 Para entender /pull/ vs /push/, imagine cuidar de plantas: no modelo /pull/ você vai todo dia verificar se precisam de água; no modelo /push/ as próprias plantas enviam um sinal quando precisam ser regadas. Tecnicamente, no monitoramento /pull/ um sistema central (como o Prometheus) consulta periodicamente os alvos para coletar métricas – ele "puxa" as informações. Já no monitoramento /push/, os próprios alvos enviam (/empurram/) as métricas para um coletor central sem serem solicitados.
 
-[[https://raw.githubusercontent.com/scovl/scovl.github.io/main/post/images/tsdb/prom-pullvspush.png]]
+[[https://raw.githubusercontent.com/lobovit/lobovit.github.io/main/post/images/tsdb/prom-pullvspush.png]]
 
 No Prometheus, prevalece o modelo pull. O servidor Prometheus periodicamente faz /scrape/ (raspagem) dos dados de cada alvo exportador via HTTP, no endpoint padrão ~/metrics~. Cada scrape coleta o valor atual de todas as séries expostas naquele alvo.
 
@@ -61,7 +61,7 @@ A arquitetura do Prometheus foi concebida para facilitar a coleta de dados de m�
 
 A configuração dessas coletas é definida em um arquivo YAML (geralmente ~prometheus.yml~), especificando /[[https://prometheus.io/docs/prometheus/latest/configuration/configuration/#job_name][jobs]]/ e /[[https://prometheus.io/docs/prometheus/latest/configuration/configuration/#static_configs][targets]]/ – por exemplo, "coletar métricas do serviço X na URL Y a cada 15 segundos". A figura abaixo (extraída da documentação oficial) ilustra a arquitetura e os componentes do ecossistema Prometheus:
 
-[[https://raw.githubusercontent.com/scovl/scovl.github.io/refs/heads/main/blog/content/post/images/tsdb/arch.png]]
+[[https://raw.githubusercontent.com/lobovit/lobovit.github.io/refs/heads/main/blog/content/post/images/tsdb/arch.png]]
 
 Em resumo, o fluxo é: o Prometheus /coleta (pull)/ métricas dos jobs instrumentados, diretamente dos serviços ou via um componente intermediário de push para jobs efêmeros. Todos os samples coletados são armazenados localmente no banco de dados de séries temporais embutido ([[https://prometheus.io/docs/prometheus/latest/storage/tsdb/][TSDB]]). 
 
@@ -92,7 +92,7 @@ Por exemplo, uma métrica ~app_memory_usage_bytes~ poderia ter labels como ~host
 
 Os /[[https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels][labels]]/ permitem um modelo de dados multidimensional – ou seja, uma mesma métrica (ex: ~http_requests_total~) é armazenada separadamente para cada combinação de labels (rota="/login", método="GET", código="200", etc.). Isso enriquece as análises, pois podemos agregar ou dividir métricas por essas dimensões conforme necessário.
 
-[[https://raw.githubusercontent.com/scovl/scovl.github.io/master/post/images/tsdb/samples01.png]]
+[[https://raw.githubusercontent.com/lobovit/lobovit.github.io/master/post/images/tsdb/samples01.png]]
 
 Já os /[[https://prometheus.io/docs/concepts/data_model/#samples-and-series][samples]]/ são as unidades de dado coletadas ao longo do tempo – cada medição individual de uma métrica em um determinado instante.
 
@@ -172,7 +172,7 @@ Feito isso, você já pode importar ou criar painéis Grafana usando as métrica
 
 Caso queira rodar apenas o Prometheus isoladamente, basta executar o container oficial: ~docker run -p 9090:9090 prom/prometheus~. Depois acesse /[[http://localhost:9090][http://localhost:9090]]/ para abrir a UI nativa do Prometheus:
 
-[[https://raw.githubusercontent.com/scovl/scovl.github.io/master/post/images/tsdb/ui01.png]]
+[[https://raw.githubusercontent.com/lobovit/lobovit.github.io/master/post/images/tsdb/ui01.png]]
 
 A interface web padrão do Prometheus inclui os seguintes menus no topo:
 
@@ -2187,7 +2187,7 @@ Em caso de crash, ele lê desde o último checkpoint para restaurar o estado do 
 
 O Prometheus armazena as séries temporais em memória para rápido acesso às métricas recentes, enquanto grava continuamente os novos dados no disco (WAL) para durabilidade. Isso pode levar a alto uso de RAM e espaço em disco.
 
-[[https://raw.githubusercontent.com/scovl/scovl.github.io/main/post/images/tsdb/prom-mem02.png]]
+[[https://raw.githubusercontent.com/lobovit/lobovit.github.io/main/post/images/tsdb/prom-mem02.png]]
 
 Como mencionado, o Prometheus mantém em RAM todas as séries ativas do bloco atual (tipicamente últimas 2 horas de dados por série). Essa decisão arquitetural visa desempenho: consultas sobre dados recentes (que são as mais comuns, e.g. alertas e dashboards de curto prazo) não precisam esperar leitura de disco – os valores já estão na memória. 
 
@@ -2211,7 +2211,7 @@ Na prática, reter além de algumas semanas começa a tornar as consultas bem le
 
 A imagem acima ilustra que, à medida que guardamos mais dias, o custo de recursos cresce e pode inclusive ofuscar tendências atuais no meio de tanto dado antigo.
 
-[[https://raw.githubusercontent.com/scovl/scovl.github.io/main/post/images/tsdb/prom-mem03.png]]
+[[https://raw.githubusercontent.com/lobovit/lobovit.github.io/main/post/images/tsdb/prom-mem03.png]]
 
 A filosofia do Prometheus é ser a ferramenta de /monitoramento em tempo real/ e de curto/médio prazo.
 
