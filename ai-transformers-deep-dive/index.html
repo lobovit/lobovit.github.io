@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>07 - AI Engineering from scratch: do self-attention ao speculative decoding — lobovit</title>
+  <link rel="stylesheet" href="/css/main.css?v=3">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
+    <main>
+      
+<article>
+  <header>
+    <h1>07 - AI Engineering from scratch: do self-attention ao speculative decoding</h1>
+    <p class="meta"><time>2026-05-28</time> · <span class="tag">AI</span><span class="tag">transformers</span><span class="tag">attention</span><span class="tag">gpt</span><span class="tag">bert</span><span class="tag">llm</span><span class="tag">pytorch</span><span class="tag">python</span></p>
+  </header>
+  <div class="content">
+    
+<p>
+Todo modelo que você usa em 2026, do GPT ao Claude, do Whisper ao Stable Diffusion, é um transformer. A arquitetura não mudou fundamentalmente desde 2017. O que mudou foi escala, dados e truques de engenharia que transformaram O(N²) de &#34;impraticável&#34; em &#34;roda no celular&#34;.</p>
+<p>
+Este artigo vai do zero ao speculative decoding em 16 tópicos. Você vai implementar self-attention em Python puro, entender por que RoPE substituiu embeddings posicionais, ver como Mixture of Experts empacota 671 bilhões de parâmetros em 37 bilhões ativos, e aprender o truque matemático que faz speculative decoding acelerar inferência 4x sem perder qualidade. Stack: Python pra treino, Go pra servir.</p>
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+Por que transformers?
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
+<p>
+RNNs processam tokens um por um. O passo 100 espera o passo 99. Isso é O(N) em profundidade serial, e GPU detesta serial. Transformers processam todos os tokens em paralelo. O tradeoff é O(N²) de memória por O(1) de profundidade serial. A atenção é um broadcast: cada token olha pra todos os outros simultaneamente, e a GPU come isso com uma multiplicação de matrizes.</p>
+<p>
+Isso explica por que transformers dominam toda modalidade. O(N²) parecia um problema em 2017 (sequências de 512 tokens). Em 2026, com Flash Attention, KV cache, GQA e janelas deslizantes, sequências de 128k tokens são rotina. RNNs e state-space models (Mamba) ainda ganham em streaming e dispositivos mínimos, mas o transformer é o tronco principal da árvore.</p>
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-2">
+<h2 id="headline-2">
+Self-attention: o tijolo atômico
+</h2>
+<div id="outline-text-headline-2" class="outline-text-2">
+<p>
+Self-attention é um lookup suave de banco de dados. Cada token projeta três vetores: Query (&#34;o que estou procurando?&#34;), Key (&#34;o que eu contenho?&#34;) e Value (&#34;o que eu ofereço?&#34;). O produto Q·K diz quão relevante cada par de tokens é. O softmax transforma isso em pesos. O output é a soma ponderada dos Values.</p>
+<p>
+A fórmula: <code>Attention(Q,K,V) = softmax(Q @ K^T / sqrt(d_k)) @ V</code>. A divisão por <code>sqrt(d_k)</code> evita que o softmax sature quando a dimensionalidade é alta (sem isso, os gradientes desaparecem). O resultado é uma matriz N×N onde cada célula (i,j) é o quanto o token i presta atenção no token j. Cada token de saída é uma mistura ponderada de todos os tokens de entrada.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">self_attention</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W_q</span><span class="p">,</span> <span class="n">W_k</span><span class="p">,</span> <span class="n">W_v</span><span class="p">,</span> <span class="n">causal</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">Q</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">V</span> <span class="o">=</span> <span class="n">X</span> <span class="o">@</span> <span class="n">W_q</span><span class="p">,</span> <span class="n">X</span> <span class="o">@</span> <span class="n">W_k</span><span class="p">,</span> <span class="n">X</span> <span class="o">@</span> <span class="n">W_v</span>
+</span></span><span class="line"><span class="cl">    <span class="n">d_k</span> <span class="o">=</span> <span class="n">Q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="n">scores</span> <span class="o">=</span> <span class="n">Q</span> <span class="o">@</span> <span class="n">K</span><span class="o">.</span><span class="n">T</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">d_k</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">causal</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">triu</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span> <span class="o">*</span> <span class="o">-</span><span class="mf">1e9</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">scores</span> <span class="o">+=</span> <span class="n">mask</span>
+</span></span><span class="line"><span class="cl">    <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">scores</span> <span class="o">-</span> <span class="n">scores</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">    <span class="n">weights</span> <span class="o">/=</span> <span class="n">weights</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">weights</span> <span class="o">@</span> <span class="n">V</span><span class="p">,</span> <span class="n">weights</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Exemplo com 4 tokens, d_model=8</span>
+</span></span><span class="line"><span class="cl"><span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">W_q</span><span class="p">,</span> <span class="n">W_k</span><span class="p">,</span> <span class="n">W_v</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.02</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">)]</span>
+</span></span><span class="line"><span class="cl"><span class="n">output</span><span class="p">,</span> <span class="n">attn_weights</span> <span class="o">=</span> <span class="n">self_attention</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W_q</span><span class="p">,</span> <span class="n">W_k</span><span class="p">,</span> <span class="n">W_v</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<div id="outline-container-headline-3" class="outline-3">
+<h3 id="headline-3">
+Multi-head: muitas atenções em paralelo**
+</h3>
+<div id="outline-text-headline-3" class="outline-text-3">
+<p>
+Um único head de atenção aprende um tipo de relação (sujeito-verbo, por exemplo). Multi-head attention roda <code>h</code> heads em paralelo, cada um com dimensão reduzida (<code>d_k = d_model / h</code>), e concatena os resultados. Heads diferentes especializam em padrões diferentes, e a GPU executa tudo como uma única multiplicação de matrizes em lote. Adicionar heads é computacionalmente grátis.</p>
+<p>
+Grouped-Query Attention (GQA) é a variante de produção: todos os heads de query compartilham um conjunto menor de heads de key/value. Se você tem 32 heads de query e 8 heads de KV, o cache de inferência encolhe 4x. Llama 3, Qwen 2 e Mistral usam GQA. Multi-Query Attention (MQA) leva ao extremo com 1 head de KV. Multi-head Latent Attention (MLA, DeepSeek-V3) comprime KV ainda mais com projeções de baixo posto.</p>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-3">
+<h3 id="headline-4">
+Posicional encoding: onde cada token está**
+</h3>
+<div id="outline-text-headline-4" class="outline-text-3">
+<p>
+Atenção é invariante à permutação. &#34;O gato comeu o rato&#34; e &#34;O rato comeu o gato&#34; produzem a mesma matriz de atenção porque os tokens são os mesmos. Algo precisa injetar posição.</p>
+<p>
+Sinusoidal (Vaswani 2017) adiciona senos e cossenos de frequências diferentes diretamente aos embeddings. É histórica. RoPE (Su 2021) gira os vetores Q e K por ângulos que dependem da posição, de modo que o produto escalar entre Q na posição m e K na posição n depende apenas da diferença relativa (m - n). É o padrão universal de 2026: Llama, Qwen, Mistral, DeepSeek, todos usam RoPE. ALiBi (Press 2022) adiciona uma penalidade linear de distância aos scores de atenção, permitindo extrapolação de contexto sem custo de treino. Foi usada pelo BLOOM e MPT.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">rope_rotate</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">pos</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="mi">10000</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">d</span> <span class="o">=</span> <span class="n">q</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="n">theta</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">base</span> <span class="o">**</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">d</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">    <span class="n">angles</span> <span class="o">=</span> <span class="n">pos</span> <span class="o">*</span> <span class="n">theta</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cos</span><span class="p">,</span> <span class="n">sin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">angles</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">angles</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">q_rot</span> <span class="o">=</span> <span class="n">q</span><span class="o">.</span><span class="n">copy</span><span class="p">();</span> <span class="n">k_rot</span> <span class="o">=</span> <span class="n">k</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="n">q_rot</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">],</span> <span class="n">q_rot</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">cos</span> <span class="o">-</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">sin</span><span class="p">,</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">sin</span> <span class="o">+</span> <span class="n">q</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">cos</span>
+</span></span><span class="line"><span class="cl">    <span class="n">k_rot</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">],</span> <span class="n">k_rot</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">k</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">cos</span> <span class="o">-</span> <span class="n">k</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">sin</span><span class="p">,</span> <span class="n">k</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">sin</span> <span class="o">+</span> <span class="n">k</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">cos</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">q_rot</span><span class="p">,</span> <span class="n">k_rot</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-2">
+<h2 id="headline-5">
+O bloco transformer completo
+</h2>
+<div id="outline-text-headline-5" class="outline-text-2">
+<p>
+O bloco transformer são seis peças, e todo modelo que você já ouviu falar é uma combinação delas:</p>
+<ul>
+<li>Embedding + sinal posicional (token + RoPE)</li>
+<li>Self-attention (multi-head, com máscara causal se for decoder)</li>
+<li>Feed-Forward Network (duas camadas densas com ativação)</li>
+<li>Residual connections (soma o input ao output de cada subcamada)</li>
+<li>Layer Normalization (estabiliza o treino)</li>
+<li>Cross-attention (só no decoder de encoder-decoder: olha pro output do encoder)</li>
+</ul>
+<p>A modernização de 2017 pra 2026: LayerNorm virou RMSNorm (sem subtração da média, 10% mais rápida). ReLU virou SwiGLU (três matrizes em vez de duas, melhor uso de parâmetros). Sinusoidal virou RoPE. Multi-head completo virou GQA. Bias terms foram removidos (não ajudam e ocupam memória). O bloco moderno é: RMSNorm, GQA com RoPE, residual, RMSNorm, SwiGLU FFN, residual.</p>
+<blockquote>
+<p><em>Em miúdos:</em> <code>FFN</code> (Feed-Forward Network) é uma mini-rede densa dentro do bloco transformer. Enquanto a atenção mistura informação entre tokens, a FFN processa cada token individualmente. Juntas, atenção + FFN formam o ciclo &#34;olhe pros outros, pense sozinho&#34;. <code>SwiGLU</code> é uma FFN com três projeções lineares e ativação Swish com gate: <code>Swish(W1·x) * W3·x, depois W2</code>. <code>Residual connection</code> é somar a entrada à saída (<code>y = x + F(x)</code>). Isso dá ao gradiente um caminho direto de volta e permite empilhar 100+ camadas.</p>
+</blockquote>
+<div id="outline-container-headline-6" class="outline-3">
+<h3 id="headline-6">
+Três famílias de transformers**
+</h3>
+<div id="outline-text-headline-6" class="outline-text-3">
+<p>
+Encoder-only (BERT, ModernBERT): self-attention bidirecional, sem máscara causal. Cada token vê todos os outros. Ideal pra classificação, NER, embeddings de busca, reranking cross-encoder. O [CLS] agrega a representação da frase inteira.</p>
+<p>
+Decoder-only (GPT, Llama, Claude, Qwen, Mistral, DeepSeek): self-attention causal com máscara triangular superior. Cada token só vê o passado. É o que gera texto token a token. Domina 2026. O treino é paralelo (teacher forcing sobre a sequência inteira); a inferência é serial (um token por vez).</p>
+<p>
+Encoder-decoder (T5, BART, Whisper): o encoder processa a entrada bidirecionalmente; o decoder gera a saída autoregressivamente, com cross-attention ao output do encoder em cada camada. Ideal pra tradução, sumarização, speech-to-text. O encoder roda uma vez; o decoder faz cross-attention ao mesmo output do encoder a cada passo.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-2">
+<h2 id="headline-7">
+BERT, GPT, T5: as três escolas
+</h2>
+<div id="outline-text-headline-7" class="outline-text-2">
+<div id="outline-container-headline-8" class="outline-3">
+<h3 id="headline-8">
+BERT: prever tokens mascarados**
+</h3>
+<div id="outline-text-headline-8" class="outline-text-3">
+<p>
+BERT mascara 15% dos tokens e treina pra prever os originais usando contexto bidirecional. A regra 80/10/10: dos 15% mascarados, 80% viram [MASK], 10% viram tokens aleatórios, 10% permanecem iguais. Isso evita que o modelo decore o token [MASK] e force aprendizado real de linguagem. A loss é cross-entropy só nas posições mascaradas.</p>
+<p>
+O [CLS] no início agrega a representação da frase inteira pra tarefas de classificação. O [SEP] separa segmentos (duas frases em tarefas de inferência). ModernBERT (2024) modernizou: RoPE, GeGLU, RMSNorm, atenção alternada local/global, contexto de 8k tokens.</p>
+<p>
+BERT ainda é o backbone pra embeddings de recuperação (sentence-transformers), classificação, NER e reranking cross-encoder. Pra essas tarefas, atenção bidirecional é estritamente melhor que causal.</p>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-3">
+<h3 id="headline-9">
+GPT: prever o próximo token**
+</h3>
+<div id="outline-text-headline-9" class="outline-text-3">
+<p>
+GPT é decoder-only. Uma máscara triangular superior de -inf nos scores de atenção é todo o mecanismo. O treino desloca a sequência em um: input = [t1..tk], target = [t2..t<sub>k+1</sub>], cross-entropy em todas as posições. É paralelo porque teacher forcing dá a resposta correta em cada passo.</p>
+<p>
+A geração é serial. Cinco estratégias de decoding controlam o equilíbrio entre qualidade e diversidade. Greedy (argmax, determinístico, repetitivo). Temperature (achata ou afia a distribuição; T&gt;1 mais criativo, T&lt;1 mais conservador). Top-k (restringe às k palavras mais prováveis). Top-p / nucleus (acumula probabilidade até bater um limiar). Min-p (filtra tokens com probabilidade abaixo de p_base * p_max).</p>
+<p>
+Todo LLM moderno é um decoder-only causal. A arquitetura não mudou desde o GPT-2. O que mudou foi escala de dados, tamanho do modelo, e pós-treinamento (RLHF, DPO).</p>
+</div>
+</div>
+<div id="outline-container-headline-10" class="outline-3">
+<h3 id="headline-10">
+T5 e BART: encoder-decoder**
+</h3>
+<div id="outline-text-headline-10" class="outline-text-3">
+<p>
+Encoder-decoder é a arquitetura certa quando entrada e saída têm estruturas diferentes. O encoder processa a fonte bidirecionalmente (como BERT). O decoder gera autoregressivamente (como GPT), mas com cross-attention ao output do encoder em cada camada. Isso dá ao decoder acesso direto e repetido à fonte inteira, algo que decoder-only não tem.</p>
+<p>
+T5 usa span corruption: substitui trechos aleatórios do texto por tokens sentinela (&lt;X&gt;, &lt;Y&gt;) e treina o decoder pra gerar os trechos originais. BART corrompe o input de cinco formas diferentes (máscara, deleção, permutação, rotação, infilling) e treina o decoder pra reconstruir o original. Text infilling + sentence permutation foi a combinação vencedora.</p>
+<p>
+Whisper, Google Translate e Flan-T5 usam encoder-decoder. Decoder-only está absorvendo essas tarefas, mas encoder-decoder ainda ganha onde a modalidade de entrada é diferente ou beam search importa.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-11" class="outline-2">
+<h2 id="headline-11">
+Transformers além do texto
+</h2>
+<div id="outline-text-headline-11" class="outline-text-2">
+<div id="outline-container-headline-12" class="outline-3">
+<h3 id="headline-12">
+Vision Transformers (ViT)**
+</h3>
+<div id="outline-text-headline-12" class="outline-text-3">
+<p>
+Corte a imagem em patches 16x16. Achate cada patch num vetor. Alimente um transformer encoder padrão. Sem convoluções, sem inductive bias de visão. O patch size é a alavanca principal: patches menores dão mais tokens e melhor resolução, mas custo quadrático.</p>
+<p>
+ViT precisa de muitos dados (originalmente JFT-300M) porque não tem os priors que CNNs têm (invariância à translação, localidade). DINOv2 (2023) resolveu isso com pré-treinamento auto-supervisionado, produzindo embeddings que são o padrão pra features visuais genéricas em 2026. DeiT mostrou que data augmentation pesada (RandAugment, Mixup, CutMix) treina ViT no ImageNet sem dados externos.</p>
+</div>
+</div>
+<div id="outline-container-headline-13" class="outline-3">
+<h3 id="headline-13">
+Whisper: transformer para áudio**
+</h3>
+<div id="outline-text-headline-13" class="outline-text-3">
+<p>
+Áudio vira espectrograma log-mel (80 bins, 10 ms de stride, 3000 frames pra 30 segundos). Uma Conv1D reduz a dimensão temporal pela metade. O encoder transformer processa isso como se fossem tokens visuais. O decoder gera texto autoregressivamente com cross-attention ao encoder.</p>
+<p>
+Tokens de prompt (<code>&lt;|en|&gt;&lt;|transcribe|&gt;</code>) controlam tarefa e idioma. Um prefixo de 4 tokens é toda a superfície de controle. Beam search com largura 5 decodifica. Whisper-turbo (4 camadas no decoder) habilita voice agents em tempo real. A variante large-v3 atinge 1.6% WER em inglês.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-2">
+<h2 id="headline-14">
+Mixture of Experts: mais parâmetros, mesmo custo
+</h2>
+<div id="outline-text-headline-14" class="outline-text-2">
+<p>
+Substitua cada FFN por E especialistas independentes + um roteador que escolhe k por token. Parâmetros totais = E x FFN_size. Parâmetros ativos = k x FFN_size. Isso desacopla capacidade de conhecimento de custo computacional por token.</p>
+<p>
+O roteador é uma camada linear que pontua cada token contra cada especialista. Top-k seleciona os melhores. Softmax sobre os escolhidos produz pesos de mistura. O output é a soma ponderada das saídas dos especialistas escolhidos. O desafio é balanceamento de carga: sem intervenção, o roteador colapsa em poucos especialistas e o resto nunca treina.</p>
+<p>
+DeepSeek-V3 resolveu isso com aux-loss-free balancing: cada especialista tem um bias ajustável fora da loss de treino. Especialistas sobre-utilizados ganham bias negativo; sub-utilizados ganham bias positivo. O bias afeta a seleção (top-k), mas não os pesos do gate (softmax). Especialistas finos (256 especialistas, cada token combina 8) dão C(256,8) = 400 trilhões de combinações possíveis por token.</p>
+<p>
+A fronteira de 2026 é quase toda MoE: DeepSeek-V3 (671B/37B ativos), Mixtral, Qwen-MoE, Llama 4, Kimi K2. O top 10 de modelos abertos nos benchmarks independentes é todo MoE.</p>
+</div>
+</div>
+<div id="outline-container-headline-15" class="outline-2">
+<h2 id="headline-15">
+Inferência rápida: KV cache, Flash Attention, speculative decoding
+</h2>
+<div id="outline-text-headline-15" class="outline-text-2">
+<p>
+Treino é FLOP-bound (limitado por computação). Inferência é memory-bound (limitado por largura de banda de memória). Cada token gerado precisa acessar os pesos do modelo inteiro e o cache de todas as chaves e valores dos tokens anteriores. Otimizar inferência é otimizar acesso à memória.</p>
+<div id="outline-container-headline-16" class="outline-3">
+<h3 id="headline-16">
+KV cache**
+</h3>
+<div id="outline-text-headline-16" class="outline-text-3">
+<p>
+Durante a geração autoregressiva, você recalcula Q, K e V pra todos os tokens a cada passo. Mas K e V dos tokens passados não mudam. Guarde-os. Cada novo token computa Q novo contra o cache de K/V acumulado. Isso reduz a atenção de O(N²) por passo pra O(N). Com GQA, o cache encolhe proportionalmente ao número de heads KV.</p>
+</div>
+</div>
+<div id="outline-container-headline-17" class="outline-3">
+<h3 id="headline-17">
+Flash Attention**
+</h3>
+<div id="outline-text-headline-17" class="outline-text-3">
+<p>
+O bottleneck não é computar a matriz N×N de atenção. É mover ela entre HBM (memória da GPU, 3 TB/s na H100) e SRAM (cache on-chip, 30 TB/s). Flash Attention mantém a computação em SRAM. Carrega tiles de Q, K, V pra SRAM, computa S = Q @ K^T no tile, agrega softmax incrementalmente com running max e running sum, e só escreve o output final na HBM. Uma viagem de ida e volta por tile em vez de três por matriz N×N inteira. O resultado é exatamente igual ao attention padrão, bit a bit, mas 2-4x mais rápido e com pico de memória O(N) em vez de O(N²).</p>
+</div>
+</div>
+<div id="outline-container-headline-18" class="outline-3">
+<h3 id="headline-18">
+PagedAttention e continuous batching**
+</h3>
+<div id="outline-text-headline-18" class="outline-text-3">
+<p>
+vLLM aloca o KV cache em blocos de 16 tokens com tabelas de páginas (como memória virtual). Isso elimina fragmentação e permite compartilhar cache entre requisições (prefix caching). Continuous batching troca requisições no meio do voo: quando uma requisição termina de gerar, outra entra imediatamente no mesmo batch, sem esperar as outras terminarem. Ganho de 5-10x em throughput.</p>
+</div>
+</div>
+<div id="outline-container-headline-19" class="outline-3">
+<h3 id="headline-19">
+Speculative decoding**
+</h3>
+<div id="outline-text-headline-19" class="outline-text-3">
+<p>
+Um modelo draft barato (pequeno) propõe N tokens. O modelo verificador (grande) checa todos os N tokens em um único forward pass. Quando o draft acerta, você ganha N tokens pelo custo de 1. O truque matemático: aceite cada token do draft com probabilidade <code>min(1, q(token)/p(token))</code>, onde q é a distribuição do draft e p a do verificador. Se rejeitar, sampleie da distribuição residual <code>(p - q)_+ normalizada</code>. Isso garante que a distribuição final de saída é exatamente a do modelo verificador. Zero perda de qualidade, 2-4x de aceleração.</p>
+<p>
+Quatro famílias: vanilla (modelo draft separado, como Llama-70M + Llama-70B), Medusa (cabeças extras de LM que preveem t+1..t+k), EAGLE (transformer minúsculo condicionado nos hidden states do verificador, taxa de aceitação 0.85+), e lookahead (iteração de Jacobi, sem modelo draft). EAGLE-2/3 é o padrão pra Llama 3/4 e Qwen 3.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-20" class="outline-2">
+<h2 id="headline-20">
+Scaling laws: quanto maior, melhor?
+</h2>
+<div id="outline-text-headline-20" class="outline-text-2">
+<p>
+A lei de Chinchilla (Hoffmann 2022): <code>L(N,D) = A/N^α + B/D^β + E</code>, com α≈0.34, β≈0.28. Pra um orçamento fixo de compute C ≈ 6ND, a razão ótima tokens/parâmetros é ~20. O GPT-3 tinha ~2 tokens/parâmetro. Estava 10x sub-treinado.</p>
+<p>
+Mas a Llama 3 8B foi treinada com 1.875 tokens/parâmetro, 94x além do Chinchilla-ótimo. Por quê? Porque custo de inferência domina. Over-trainar um modelo menor gasta mais uma vez no treino, mas economiza em toda chamada de inferência pra sempre. Um modelo menor e mais treinado é mais barato de servir que um modelo maior e sub-treinado, mesmo que o custo de treino seja maior.</p>
+<p>
+Scaling laws também respondem perguntas práticas: seus dados de fine-tune são suficientes? (&lt;20 tokens/parâmetro = saturação). Vale a pena treinar mais tempo? (além de 1000x Chinchilla-ótimo, ganhos de log-loss viram ruído). Devo aumentar o modelo ou os dados? (dados primeiro, modelo depois, se o orçamento de inferência permitir).</p>
+</div>
+</div>
+<div id="outline-container-headline-21" class="outline-2">
+<h2 id="headline-21">
+O que levar disso
+</h2>
+<div id="outline-text-headline-21" class="outline-text-2">
+<p>
+O transformer não mudou desde 2017. O que mudou foi engenharia:</p>
+<ul>
+<li>Self-attention é Q·K^T com softmax. Multi-head roda isso em paralelo. GQA reduz o cache de inferência.</li>
+<li>RoPE codifica posição como rotação. É o padrão universal de 2026.</li>
+<li>O bloco moderno é RMSNorm, GQA+RoPE, residual, RMSNorm, SwiGLU, residual.</li>
+<li>BERT (encoder) é bidirecional. GPT (decoder) é causal. T5 (encoder-decoder) tem cross-attention.</li>
+<li>ViT aplica transformers a imagens (patches como tokens). Whisper aplica a áudio (log-mel como tokens).</li>
+<li>MoE empacota 671B parâmetros em 37B ativos com roteamento top-k.</li>
+<li>KV cache + Flash Attention + PagedAttention + continuous batching fazem inferência viável.</li>
+<li>Speculative decoding acelera 2-4x com zero perda de qualidade.</li>
+<li>Scaling laws dizem: over-treine modelos menores. Dados primeiro, parâmetros depois.</li>
+</ul>
+<p>Da matriz N×N de atenção ao token gerado no seu chat, o caminho passa por cada uma dessas ideias.</p>
+</div>
+</div>
+
+  </div>
+</article>
+
+    </main>
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
+</body>
+</html>

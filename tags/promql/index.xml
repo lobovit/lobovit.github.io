@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>PromQL on scovl</title>
-    <link>http://localhost:1313/tags/promql/</link>
-    <description>Recent content in PromQL on scovl</description>
+    <title>PromQL on lobovit</title>
+    <link>https://lobovit.github.io/tags/promql/</link>
+    <description>Recent content in PromQL on lobovit</description>
     <generator>Hugo</generator>
     <language>pt-br</language>
     <lastBuildDate>Sun, 27 Jul 2025 23:10:18 -0300</lastBuildDate>
-    <atom:link href="http://localhost:1313/tags/promql/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://lobovit.github.io/tags/promql/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Prometheus e PromQL</title>
-      <link>http://localhost:1313/prometheus/</link>
+      <link>https://lobovit.github.io/prometheus/</link>
       <pubDate>Sun, 27 Jul 2025 23:10:18 -0300</pubDate>
-      <guid>http://localhost:1313/prometheus/</guid>
-      <description>&lt;p&gt;O &lt;strong&gt;&lt;a href=&#34;https://prometheus.io/&#34;&gt;Prometheus&lt;/a&gt;&lt;/strong&gt; é uma ferramenta open-source de monitoramento de sistemas e aplicações que revolucionou a forma de pensar observabilidade em ambientes distribuídos. Ele coleta e armazena métricas como séries temporais, ou seja, valores numéricos associados a um carimbo de tempo e a pares chave-valor chamados &lt;strong&gt;&lt;a href=&#34;https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels&#34;&gt;labels&lt;/a&gt;&lt;/strong&gt;.&lt;/p&gt;&#xA;&lt;blockquote&gt;&#xA;&lt;p&gt;A potência do Prometheus vem, em parte, da sua linguagem de consulta própria, &lt;strong&gt;&lt;a href=&#34;https://prometheus.io/docs/prometheus/latest/querying/basics/&#34;&gt;PromQL&lt;/a&gt;&lt;/strong&gt;, que permite criar consultas complexas para analisar os dados coletados em tempo real. A interface web integrada (Expression browser) facilita visualizar e explorar métricas, possibilitando análises rápidas para identificar tendências e anomalias.&lt;/p&gt;</description>
+      <guid>https://lobovit.github.io/prometheus/</guid>
+      <description>&lt;p&gt;&#xA;O &lt;em&gt;&lt;a href=&#34;https://prometheus.io/&#34;&gt;Prometheus&lt;/a&gt;&lt;/em&gt; é uma ferramenta open-source de monitoramento de sistemas e aplicações que revolucionou a forma de pensar observabilidade em ambientes distribuídos. Ele coleta e armazena métricas como séries temporais, ou seja, valores numéricos associados a um carimbo de tempo e a pares chave-valor chamados &lt;em&gt;&lt;a href=&#34;https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels&#34;&gt;labels&lt;/a&gt;&lt;/em&gt;. &lt;/p&gt;&#xA;&lt;blockquote&gt;&#xA;&lt;p&gt;A potência do Prometheus vem, em parte, da sua linguagem de consulta própria, &lt;em&gt;&lt;a href=&#34;https://prometheus.io/docs/prometheus/latest/querying/basics/&#34;&gt;PromQL&lt;/a&gt;&lt;/em&gt;, que permite criar consultas complexas para analisar os dados coletados em tempo real. A interface web integrada (Expression browser) facilita visualizar e explorar métricas, possibilitando análises rápidas para identificar tendências e anomalias.&lt;/p&gt;</description>
     </item>
   </channel>
 </rss>

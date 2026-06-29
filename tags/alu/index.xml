@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>ALU on lobovit</title>
+    <link>https://lobovit.github.io/tags/alu/</link>
+    <description>Recent content in ALU on lobovit</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Tue, 12 May 2026 18:40:00 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/alu/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Petzold05 - Flip Flop</title>
+      <link>https://lobovit.github.io/histcomp05/</link>
+      <pubDate>Tue, 12 May 2026 18:40:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/histcomp05/</guid>
+      <description>&lt;p&gt;&#xA;Quando acordamos todas as manhãs, nossa memória preenche as lacunas. Lembramos onde estamos, o que fizemos no dia anterior e o que planejamos para hoje. Podemos levar alguns minutos para juntar as peças, mas, no geral, conseguimos remontar nossas vidas e obter continuidade suficiente para iniciar mais um dia.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;A memória humana, claro, não é muito ordenada e nem infalível. Na verdade, a escrita provavelmente foi inventada de forma específica para compensar as falhas da nossa memória. Nós escrevemos e lemos depois; salvamos e recuperamos. A função da memória é manter a informação intacta entre esses dois eventos.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

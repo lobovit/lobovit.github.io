@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:,">
-  <title>Clojure — scovl</title>
+  <title>Clojure — lobovit</title>
   <link rel="stylesheet" href="/css/main.css?v=3">
   <link rel="stylesheet" href="/vendor/fonts/fonts.css">
   <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
@@ -13,7 +13,7 @@
   <div class="frame">
     <header>
       <nav>
-        <a class="site-title" href="https://scovl.github.io/">scovl</a>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
         <span class="nav-links">
           <a href="/page/about/">about</a>
           <a href="/page/contact/">contact</a>
@@ -27,8 +27,23 @@
   <ul class="post-list">
     
     <li>
+      <time>2025-08-08</time>
+      <a href="/emacs/">GNU Emacs</a>
+    </li>
+    
+    <li>
       <time>2025-05-23</time>
       <a href="/trycatch/">Try/Catch: Origem, Propósito e o Erro de Usá-lo como Fluxo Lógico</a>
+    </li>
+    
+    <li>
+      <time>2025-03-23</time>
+      <a href="/rag/">01 - RAG Simples com Clojure e Ollama</a>
+    </li>
+    
+    <li>
+      <time>2025-03-23</time>
+      <a href="/dd01/">Análise de código estático</a>
     </li>
     
   </ul>
@@ -69,6 +84,15 @@
     });
   </script>
   <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
   <script>
     var btn = document.querySelector('.back-to-top');
     window.addEventListener('scroll', function() {

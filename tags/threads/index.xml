@@ -1,20 +1,26 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Threads on scovl</title>
-    <link>https://scovl.github.io/tags/threads/</link>
-    <description>Recent content in Threads on scovl</description>
+    <title>Threads on lobovit</title>
+    <link>https://lobovit.github.io/tags/threads/</link>
+    <description>Recent content in Threads on lobovit</description>
     <generator>Hugo</generator>
-    <language>pt</language>
-    <copyright>Vitor Lobo</copyright>
-    <lastBuildDate>Wed, 23 Jul 2025 12:00:00 +0000</lastBuildDate>
-    <atom:link href="https://scovl.github.io/tags/threads/index.xml" rel="self" type="application/rss+xml" />
+    <language>pt-br</language>
+    <lastBuildDate>Thu, 14 May 2026 18:40:00 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/threads/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Petzold07 - Múltiplos Fluxos, Múltiplos Núcleos</title>
+      <link>https://lobovit.github.io/histcomp07/</link>
+      <pubDate>Thu, 14 May 2026 18:40:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/histcomp07/</guid>
+      <description>&lt;p&gt;&#xA;Imagine uma cozinha com um único chef. Ele pica os vegetais, depois prepara o molho, depois coloca a água para ferver, depois corta a carne. Tudo em sequência, uma tarefa após a outra. O jantar demora.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Agora imagine a mesma cozinha com três chefs trabalhando lado a lado. Enquanto um pica os vegetais, outro prepara o molho e o terceiro coloca a água no fogo. O jantar fica pronto muito mais rápido, desde que os chefs não disputem a mesma faca, não sujem a tábua um do outro e não esperem eternamente que o colega libere o fogão.&lt;/p&gt;</description>
+    </item>
     <item>
       <title>Compreendendo a concorrência em Rust</title>
-      <link>https://scovl.github.io/2025/07/23/rustconc/</link>
+      <link>https://lobovit.github.io/rustconc/</link>
       <pubDate>Wed, 23 Jul 2025 12:00:00 +0000</pubDate>
-      <guid>https://scovl.github.io/2025/07/23/rustconc/</guid>
-      <description>&lt;p&gt;O Rust costuma ser apresentado como &lt;strong&gt;a linguagem que impede aqueles bugs de memória cabeludos&lt;/strong&gt; antes mesmo do seu código rodar. Mas essa história não para no &lt;strong&gt;&lt;a href=&#34;https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html#the-borrow-checker&#34;&gt;borrow checker&lt;/a&gt;&lt;/strong&gt;: ela se estende à concorrência. O pessoal da comunidade fala em &lt;strong&gt;fearless concurrenc&lt;/strong&gt; — “concorrência sem medo”. Mas o que isso significa realmente? Como explicar isso para alguém que vem de outras linguagens? Em resumo, Rust transforma muitos erros de concorrência em erros de compilação em vez de runtime, graças ao seu sistema de &lt;em&gt;ownership&lt;/em&gt; e tipos. Esse aspecto é o que chamamos de &lt;strong&gt;concorrência sem medo&lt;/strong&gt;, onde escrever código concorrente não precisa ser uma roleta-russa de bugs sutis.&lt;/p&gt;</description>
+      <guid>https://lobovit.github.io/rustconc/</guid>
+      <description>&lt;p&gt;&#xA;Sempre que ouço falar sobre uma abordagem diferente em uma linguagem de programação, fico me perguntando: &lt;em&gt;Como isso é possível? Como é possível fazer isso?&lt;/em&gt; Na maioria das vezes, essas soluções acabam soando como mágica. Li em algum lugar que “se algo soa como mágica, é porque você ainda não entendeu o suficiente” — ou, ainda, que “quando algo é apresentado como extraordinário, é preciso ter uma explicação igualmente extraordinária”. É nesse espírito que escrevo este artigo.&lt;/p&gt;</description>
     </item>
   </channel>
 </rss>

@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Busca Semântica com Ollama e PostgreSQL — lobovit</title>
+  <link rel="stylesheet" href="/css/main.css?v=3">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
+    <main>
+      
+<article>
+  <header>
+    <h1>Busca Semântica com Ollama e PostgreSQL</h1>
+    <p class="meta"><time>2025-03-25</time> · <span class="tag">RAG</span><span class="tag">PostgreSQL</span><span class="tag">pgvector</span><span class="tag">pgai</span><span class="tag">Ollama</span><span class="tag">Semantic Search</span></p>
+  </header>
+  <div class="content">
+    
+<p>
+Olá, pessoal! 👋</p>
+<p>
+No <a href="/post/rag/">artigo anterior</a>, exploramos como construir um sistema RAG (Retrieval-Augmented Generation) usando <a href="https://clojure.org/">Clojure</a> e <a href="https://ollama.com/">Ollama</a> com uma implementação simples de <a href="/post/tf-idf/">TF-IDF</a>. Embora essa abordagem seja excelente para aprender os fundamentos, quando pensamos em soluções de produção, precisamos de algo mais robusto e escalável.</p>
+<p>
+Neste artigo, vamos descobrir como construir um sistema de busca semântica poderoso usando <a href="https://ollama.com/">Ollama</a>, <a href="https://www.postgresql.org/">PostgreSQL</a> e suas extensões para manipulação de vetores. Esta solução é perfeitamente adequada para aplicações de produção e pode servir como base para sistemas RAG, agentes de IA, assistentes em geral. Diferentemente do artigo anterior, vamos usar o <a href="https://ollama.com/">Ollama</a> via Docker assim como o <a href="https://www.postgresql.org/">PostgreSQL</a> e as extensões <a href="https://github.com/pgvector/pgvector">pgvector</a> e <a href="https://github.com/timescale/pgai">pgai</a>.</p>
+<p>
+A combinação do <a href="https://www.postgresql.org/">PostgreSQL</a> com extensões como <a href="https://github.com/pgvector/pgvector">pgvector</a> e <a href="https://github.com/timescale/pgai">pgai</a>, junto com o <a href="https://ollama.com/">Ollama</a> (que permite executar modelos de linguagem localmente), cria uma solução completa e de alto desempenho para <a href="https://en.wikipedia.org/wiki/Semantic_search">processamento semântico de dados</a>.</p>
+<div id="outline-container-headline-1" class="outline-3">
+<h3 id="headline-1">
+Entendendo a Arquitetura
+</h3>
+<div id="outline-text-headline-1" class="outline-text-3">
+<p>
+A busca semântica vai além da simples correspondência de palavras-chave, capturando o significado e o contexto da sua consulta. Em vez de depender apenas de correspondências exatas, ela utiliza <a href="https://en.wikipedia.org/wiki/Embedding_(machine_learning">embeddings vetoriais</a>) para representar o conteúdo semântico do texto (ou qualquer dado não estruturado). Essa abordagem permite que seu sistema recupere resultados contextualmente relevantes, mesmo quando as palavras-chave exatas não estão presentes.</p>
+<p>
+Por exemplo, se você pesquisar por &#34;melhores lugares para comer&#34;, um <a href="https://en.wikipedia.org/wiki/Semantic_search">sistema de busca semântica</a> pode recuperar documentos sobre &#34;restaurantes bem avaliados nas proximidades&#34; ou &#34;experiências gastronômicas altamente recomendadas&#34;, efetivamente capturando sua intenção em vez da formulação exata. A arquitetura para busca semântica com PostgreSQL envolve quatro componentes principais:</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">flowchart LR
+    A[Ollama] --&gt; B[pgai]
+    B --&gt; C[pgvector]
+    C --&gt; D[PostgreSQL]
+    
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style D fill:#9ff,stroke:#333,stroke-width:2px</code></pre>
+</div>
+<ul>
+<li><a href="https://ollama.com/"><em>Ollama</em></a>: Ferramenta open-source que permite executar e gerenciar modelos de linguagem de grande escala (LLMs) e modelos de visão (VLMs) localmente no seu computador ou em um servidor cloud, proporcionando maior privacidade e controle sobre os dados.</li>
+<li><a href="https://github.com/timescale/pgai"><em>pgai</em></a>: Extensão do PostgreSQL que simplifica o armazenamento e recuperação de dados para RAG e outras aplicações de IA, automatizando a criação e gestão de embeddings, facilitando a busca semântica e permitindo a execução de funções de LLM diretamente dentro de consultas SQL.</li>
+<li><a href="https://github.com/pgvector/pgvector"><em>pgvector</em></a>: Extensão do PostgreSQL que adiciona suporte para armazenar, indexar e consultar embeddings vetoriais de alta dimensionalidade.</li>
+<li><a href="https://www.postgresql.org/"><em>PostgreSQL</em></a>: O sistema de banco de dados relacional que serve como fundação robusta e escalável para todo o sistema.</li>
+</ul>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-3">
+<h3 id="headline-2">
+Pré-requisitos
+</h3>
+<div id="outline-text-headline-2" class="outline-text-3">
+<p>
+Antes de começar, precisamos garantir que você tenha:</p>
+<ol>
+<li><em>Docker e Docker Compose</em>: Para configurar o ambiente facilmente</li>
+<li><em>PostgreSQL com pgvector e pgai</em>: Para armazenar e consultar embeddings</li>
+</ol>
+<blockquote>
+<p><em>NOTA</em>: No artigo anterior sobre <a href="/post/rag/">RAG em Clojure</a>, usamos o <a href="https://ollama.com/">Ollama</a> com <a href="https://ollama.com/models/deepseek-r1">DeepSeek R1</a> baixando o projeto ollama diretamente na máquina. Nesta abordagem, vamos usar o Ollama via Docker. Portanto, recomendo que você feche o Ollama para usar-mos ele inteiramente via Docker aqui nesta abordagem (é necessário fechar para não conflitar com o endpoint do Ollama que vamos usar no Docker Compose).</p>
+</blockquote>
+<p>
+Vamos configurar tudo isso rapidamente usando Docker Compose:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">name: pgai
+</span></span><span class="line"><span class="cl">services:
+</span></span><span class="line"><span class="cl">  db:
+</span></span><span class="line"><span class="cl">    image: timescale/timescaledb-ha:pg17
+</span></span><span class="line"><span class="cl">    environment:
+</span></span><span class="line"><span class="cl">      POSTGRES_PASSWORD: postgres
+</span></span><span class="line"><span class="cl">      <span class="c1"># Definir variáveis de ambiente para o host do Ollama</span>
+</span></span><span class="line"><span class="cl">      OLLAMA_HOST: http://ollama:11434
+</span></span><span class="line"><span class="cl">    ports:
+</span></span><span class="line"><span class="cl">      - <span class="s2">&#34;5432:5432&#34;</span>
+</span></span><span class="line"><span class="cl">    volumes:
+</span></span><span class="line"><span class="cl">      - data:/home/postgres/pgdata/data
+</span></span><span class="line"><span class="cl">    <span class="c1"># Não use a extensão ai até garantir que está instalada corretamente</span>
+</span></span><span class="line"><span class="cl">    command: <span class="s2">&#34;-c search_path=public&#34;</span>
+</span></span><span class="line"><span class="cl">    depends_on:
+</span></span><span class="line"><span class="cl">      - ollama
+</span></span><span class="line"><span class="cl">    <span class="c1"># Adicionar links explícitos para o serviço Ollama</span>
+</span></span><span class="line"><span class="cl">    links:
+</span></span><span class="line"><span class="cl">      - ollama
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  vectorizer-worker:
+</span></span><span class="line"><span class="cl">    image: timescale/pgai-vectorizer-worker:latest
+</span></span><span class="line"><span class="cl">    environment:
+</span></span><span class="line"><span class="cl">      PGAI_VECTORIZER_WORKER_DB_URL: postgres://postgres:postgres@db:5432/postgres
+</span></span><span class="line"><span class="cl">      OLLAMA_HOST: http://ollama:11434
+</span></span><span class="line"><span class="cl">    command: <span class="o">[</span> <span class="s2">&#34;--poll-interval&#34;</span>, <span class="s2">&#34;5s&#34;</span>, <span class="s2">&#34;--log-level&#34;</span>, <span class="s2">&#34;DEBUG&#34;</span> <span class="o">]</span>
+</span></span><span class="line"><span class="cl">    depends_on:
+</span></span><span class="line"><span class="cl">      - db
+</span></span><span class="line"><span class="cl">      - ollama
+</span></span><span class="line"><span class="cl">    links:
+</span></span><span class="line"><span class="cl">      - ollama
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  ollama:
+</span></span><span class="line"><span class="cl">    image: ollama/ollama
+</span></span><span class="line"><span class="cl">    ports:
+</span></span><span class="line"><span class="cl">      - <span class="s2">&#34;11434:11434&#34;</span>
+</span></span><span class="line"><span class="cl">    volumes:
+</span></span><span class="line"><span class="cl">      - ollama_data:/root/.ollama
+</span></span><span class="line"><span class="cl">    <span class="c1"># Comando direto para iniciar o Ollama</span>
+</span></span><span class="line"><span class="cl">    command: serve
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">volumes:
+</span></span><span class="line"><span class="cl">  data:
+</span></span><span class="line"><span class="cl">  ollama_data:</span></span></code></pre></div>
+</div>
+<p>
+O arquivo <code>docker-compose.yml</code> acima configura uma infraestrutura para busca semântica com três serviços interconectados. O serviço <code>db</code> utiliza o <a href="https://www.timescale.com/">TimescaleDB</a> (que nada mais é que uma versão do <a href="https://www.postgresql.org/">PostgreSQL</a> especializada para otimização de desempenho para dados de séries temporais) com a versão 17, configurando credenciais, mapeamento de portas e um volume persistente para armazenar os dados. Este serviço é configurado para se comunicar com o Ollama através de variáveis de ambiente e links explícitos, garantindo que a comunicação entre os contêineres funcione corretamente.</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">flowchart TD
+    subgraph db [&#34;TimescaleDB (pg17)&#34;]
+        db_info[&#34;Ports: 5432:5432&lt;br&gt;Volumes: data:/home/postgres/pgdata/data&lt;br&gt;Environment:&lt;br&gt;POSTGRES_PASSWORD=postgres&lt;br&gt;OLLAMA_HOST=http://ollama:11434&#34;]
+    end
+
+    subgraph vectorizer_worker [&#34;pgai-vectorizer-worker&#34;]
+        vw_info[&#34;Environment:&lt;br&gt;PGAI_VECTORIZER_WORKER_DB_URL=postgres://postgres:postgres@db:5432/postgres&lt;br&gt;OLLAMA_HOST=http://ollama:11434&lt;br&gt;Command: --poll-interval 5s --log-level DEBUG&#34;]
+    end
+
+    subgraph ollama [&#34;Ollama&#34;]
+        o_info[&#34;Ports: 11434:11434&lt;br&gt;Volumes: ollama_data:/root/.ollama&lt;br&gt;Command: serve&#34;]
+    end
+
+    data[&#34;Data Volume&#34;]
+    ollama_data[&#34;Ollama Data Volume&#34;]
+
+    db --- data
+    ollama --- ollama_data
+    vectorizer_worker --- db
+    vectorizer_worker --- ollama
+    db --- ollama
+
+    style db fill:#f9f,stroke:#333,stroke-width:2px
+    style vectorizer_worker fill:#ccf,stroke:#333,stroke-width:2px
+    style ollama fill:#ffc,stroke:#333,stroke-width:2px
+    style data fill:#eee,stroke:#333,stroke-width:2px
+    style ollama_data fill:#eee,stroke:#333,stroke-width:2px</code></pre>
+</div>
+<p>
+O diagrama acima ilustra a arquitetura do sistema de busca semântica com PostgreSQL. No centro, temos três componentes principais: o TimescaleDB (uma versão especializada do PostgreSQL), o pgai-vectorizer-worker (responsável por processar e vetorizar os textos) e o Ollama (que fornece os modelos de IA). As conexões entre os serviços mostram como eles se comunicam: o vectorizer-worker se conecta tanto ao banco de dados quanto ao Ollama para realizar seu trabalho de transformação de textos em vetores. </p>
+<p>
+Os volumes persistentes (representados em cinza) garantem que tanto os dados do PostgreSQL quanto os modelos do Ollama sejam preservados entre reinicializações. Esta arquitetura modular permite escalar cada componente independentemente conforme necessário, enquanto mantém um fluxo de dados eficiente para operações de busca semântica.</p>
+<p>
+O serviço <code>vectorizer-worker</code> é um componente especializado do <a href="https://github.com/timescale/pgai">pgai</a> que monitora o banco de dados a cada 5 segundos, processando automaticamente textos para transformá-los em embeddings vetoriais. Ele se conecta ao banco <a href="https://www.postgresql.org/">PostgreSQL</a> e ao serviço <a href="https://ollama.com/">Ollama</a> para realizar a vetorização dos textos, funcionando como uma ponte entre o armazenamento de dados e o modelo de IA, com logs detalhados para facilitar a depuração durante o desenvolvimento.</p>
+<p>
+Por fim, o serviço <code>ollama</code> fornece a infraestrutura para executar modelos de IA localmente, expondo uma API REST na porta 11434 e armazenando os modelos baixados em um volume persistente. Este design de três camadas (banco de dados, processador de vetores e motor de IA) cria um sistema completo para busca semântica que pode ser iniciado com um simples <code>docker compose up -d</code>, seguido pelo download do modelo de <a href="https://en.wikipedia.org/wiki/Embedding_(machine_learning">embeddings</a>) que transformará os textos em vetores.</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">docker compose <span class="nb">exec</span> ollama ollama pull nomic-embed-text</span></span></code></pre></div>
+</div>
+<p>
+Este setup configura um banco de dados PostgreSQL com as extensões <a href="https://github.com/timescale/pgai">pgai</a>, <a href="https://github.com/pgvector/pgvector">pgvector</a> e <a href="https://github.com/timescale/pgvectorscale">pgvectorscale</a>. Também configura o Ollama, que você pode usar para implantar LLMs e modelos de embedding.</p>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-3">
+<h3 id="headline-3">
+Passos para Construir a Busca Semântica
+</h3>
+<div id="outline-text-headline-3" class="outline-text-3">
+<p>
+Os passos para implementar a busca semântica no PostgreSQL são relativamente simples. Primeiro, vamos habilitar as extensões necessárias, criar uma tabela para armazenar nossos documentos, configurar o <a href="https://github.com/timescale/pgai/tree/main/vectorizer">vectorizer</a> para gerar <a href="https://en.wikipedia.org/wiki/Embedding_(machine_learning">embeddings</a>) automaticamente e, finalmente, realizar consultas semânticas.</p>
+<div id="outline-container-headline-4" class="outline-4">
+<h4 id="headline-4">
+1. Habilitando as Extensões
+</h4>
+<div id="outline-text-headline-4" class="outline-text-4">
+<p>
+Primeiro, precisamos habilitar as extensões necessárias no PostgreSQL:</p>
+<div class="src src-sql">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-sql" data-lang="sql"><span class="line"><span class="cl"><span class="k">CREATE</span><span class="w"> </span><span class="n">EXTENSION</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">vector</span><span class="w"> </span><span class="k">CASCADE</span><span class="p">;</span><span class="w"> 
+</span></span></span><span class="line"><span class="cl"><span class="k">CREATE</span><span class="w"> </span><span class="n">EXTENSION</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">ai</span><span class="w"> </span><span class="k">CASCADE</span><span class="p">;</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-4">
+<h4 id="headline-5">
+2. Criando a Tabela de Documentos
+</h4>
+<div id="outline-text-headline-5" class="outline-text-4">
+<p>
+Agora, vamos criar uma tabela para armazenar os documentos que queremos pesquisar:</p>
+<div class="src src-sql">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-sql" data-lang="sql"><span class="line"><span class="cl"><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">documentos</span><span class="w"> </span><span class="p">(</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">   </span><span class="n">id</span><span class="w"> </span><span class="nb">SERIAL</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">   </span><span class="n">titulo</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">   </span><span class="n">conteudo</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">   </span><span class="n">categoria</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">   </span><span class="n">data_criacao</span><span class="w"> </span><span class="k">TIMESTAMP</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="k">CURRENT_TIMESTAMP</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">);</span></span></span></code></pre></div>
+</div>
+<p>
+Neste exemplo, criamos uma tabela chamada <code>documentos</code> com quatro colunas: <code>id</code>, <code>titulo</code>, <code>conteudo</code> e <code>categoria</code>. É importante notar que a coluna <code>id</code> é a chave primária da tabela. Outro ponto importante é que a coluna <code>data_criacao</code> é uma coluna de metadados que é gerada automaticamente pelo PostgreSQL.</p>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-4">
+<h4 id="headline-6">
+3. Inserindo Documentos
+</h4>
+<div id="outline-text-headline-6" class="outline-text-4">
+<p>
+Podemos inserir documentos manualmente ou usar a função <code>ai.load_dataset</code> do <a href="https://github.com/timescale/pgai">pgai</a> para carregar dados diretamente do <a href="https://huggingface.co/">Hugging Face</a>:</p>
+<div class="src src-sql">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-sql" data-lang="sql"><span class="line"><span class="cl"><span class="k">SELECT</span><span class="w"> </span><span class="n">ai</span><span class="p">.</span><span class="n">load_dataset</span><span class="p">(</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">   </span><span class="n">name</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s1">&#39;Cohere/movies&#39;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">   </span><span class="k">table_name</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s1">&#39;documentos&#39;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">   </span><span class="n">if_table_exists</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s1">&#39;append&#39;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">   </span><span class="n">field_types</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s1">&#39;{&#34;title&#34;: &#34;titulo&#34;, &#34;overview&#34;: &#34;conteudo&#34;, &#34;genres&#34;: &#34;categoria&#34;}&#39;</span><span class="p">::</span><span class="n">jsonb</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">);</span></span></span></code></pre></div>
+</div>
+<p>
+Alternativamente, podemos inserir registros manualmente:</p>
+<div class="src src-sql">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-sql" data-lang="sql"><span class="line"><span class="cl"><span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">documentos</span><span class="w"> </span><span class="p">(</span><span class="n">titulo</span><span class="p">,</span><span class="w"> </span><span class="n">conteudo</span><span class="p">,</span><span class="w"> </span><span class="n">categoria</span><span class="p">)</span><span class="w"> </span><span class="k">VALUES</span><span class="w"> 
+</span></span></span><span class="line"><span class="cl"><span class="p">(</span><span class="s1">&#39;Guia Clojure&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Clojure é uma linguagem funcional moderna...&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Programação&#39;</span><span class="p">),</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">(</span><span class="s1">&#39;Tutorial RAG&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Sistemas RAG combinam busca e geração...&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;IA&#39;</span><span class="p">),</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">(</span><span class="s1">&#39;PostgreSQL Avançado&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Técnicas de otimização para PostgreSQL...&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Banco de Dados&#39;</span><span class="p">);</span></span></span></code></pre></div>
+</div>
+<blockquote>
+<p><em>NOTA</em>: O <a href="https://huggingface.co/">Hugging Face</a> é uma plataforma de dados e modelos de IA.</p>
+</blockquote>
+<p>
+Agora vamos configurar o vectorizer para gerar embeddings automaticamente.</p>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-4">
+<h4 id="headline-7">
+4. Configurando o Vectorizer
+</h4>
+<div id="outline-text-headline-7" class="outline-text-4">
+<p>
+O <a href="https://github.com/timescale/pgai">pgai</a> inclui uma ferramenta chamada <a href="https://github.com/timescale/pgai/tree/main/vectorizer">vectorizer</a> que automatiza a criação e sincronização de embeddings. Esta é uma das funcionalidades mais poderosas desta solução, pois elimina a necessidade de ferramentas externas para criar <a href="https://en.wikipedia.org/wiki/Embedding_(machine_learning">embeddings</a>). Vamos configurá-la:</p>
+<div class="src src-sql">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-sql" data-lang="sql"><span class="line"><span class="cl"><span class="k">SELECT</span><span class="w"> </span><span class="n">ai</span><span class="p">.</span><span class="n">create_vectorizer</span><span class="p">(</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">   </span><span class="s1">&#39;public.documentos&#39;</span><span class="p">::</span><span class="n">regclass</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">   </span><span class="n">destination</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s1">&#39;documentos_embeddings&#39;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">   </span><span class="n">embedding</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">ai</span><span class="p">.</span><span class="n">embedding_ollama</span><span class="p">(</span><span class="s1">&#39;nomic-embed-text&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">768</span><span class="p">),</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">   </span><span class="n">chunking</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">ai</span><span class="p">.</span><span class="n">chunking_recursive_character_text_splitter</span><span class="p">(</span><span class="s1">&#39;conteudo&#39;</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">);</span></span></span></code></pre></div>
+</div>
+<p>
+Basicamente, o comando acima faz o seguinte:</p>
+<ol>
+<li>Cria uma tabela <code>documentos_embeddings</code> para armazenar os vetores</li>
+<li>Configura o modelo <code>nomic-embed-text</code> via Ollama para gerar embeddings</li>
+<li>Define uma estratégia de chunking para dividir textos longos</li>
+<li>Cria automaticamente uma view <code>documentos_embeddings_vectorized</code> que junta os documentos com seus embeddings</li>
+</ol>
+<p>O <a href="https://github.com/timescale/pgai/tree/main/vectorizer">vectorizer</a> também cuida da sincronização automática dos embeddings quando documentos são inseridos, atualizados ou removidos - sem necessidade de código adicional! Isto simplifica enormemente a manutenção do sistema.</p>
+</div>
+</div>
+<div id="outline-container-headline-8" class="outline-4">
+<h4 id="headline-8">
+5. Realizando Busca Semântica
+</h4>
+<div id="outline-text-headline-8" class="outline-text-4">
+<p>
+Agora estamos prontos para realizar buscas semânticas. Usaremos a função <code>ai.ollama_embed</code> para gerar embeddings para nossa consulta e o operador de distância de cosseno (<code>&lt;=&gt;</code>) para encontrar documentos similares:</p>
+<div class="src src-sql">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-sql" data-lang="sql"><span class="line"><span class="cl"><span class="k">WITH</span><span class="w"> </span><span class="n">query_embedding</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="p">(</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="c1">-- Gerar embedding para a consulta
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="k">SELECT</span><span class="w"> </span><span class="n">ai</span><span class="p">.</span><span class="n">ollama_embed</span><span class="p">(</span><span class="s1">&#39;nomic-embed-text&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Como implementar RAG em sistemas modernos&#39;</span><span class="p">,</span><span class="w"> 
+</span></span></span><span class="line"><span class="cl"><span class="w">                          </span><span class="k">host</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s1">&#39;http://ollama:11434&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">embedding</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="k">SELECT</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="n">d</span><span class="p">.</span><span class="n">titulo</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="n">d</span><span class="p">.</span><span class="n">conteudo</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="n">d</span><span class="p">.</span><span class="n">categoria</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="n">t</span><span class="p">.</span><span class="n">embedding</span><span class="w"> </span><span class="o">&lt;=&gt;</span><span class="w"> </span><span class="p">(</span><span class="k">SELECT</span><span class="w"> </span><span class="n">embedding</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">query_embedding</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">distancia</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="k">FROM</span><span class="w"> </span><span class="n">documentos_embeddings</span><span class="w"> </span><span class="n">t</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="k">LEFT</span><span class="w"> </span><span class="k">JOIN</span><span class="w"> </span><span class="n">documentos</span><span class="w"> </span><span class="n">d</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">t</span><span class="p">.</span><span class="n">id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">d</span><span class="p">.</span><span class="n">id</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">distancia</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="k">LIMIT</span><span class="w"> </span><span class="mi">5</span><span class="p">;</span></span></span></code></pre></div>
+</div>
+<p>
+Este código SQL realiza uma <a href="https://en.wikipedia.org/wiki/Semantic_search">busca semântica</a> em nossa base de documentos utilizando <a href="https://en.wikipedia.org/wiki/Embedding_(machine_learning">embeddings</a>) gerados pelo modelo <code>nomic-embed-text</code> através do <a href="https://ollama.com/">Ollama</a>. Primeiro, criamos uma CTE (Common Table Expression) chamada <code>query_embedding</code> que gera o embedding para nossa consulta &#34;Como implementar RAG em sistemas modernos&#34;. Em seguida, selecionamos os documentos mais relevantes comparando este embedding de consulta com os embeddings armazenados na tabela <code>documentos_embeddings</code> usando o operador de distância de cosseno (<code>&lt;=&gt;</code>).</p>
+<p>
+O resultado é uma lista ordenada dos documentos mais semanticamente similares à nossa consulta, independentemente de compartilharem as mesmas palavras exatas. Esta é a essência da busca semântica - encontrar conteúdo conceitualmente relacionado, não apenas correspondências de palavras-chave. A coluna <code>distancia</code> nos mostra quão próximo cada documento está da nossa consulta, com valores menores indicando maior similaridade. Limitamos os resultados aos 5 documentos mais relevantes, mas este número pode ser ajustado conforme necessário. O PostgreSQL oferece três operadores para cálculo de similaridade:</p>
+<ul>
+<li><code>&lt;-&gt;</code>: <a href="https://en.wikipedia.org/wiki/Euclidean_distance">Distância L2 (Euclidiana)</a></li>
+<li><code>&lt;#&gt;</code>: <a href="https://en.wikipedia.org/wiki/Dot_product">Produto interno</a></li>
+<li><code>&lt;=&gt;</code>: <a href="https://en.wikipedia.org/wiki/Cosine_distance">Distância de cosseno</a> (geralmente a melhor opção)</li>
+</ul>
+<p>E pronto! Com apenas esses poucos passos, temos um sistema de busca semântica totalmente funcional, diretamente no PostgreSQL. <em><a href="/post/rag/">Para quem acompanhou o artigo anterior sobre a implementação de RAG em Clojure</a></em>, vale a pena comparar as duas abordagens:</p>
+<p>
+A diferença entre as duas abordagens é bem clara quando olhamos lado a lado. <a href="/post/rag/">No artigo anterior sobre RAG em Clojure</a>, usamos uma técnica mais simples <a href="/post/tf-idf/">(TF-IDF)</a> que funciona bem para projetos pequenos e didáticos. É como usar uma bicicleta para se locomover para distâncias curtas. O código em Clojure mantém tudo em memória, o que é ótimo para aprender os conceitos, mas começa a dar problema quando a quantidade de documentos cresce.</p>
+<p>
+Já a abordagem com PostgreSQL + pgai é como trocar a bicicleta por um carro esportivo! Estamos usando embeddings densos gerados por LLMs, que capturam muito melhor o significado semântico dos textos. O PostgreSQL cuida de toda a parte chata de persistência e indexação, permitindo que você escale para milhões de documentos sem suar. Os índices especializados para vetores (como HNSW) fazem buscas em bilhões de embeddings parecerem instantâneas, algo que nossa implementação anterior jamais conseguiria.</p>
+<p>
+O mais legal é que a manutenção fica muito mais simples. Com o <a href="https://github.com/timescale/pgai/tree/main/vectorizer">vectorizer do pgai</a>, você só precisa inserir documentos no banco normalmente, e ele cuida automaticamente de gerar e atualizar os embeddings. </p>
+<hr>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-3">
+<h3 id="headline-9">
+Integração com Clojure
+</h3>
+<div id="outline-text-headline-9" class="outline-text-3">
+<p>
+O objetivo deste artigo é mostrar como é fácil construir um sistema de busca semântica usando PostgreSQL e pgai. No entanto, é mostrar também como podemos evoluir à proposta anterior e construir um sistema de busca semântica mais robusto e escalável usando PostgreSQL e pgai e Clojure.</p>
+<div class="src src-clojure">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-clojure" data-lang="clojure"><span class="line"><span class="cl"><span class="c1">;; src/docai/pg.clj</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="kd">ns </span><span class="nv">docai.pg</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="ss">:require</span> <span class="p">[</span><span class="nv">next.jdbc</span> <span class="ss">:as</span> <span class="nv">jdbc</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">            <span class="p">[</span><span class="nv">clojure.data.json</span> <span class="ss">:as</span> <span class="nv">json</span><span class="p">]))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="k">def </span><span class="nv">db-spec</span>
+</span></span><span class="line"><span class="cl">  <span class="p">{</span><span class="ss">:dbtype</span> <span class="s">&#34;postgresql&#34;</span>
+</span></span><span class="line"><span class="cl">   <span class="ss">:dbname</span> <span class="s">&#34;postgres&#34;</span>
+</span></span><span class="line"><span class="cl">   <span class="ss">:host</span> <span class="s">&#34;localhost&#34;</span>
+</span></span><span class="line"><span class="cl">   <span class="ss">:user</span> <span class="s">&#34;postgres&#34;</span>
+</span></span><span class="line"><span class="cl">   <span class="ss">:password</span> <span class="s">&#34;password&#34;</span><span class="p">})</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="kd">defn </span><span class="nv">query-semantic-search</span>
+</span></span><span class="line"><span class="cl">  <span class="s">&#34;Realiza busca semântica via PostgreSQL&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">[</span><span class="nv">query</span> <span class="nv">limit</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">conn</span> <span class="p">(</span><span class="nf">jdbc/get-connection</span> <span class="nv">db-spec</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="nv">sql</span> <span class="p">(</span><span class="nb">str </span><span class="s">&#34;WITH query_embedding AS (&#34;</span>
+</span></span><span class="line"><span class="cl">                 <span class="s">&#34;  SELECT ai.ollama_embed(&#39;nomic-embed-text&#39;, ?, host =&gt; &#39;http://ollama:11434&#39;) AS embedding&#34;</span>
+</span></span><span class="line"><span class="cl">                 <span class="s">&#34;)&#34;</span>
+</span></span><span class="line"><span class="cl">                 <span class="s">&#34;SELECT&#34;</span>
+</span></span><span class="line"><span class="cl">                 <span class="s">&#34;  d.titulo,&#34;</span>
+</span></span><span class="line"><span class="cl">                 <span class="s">&#34;  d.conteudo,&#34;</span>
+</span></span><span class="line"><span class="cl">                 <span class="s">&#34;  d.categoria,&#34;</span>
+</span></span><span class="line"><span class="cl">                 <span class="s">&#34;  t.embedding &lt;=&gt; (SELECT embedding FROM query_embedding) AS distancia&#34;</span>
+</span></span><span class="line"><span class="cl">                 <span class="s">&#34; FROM documentos_embeddings t&#34;</span>
+</span></span><span class="line"><span class="cl">                 <span class="s">&#34; LEFT JOIN documentos d ON t.id = d.id&#34;</span>
+</span></span><span class="line"><span class="cl">                 <span class="s">&#34; ORDER BY distancia&#34;</span>
+</span></span><span class="line"><span class="cl">                 <span class="s">&#34; LIMIT ?&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="nv">results</span> <span class="p">(</span><span class="nf">jdbc/execute!</span> <span class="nv">conn</span> <span class="p">[</span><span class="nv">sql</span> <span class="nv">query</span> <span class="nv">limit</span><span class="p">])]</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">results</span><span class="p">))</span></span></span></code></pre></div>
+</div>
+<blockquote>
+<p><em>NOTA</em>: O código acima é um exemplo de como integrar a busca semântica no PostgreSQL com uma aplicação Clojure. O código completo está disponível no <a href="https://github.com/lobovit/docai"><a href="https://github.com/lobovit/docai">https://github.com/lobovit/docai</a></a>.</p>
+</blockquote>
+</div>
+</div>
+<div id="outline-container-headline-10" class="outline-3">
+<h3 id="headline-10">
+Configuração de Contêineres e Resolução de Problemas
+</h3>
+<div id="outline-text-headline-10" class="outline-text-3">
+<p>
+Ao trabalhar com contêineres Docker ou Podman, você pode encontrar alguns desafios específicos relacionados à comunicação entre serviços. Vamos explorar algumas dicas para garantir que sua configuração funcione sem problemas:</p>
+<div id="outline-container-headline-11" class="outline-4">
+<h4 id="headline-11">
+Nomeação de Contêineres e Comunicação entre Serviços
+</h4>
+<div id="outline-text-headline-11" class="outline-text-4">
+<p>
+Quando os serviços estão em contêineres separados, a comunicação entre eles pode ser complicada. Existem várias maneiras de referenciar um contêiner a partir de outro:</p>
+<div class="src src-clojure">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-clojure" data-lang="clojure"><span class="line"><span class="cl"><span class="c1">;; Exemplo de diferentes URLs para alcançar o serviço Ollama</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="k">def </span><span class="nv">alternative-hosts</span> 
+</span></span><span class="line"><span class="cl">  <span class="p">[</span><span class="s">&#34;http://pgai-ollama-1:11434&#34;</span>    <span class="c1">;; Nome do contêiner específico (mais confiável)</span>
+</span></span><span class="line"><span class="cl">   <span class="s">&#34;http://ollama:11434&#34;</span>           <span class="c1">;; Nome do serviço (conforme definido no arquivo docker/podman-compose)</span>
+</span></span><span class="line"><span class="cl">   <span class="s">&#34;http://172.18.0.2:11434&#34;</span>       <span class="c1">;; IP do contêiner (pode mudar entre reinicializações)</span>
+</span></span><span class="line"><span class="cl">   <span class="s">&#34;http://host.docker.internal:11434&#34;</span> <span class="c1">;; Especial para acessar o host a partir do contêiner</span>
+</span></span><span class="line"><span class="cl">   <span class="s">&#34;http://localhost:11434&#34;</span><span class="p">])</span>      <span class="c1">;; Funciona apenas se mapeado para a porta do host</span></span></span></code></pre></div>
+</div>
+<p>
+O método mais confiável é usar o nome exato do contêiner (algo como <code>pgai-ollama-1</code>), que pode ser descoberto com o comando <code>docker ps</code> ou <code>podman ps</code>.</p>
+</div>
+</div>
+<div id="outline-container-headline-12" class="outline-4">
+<h4 id="headline-12">
+Solução de Problemas de Conexão
+</h4>
+<div id="outline-text-headline-12" class="outline-text-4">
+<p>
+Se você estiver enfrentando problemas de conexão, uma abordagem robusta é implementar um sistema de fallback que tente diferentes URLs:</p>
+<div class="src src-clojure">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-clojure" data-lang="clojure"><span class="line"><span class="cl"><span class="p">(</span><span class="kd">defn </span><span class="nv">call-ollama-api</span>
+</span></span><span class="line"><span class="cl">  <span class="s">&#34;Chama a API do Ollama com múltiplas tentativas de conexão&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">[</span><span class="nv">prompt</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">primary-url</span> <span class="s">&#34;http://ollama:11434/api/generate&#34;</span>
+</span></span><span class="line"><span class="cl">        <span class="nv">options</span> <span class="p">{</span><span class="ss">:headers</span> <span class="p">{</span><span class="s">&#34;Content-Type&#34;</span> <span class="s">&#34;application/json&#34;</span><span class="p">}</span>
+</span></span><span class="line"><span class="cl">                 <span class="ss">:body</span> <span class="p">(</span><span class="nf">json/write-str</span> <span class="p">{</span><span class="ss">:model</span> <span class="s">&#34;deepseek-r1&#34;</span>
+</span></span><span class="line"><span class="cl">                                       <span class="ss">:prompt</span> <span class="nv">prompt</span><span class="p">})}</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="c1">;; Tentar primeiro com a URL primária</span>
+</span></span><span class="line"><span class="cl">        <span class="nv">primary-result</span> <span class="p">(</span><span class="nf">try-single-url</span> <span class="nv">primary-url</span> <span class="nv">options</span><span class="p">)]</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="ss">:success</span> <span class="nv">primary-result</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">      <span class="p">(</span><span class="ss">:result</span> <span class="nv">primary-result</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">      <span class="p">(</span><span class="nf">do</span>
+</span></span><span class="line"><span class="cl">        <span class="p">(</span><span class="nb">println </span><span class="s">&#34;⚠️ Erro na chamada primária, tentando URLs alternativas...&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="c1">;; Tentar URLs alternativas</span>
+</span></span><span class="line"><span class="cl">        <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">alternative-hosts</span> <span class="p">[</span><span class="s">&#34;http://pgai-ollama-1:11434&#34;</span> 
+</span></span><span class="line"><span class="cl">                                <span class="s">&#34;http://172.18.0.2:11434&#34;</span> 
+</span></span><span class="line"><span class="cl">                                <span class="s">&#34;http://host.docker.internal:11434&#34;</span> 
+</span></span><span class="line"><span class="cl">                                <span class="s">&#34;http://localhost:11434&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">              <span class="nv">successful-result</span> <span class="p">(</span><span class="nb">some </span><span class="p">(</span><span class="k">fn </span><span class="p">[</span><span class="nv">host</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">                                       <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">alt-url</span> <span class="p">(</span><span class="nb">str </span><span class="nv">host</span> <span class="s">&#34;/api/generate&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">                                             <span class="nv">result</span> <span class="p">(</span><span class="nf">try-single-url</span> <span class="nv">alt-url</span> <span class="nv">options</span><span class="p">)]</span>
+</span></span><span class="line"><span class="cl">                                         <span class="p">(</span><span class="nb">when </span><span class="p">(</span><span class="ss">:success</span> <span class="nv">result</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">                                           <span class="p">(</span><span class="nb">println </span><span class="s">&#34;✅ Conexão bem-sucedida com&#34;</span> <span class="nv">alt-url</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">                                           <span class="p">(</span><span class="ss">:result</span> <span class="nv">result</span><span class="p">))))</span>
+</span></span><span class="line"><span class="cl">                                     <span class="nv">alternative-hosts</span><span class="p">)]</span>
+</span></span><span class="line"><span class="cl">          <span class="p">(</span><span class="nb">or </span><span class="nv">successful-result</span>
+</span></span><span class="line"><span class="cl">              <span class="p">(</span><span class="nb">str </span><span class="s">&#34;Não foi possível conectar ao Ollama usando nenhum dos endpoints disponíveis.&#34;</span><span class="p">)))))))</span></span></span></code></pre></div>
+</div>
+<p>
+Esta abordagem tenta vários endpoints diferentes e usa o primeiro que funcionar. A função <code>call-ollama-api</code> primeiro tenta se conectar a uma URL primária e, caso falhe, percorre uma lista de URLs alternativas até encontrar uma conexão bem-sucedida. Para cada tentativa, ela utiliza a função auxiliar <code>try-single-url</code> que encapsula a lógica de tratamento de erros.</p>
+<p>
+A implementação segue um padrão de fallback, onde a função retorna o resultado da primeira conexão bem-sucedida ou uma mensagem de erro caso todas as tentativas falhem. Este método é particularmente útil em ambientes containerizados, onde os endereços de rede podem variar dependendo da configuração do <a href="https://www.docker.com/">Docker</a> ou <a href="https://podman.io/">Podman</a> e da rede interna, garantindo maior resiliência à aplicação.</p>
+<p>
+Acessando <a href="https://github.com/lobovit/docai"><a href="https://github.com/lobovit/docai">https://github.com/lobovit/docai</a></a>, você pode ver o código completo e testar a aplicação. Ao executar por exemplo <code>./run.bat postgres</code> temos o seguinte output:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">Inicializando DocAI...
+</span></span><span class="line"><span class="cl">Modo PostgreSQL ativado!
+</span></span><span class="line"><span class="cl">ℹ️ Para usar o Ollama, certifique-se de que ele está em execução com o comando: ollama serve
+</span></span><span class="line"><span class="cl">ℹ️ Usando o modelo deepseek-r1. Se você ainda não o baixou, execute: ollama pull deepseek-r1
+</span></span><span class="line"><span class="cl">Configurando ambiente PostgreSQL para RAG...
+</span></span><span class="line"><span class="cl">✅ Configurado para usar Ollama dentro <span class="k">do</span> contêiner Docker/Podman
+</span></span><span class="line"><span class="cl">🚀 Configurando PostgreSQL para RAG...
+</span></span><span class="line"><span class="cl">✅ Extensões vector e ai habilitadas com sucesso
+</span></span><span class="line"><span class="cl">✅ Tabela de documentos criada com sucesso
+</span></span><span class="line"><span class="cl">✅ Configurado para usar Ollama dentro <span class="k">do</span> contêiner Docker/Podman
+</span></span><span class="line"><span class="cl">✅ Vectorizer já configurado <span class="o">(</span>tabela documentos_embeddings já existe<span class="o">)</span>
+</span></span><span class="line"><span class="cl">Importando documentos para o PostgreSQL...
+</span></span><span class="line"><span class="cl">✅ Documento inserido com ID: <span class="m">5</span>
+</span></span><span class="line"><span class="cl">✅ Arquivo importado com sucesso: resources<span class="se">\d</span>ocs<span class="se">\e</span>xample.md
+</span></span><span class="line"><span class="cl">PostgreSQL RAG pronto! Faça sua pergunta:
+</span></span><span class="line"><span class="cl">Como implementar JWT em Clojure?
+</span></span><span class="line"><span class="cl">Processando...
+</span></span><span class="line"><span class="cl">DEBUG - Processando query no PostgreSQL: Como implementar JWT em Clojure?
+</span></span><span class="line"><span class="cl">DEBUG - Detectada consulta relacionada a JWT, usando busca especial
+</span></span><span class="line"><span class="cl">DEBUG - Encontrados <span class="m">5</span> documentos relacionados a JWT
+</span></span><span class="line"><span class="cl">DEBUG - Enviando prompt para o Ollama usando o modelo deepseek-r1
+</span></span><span class="line"><span class="cl">DEBUG - Tamanho <span class="k">do</span> prompt após truncamento: <span class="m">4442</span> caracteres
+</span></span><span class="line"><span class="cl">DEBUG - Usando URL <span class="k">do</span> Ollama: http://ollama:11434/api/generate
+</span></span><span class="line"><span class="cl">⚠️ Erro na chamada primária: Erro ao chamar a API <span class="k">do</span> Ollama:  - 
+</span></span><span class="line"><span class="cl">🔄 Tentando URLs alternativas...
+</span></span><span class="line"><span class="cl">🔄 Tentando conectar ao Ollama em http://pgai-ollama-1:11434/api/generate
+</span></span><span class="line"><span class="cl">⚠️ Erro ao chamar a API <span class="k">do</span> Ollama:  Erro ao chamar a API <span class="k">do</span> Ollama:  - 
+</span></span><span class="line"><span class="cl">🔄 Tentando conectar ao Ollama em http://172.18.0.2:11434/api/generate
+</span></span><span class="line"><span class="cl">⚠️ Erro ao chamar a API <span class="k">do</span> Ollama:  Erro ao chamar a API <span class="k">do</span> Ollama:  - 
+</span></span><span class="line"><span class="cl">🔄 Tentando conectar ao Ollama em http://host.docker.internal:11434/api/generate
+</span></span><span class="line"><span class="cl">⚠️ Erro ao chamar a API <span class="k">do</span> Ollama:  Erro ao chamar a API <span class="k">do</span> Ollama:  - 
+</span></span><span class="line"><span class="cl">🔄 Tentando conectar ao Ollama em http://localhost:11434/api/generate
+</span></span><span class="line"><span class="cl">✅ Conexão bem-sucedida com http://localhost:11434/api/generate
+</span></span><span class="line"><span class="cl">&lt;think&gt;
+</span></span><span class="line"><span class="cl">Primeiro, preciso entender como a implementação de JWT em Clojure está relacionada com a integração <span class="k">do</span> Ollama. Sabemos que o documento aborda a criação de tokens JWT usando a biblioteca <span class="sb">`</span>buddy.sign.jwt<span class="sb">`</span> e a manipulação de chaves privadas com <span class="sb">`</span>clojure.java.security<span class="sb">`</span>. Além disso, é usada a biblioteca <span class="sb">`</span>http-kit<span class="sb">`</span> para interação HTTP com o Ollama.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Vou começar analisando os passos necessários para criar um token JWT. Primeiro, é preciso definir os claims que compreendem informações como ID <span class="k">do</span> usuário, nome de usuário e roles. Em seguida, associar um secret key ao token. No documento, há exemplos de como usar uma string secreta ou chaves assimétricas. 
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">A seguir, entendo que é necessário configurar as dependências no arquivo <span class="sb">`</span>project.clj<span class="sb">`</span> para incluir as bibliotecas necessárias: <span class="sb">`</span>buddy/sign<span class="sb">`</span> e <span class="sb">`</span>http-kit<span class="sb">`</span>. Também é importante garantir que o Ollama esteja rodando com a comando adequado para pulling os modelos e executar as inferências.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Para testar, seria útil executar uma requisição POST para /login usando curl, passando os dados de login como JSON. Depois, usar o token obtido na requisição POST para /rag/query, Including o campo Authorization com o Bearer <span class="k">do</span> token.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Além disso, devo considerar como lidar com as funções de Wrapping em Clojure para garantir que as requisições HTTP sejam encadeadas corretamente. Talvez seja útil estabelecer uma rotina de login que gera o token e a envia, seguida de usar esse token nas consultas RAG.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Finalmente, tenho que lidar com possíveis erros, como se o Ollama não está executando ou houver problemas de autenticação. É importante inspecionar os logs e verificar as respostas das requisições HTTP para entender quais erros estiverem ocorrendo.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">No final, vou needear a documentação officially para confirmar se há mais funcionalidades disponíveis que posso explorar após a implementação básica de JWT.
+</span></span><span class="line"><span class="cl">&lt;/think&gt;
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Para implementar a autenticação com JWT em Clojure juntamente com a integração <span class="k">do</span> Ollama, siga os passos abaixo. Isso permitirá que você utilize tokens JWT para proteger suas requisições RAG.
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">### Passo 1: Configurar as dependências</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Adicione as seguintes dependências ao seu <span class="sb">`</span>project.clj<span class="sb">`</span>:
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="o">[</span>buddy/sign <span class="s2">&#34;3.4.0&#34;</span><span class="o">]</span>    <span class="p">;</span> Para geração de signatures e verificação de validade
+</span></span><span class="line"><span class="cl"><span class="o">[</span>buddy/auth <span class="s2">&#34;2.6.1&#34;</span><span class="o">]</span>     <span class="p">;</span> Para funções de autenticação
+</span></span><span class="line"><span class="cl"><span class="o">[</span>http-kit <span class="s2">&#34;2.6.0&#34;</span><span class="o">]</span>      <span class="p">;</span> Para manipulação de requisições HTTP
+</span></span><span class="line"><span class="cl"><span class="o">[</span>buddy.core.keys :as keys<span class="o">]</span>  <span class="p">;</span> Para geração de chaves privadas
+</span></span><span class="line"><span class="cl"><span class="o">[</span>buddy.data.json :as json<span class="o">]</span>  <span class="p">;</span> Para processamento JSON</span></span></code></pre></div>
+</div>
+<p>
+Sucesso total!
+Temos um sistema de busca semântica com PostgreSQL, pgvector, pgai e Ollama em Clojure funcionando! 🎉</p>
+<p>
+Este projeto de busca semântica com PostgreSQL pode ser expandido de várias maneiras interessantes. Uma possibilidade é implementar um sistema de feedback do usuário que capture as interações e avaliações das respostas geradas, permitindo o refinamento contínuo dos resultados. Isso poderia ser feito adicionando uma tabela <code>feedback_usuarios</code> que registre a consulta original, a resposta fornecida e a avaliação do usuário (positiva ou negativa). Esses dados poderiam então ser utilizados para ajustar os parâmetros de similaridade ou até mesmo para treinar um modelo de reranking que melhore a relevância dos resultados ao longo do tempo.</p>
+<p>
+Outra expansão valiosa seria a integração com fontes de dados externas em tempo real. Por exemplo, poderíamos criar um sistema de ingestão automática que monitore feeds RSS, APIs ou repositórios Git específicos, extraindo novos conteúdos periodicamente e atualizando nossa base de conhecimento. Isso manteria o sistema sempre atualizado com as informações mais recentes, especialmente útil em domínios que evoluem rapidamente como tecnologia e ciência. A implementação poderia utilizar workers assíncronos em Clojure que processam novas entradas em background, vetorizam o conteúdo e o inserem automaticamente no PostgreSQL sem interrupção do serviço principal. Muito legal não é?</p>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-13" class="outline-4">
+<h4 id="headline-13">
+Persistência de Modelos entre Reinicializações
+</h4>
+<div id="outline-text-headline-13" class="outline-text-4">
+<p>
+Um problema comum ao trabalhar com Ollama em contêineres é que os modelos são baixados repetidamente quando os contêineres são recriados. Para evitar isso:</p>
+<ol>
+<li>Use volumes para armazenar os dados do Ollama:</li>
+</ol>
+<div class="src src-yaml">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="w">   </span><span class="nt">volumes</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">     </span><span class="l">ollama_data:/root/.ollama</span></span></span></code></pre></div>
+</div>
+<ol>
+<li>Ao parar os contêineres, evite remover os volumes:</li>
+</ol>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">   <span class="c1"># Incorreto (remove volumes)</span>
+</span></span><span class="line"><span class="cl">   docker compose down --volumes
+</span></span><span class="line"><span class="cl">   
+</span></span><span class="line"><span class="cl">   <span class="c1"># Correto (preserva volumes)</span>
+</span></span><span class="line"><span class="cl">   docker compose down</span></span></code></pre></div>
+</div>
+<ol>
+<li>Implemente verificações antes de baixar modelos:</li>
+</ol>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">   <span class="c1"># Verificar se o modelo já existe antes de baixá-lo</span>
+</span></span><span class="line"><span class="cl">   docker <span class="nb">exec</span> pgai-ollama-1 ollama list <span class="p">|</span> grep <span class="s2">&#34;nomic-embed-text&#34;</span> &gt; /dev/null
+</span></span><span class="line"><span class="cl">   <span class="k">if</span> <span class="o">[</span> <span class="nv">$?</span> -ne <span class="m">0</span> <span class="o">]</span><span class="p">;</span> <span class="k">then</span>
+</span></span><span class="line"><span class="cl">     <span class="nb">echo</span> <span class="s2">&#34;Baixando modelo nomic-embed-text...&#34;</span>
+</span></span><span class="line"><span class="cl">     docker <span class="nb">exec</span> pgai-ollama-1 ollama pull nomic-embed-text
+</span></span><span class="line"><span class="cl">   <span class="k">else</span>
+</span></span><span class="line"><span class="cl">     <span class="nb">echo</span> <span class="s2">&#34;Modelo nomic-embed-text já está disponível&#34;</span>
+</span></span><span class="line"><span class="cl">   <span class="k">fi</span></span></span></code></pre></div>
+</div>
+<p>
+Seguindo essas práticas, você economizará largura de banda e tempo, além de melhorar significativamente a experiência do usuário.</p>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-4">
+<h4 id="headline-14">
+Buscas Especializadas para Tópicos Específicos
+</h4>
+<div id="outline-text-headline-14" class="outline-text-4">
+<p>
+Ao implementar seu sistema RAG, considere adicionar rotas especializadas de busca para certos tópicos. Por exemplo, se seu sistema precisa responder bem a consultas sobre JWT (JSON Web Tokens):</p>
+<div class="src src-clojure">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-clojure" data-lang="clojure"><span class="line"><span class="cl"><span class="p">(</span><span class="kd">defn </span><span class="nv">query-pg-rag</span>
+</span></span><span class="line"><span class="cl">  <span class="s">&#34;Processa uma consulta com tratamento especial para certos tópicos&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">[</span><span class="nv">query</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">;; Verificar primeiro se é uma consulta relacionada a JWT</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">lower-query</span> <span class="p">(</span><span class="nf">str/lower-case</span> <span class="nv">query</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="nv">jwt-keywords</span> <span class="p">[</span><span class="s">&#34;jwt&#34;</span> <span class="s">&#34;token&#34;</span> <span class="s">&#34;autenticação&#34;</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">some </span><span class="o">#</span><span class="p">(</span><span class="nf">str/includes?</span> <span class="nv">lower-query</span> <span class="nv">%</span><span class="p">)</span> <span class="nv">jwt-keywords</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">      <span class="c1">;; Busca especializada para JWT usando SQL direto</span>
+</span></span><span class="line"><span class="cl">      <span class="p">(</span><span class="k">let </span><span class="p">[</span><span class="nv">conn</span> <span class="p">(</span><span class="nf">jdbc/get-connection</span> <span class="nv">db-spec</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="nv">docs</span> <span class="p">(</span><span class="nf">jdbc/execute!</span> 
+</span></span><span class="line"><span class="cl">                   <span class="nv">conn</span> 
+</span></span><span class="line"><span class="cl">                   <span class="p">[</span><span class="s">&#34;SELECT id, titulo, conteudo FROM documentos 
+</span></span></span><span class="line"><span class="cl"><span class="s">                     WHERE LOWER(conteudo) LIKE ? LIMIT 5&#34;</span>
+</span></span><span class="line"><span class="cl">                    <span class="s">&#34;%jwt%&#34;</span><span class="p">])]</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">;; Processar resultados específicos de JWT...</span>
+</span></span><span class="line"><span class="cl">        <span class="p">)</span>
+</span></span><span class="line"><span class="cl">      
+</span></span><span class="line"><span class="cl">      <span class="c1">;; Busca semântica padrão para outros tópicos</span>
+</span></span><span class="line"><span class="cl">      <span class="p">(</span><span class="nf">semantic-search</span> <span class="nv">query</span> <span class="mi">5</span><span class="p">))))</span></span></span></code></pre></div>
+</div>
+<p>
+Esta abordagem híbrida combina busca por palavras-chave para tópicos específicos com busca semântica para consultas gerais, melhorando a precisão global do sistema.</p>
+<hr>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-15" class="outline-3">
+<h3 id="headline-15">
+Conclusão
+</h3>
+<div id="outline-text-headline-15" class="outline-text-3">
+<p>
+Neste artigo, exploramos como construir um sistema de busca semântica robusto usando PostgreSQL, pgvector, pgai e Ollama. Esta abordagem não só oferece melhor precisão em comparação com métodos tradicionais baseados em palavras-chave, mas também é altamente escalável e adequada para ambientes de produção.</p>
+<p>
+Vimos como configurar o ambiente usando Docker/Podman, como lidar com desafios comuns de comunicação entre contêineres, e implementamos estratégias para manter a persistência de modelos e melhorar a experiência do usuário. A combinação de busca semântica com técnicas específicas para tópicos especiais, como JWT, demonstra a flexibilidade desta abordagem.</p>
+<p>
+Para quem já trabalhou com RAG usando abordagens mais simples, como TF-IDF, esta implementação representa um salto significativo em termos de capacidades, mantendo a simplicidade operacional graças às ferramentas modernas que utilizamos.</p>
+<p>
+Quer saber mais sobre como implementar sistemas RAG avançados em seus projetos? Confira nossos outros artigos sobre o assunto e experimente o código completo disponível no <a href="https://github.com/lobovit/docai">repositório do DocAI</a>. Estamos ansiosos para ver o que você vai construir!</p>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-16" class="outline-3">
+<h3 id="headline-16">
+Referências
+</h3>
+<div id="outline-text-headline-16" class="outline-text-3">
+<ul>
+<li><a href="https://github.com/pgvector/pgvector">Documentação do pgvector</a> - Extensão do PostgreSQL para armazenar, indexar e consultar embeddings vetoriais de alta dimensionalidade.</li>
+<li><a href="https://github.com/timescale/pgai">Documentação do pgai</a> - Extensão do PostgreSQL que simplifica o armazenamento e recuperação de dados para RAG e outras aplicações de IA.</li>
+<li><a href="https://supabase.com/blog/openai-embeddings-postgres-vector">Embeddings Eficientes com PostgreSQL</a> - Artigo sobre como usar embeddings com PostgreSQL.</li>
+<li><a href="https://www.pinecone.io/learn/hnsw-ivfflat/">HNSW vs. IVFFlat para Busca de Similaridade</a> - Artigo sobre as diferenças entre HNSW e IVFFlat para busca de similaridade.</li>
+<li><a href="https://ollama.com/">Ollama - Rodando LLMs localmente</a> - Documentação do Ollama, uma ferramenta open-source para executar modelos de linguagem de grande escala localmente.</li>
+<li><a href="/post/rag/">Artigo anterior sobre RAG com Clojure</a> - Artigo sobre como implementar RAG com Clojure.</li>
+</ul>
+</div>
+</div>
+
+  </div>
+</article>
+
+    </main>
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Debugging on lobovit</title>
+    <link>https://lobovit.github.io/tags/debugging/</link>
+    <description>Recent content in Debugging on lobovit</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Wed, 27 May 2026 10:00:00 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/debugging/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>01 - AI Engineering from scratch: a fase zero da engenharia de IA</title>
+      <link>https://lobovit.github.io/ai-setup/</link>
+      <pubDate>Wed, 27 May 2026 10:00:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/ai-setup/</guid>
+      <description>&lt;p&gt;&#xA;Este artigo é uma parte de uma série de outros artigos que pretendo escrever sobre AI Engineering From Scratch baseados no projeto &lt;a href=&#34;https://github.com/rohitg00/ai-engineering-from-scratch&#34;&gt;ai-engineering-from-scratch&lt;/a&gt; de Rohit Ghumare. Os artigos cobrem de regressão linear a agentes multi-modelo, passando por CNNs (redes convolucionais, as que reconhecem objetos em imagens), transformers (a arquitetura por trás do GPT e do Claude), RAG (Retrieval-Augmented Generation quando você dá documentos de contexto pro LLM antes de perguntar), fine-tuning (ajustar um modelo pré-treinado com seus próprios dados) e inferência em produção (servir o modelo treinado pra usuários reais). E nenhuma delas funciona se o ambiente não estiver pronto.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

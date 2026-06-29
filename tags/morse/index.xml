@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Morse on lobovit</title>
+    <link>https://lobovit.github.io/tags/morse/</link>
+    <description>Recent content in Morse on lobovit</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Tue, 12 May 2026 18:40:00 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/morse/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Petzold01 - Códigos e Combinações</title>
+      <link>https://lobovit.github.io/histcomp01/</link>
+      <pubDate>Tue, 12 May 2026 18:40:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/histcomp01/</guid>
+      <description>&lt;p&gt;&#xA;Ao concluir a leitura do livro &lt;a href=&#34;https://a.co/d/0a3DsSsn&#34;&gt;Code: The Hidden Language of Computer Hardware and Software&lt;/a&gt; 2ª ed. de Charles Petzold, decidi criar uma série de artigos sintetizando seu conteúdo e em Português. Então vamos ao ponto de partida:&lt;/p&gt;&#xA;&lt;p&gt;&#xA;O Código Morse foi inventado por volta de 1837 por &lt;a href=&#34;https://pt.wikipedia.org/wiki/Samuel_Morse&#34;&gt;Samuel Finley Breese Morse&lt;/a&gt; (1791–1872). Ele foi aprimorado por outros inventores, notavelmente &lt;a href=&#34;https://en.wikipedia.org/wiki/Alfred_Vail&#34;&gt;Alfred Vail&lt;/a&gt; (1807–1859), e evoluiu para algumas versões diferentes. O sistema que utilizamos e estudamos hoje é mais formalmente conhecido como &lt;em&gt;&lt;a href=&#34;https://pt.wikipedia.org/wiki/Código_Morse&#34;&gt;Código Morse Internacional&lt;/a&gt;&lt;/em&gt;.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

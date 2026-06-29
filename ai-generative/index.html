@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>08 - AI Engineering from scratch: do autoencoder ao fluxo retificado — lobovit</title>
+  <link rel="stylesheet" href="/css/main.css?v=3">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
+    <main>
+      
+<article>
+  <header>
+    <h1>08 - AI Engineering from scratch: do autoencoder ao fluxo retificado</h1>
+    <p class="meta"><time>2026-05-28</time> · <span class="tag">AI</span><span class="tag">generative</span><span class="tag">diffusion</span><span class="tag">gan</span><span class="tag">vae</span><span class="tag">stable-diffusion</span><span class="tag">python</span></p>
+  </header>
+  <div class="content">
+    
+<p>
+Gerar é diferente de classificar. Classificar é colapsar uma imagem de 150 mil números em um rótulo (&#34;gato&#34;). Gerar é inflar 512 números de ruído em 150 mil números que parecem um gato que nunca existiu. É um problema mais difícil, com mais modos de falha e uma história mais tortuosa. E em 2026, é o campo mais quente da IA.</p>
+<p>
+Este artigo percorre 15 tópicos de IA generativa. Da taxonomia das cinco famílias de modelos até o Visual Autoregressive Modeling (VAR) que prevê escalas em vez de tokens. Você vai entender por que VAEs são o compressor universal, por que GANs perderam a guerra mas ganharam a paz, como difusão transformou ruído em arte, e por que flow matching é o padrão de 2026. Stack: Python pra experimentação, Go pra servir modelos em produção.</p>
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+A taxonomia generativa
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
+<p>
+Todo modelo generativo cabe em uma de cinco famílias. A diferença entre elas é qual parte difícil do problema cada uma escolhe enfrentar.</p>
+<p>
+Modelos autoregressivos (PixelCNN, GPT, VALL-E) fatoram a probabilidade conjunta como produto de condicionais: <code>p(x) = p(x_1) * p(x_2|x_1) * ... * p(x_n|x_1..x_{n-1})</code>. Treino estável e likelihood exata, mas geração é serial e lenta.</p>
+<p>
+Modelos de fluxo normalizador (RealNVP, Glow) aplicam transformações invertíveis que mapeiam uma distribuição simples (normal) nos dados. Likelihood exata, amostragem rápida, mas as transformações precisam ser invertíveis, o que restringe a arquitetura.</p>
+<p>
+VAEs (Variational Autoencoders) aproximam a distribuição latente com um encoder e amostram via decoder. Treino estável, espaço latente estruturado, mas amostras borradas (a KL divergence puxa o posterior pra uma gaussiana, perdendo detalhes finos).</p>
+<p>
+GANs (Generative Adversarial Networks) ignoram densidade completamente. Duas redes jogam um jogo: o gerador cria, o discriminador julga. Amostras nítidas e rápidas (um forward pass), mas treino instável (mode collapse, discriminator-wins, oscilação).</p>
+<p>
+Modelos de difusão e score-based corrompem dados com ruído e aprendem a reverter o processo. Treino estável (uma MSE), amostras de alta qualidade, mas amostragem iterativa (20-1000 passos). Flow matching endireita a trajetória pra 1-4 passos.</p>
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-2">
+<h2 id="headline-2">
+Autoencoders: o compressor universal
+</h2>
+<div id="outline-text-headline-2" class="outline-text-2">
+<p>
+Um autoencoder comprime e reconstrói. O encoder reduz uma imagem 512x512x3 a um vetor de 256 dimensões. O decoder reconstrói a imagem a partir desse vetor. Mas o espaço latente não tem estrutura: pontos aleatórios produzem lixo. Você não consegue gerar amostrando do espaço latente.</p>
+<p>
+O VAE resolve isso. Em vez de produzir um código latente diretamente, o encoder produz <code>μ</code> e <code>log σ²</code> (média e variância de uma distribuição). O código <code>z</code> é amostrado dessa distribuição: <code>z = μ + σ·ε, ε ~ N(0,I)</code>. O reparameterization trick faz a amostragem ser diferenciável. A loss tem dois termos: reconstrução (MSE entre input e output) e regularização KL (force <code>q(z|x)</code> a ficar perto de <code>N(0,I)</code>).</p>
+<p>
+Na inferência, você descarta o encoder e amostra <code>z ~ N(0,I)</code> direto pelo decoder. As amostras são mais borradas que GANs, mas o espaço latente é suave: pontos próximos produzem imagens similares, e você pode interpolar entre duas imagens caminhando no espaço latente.</p>
+<p>
+O papel do VAE em 2026 não é gerar imagens finais. É ser o compressor de primeiro estágio de todo modelo de difusão latente. O VAE do Stable Diffusion comprime 512x512x3 em 64x64x4. Toda a difusão roda nesse espaço comprimido. Sem o VAE, a difusão em pixels seria 64x mais cara.</p>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-2">
+<h2 id="headline-3">
+GANs: o jogo que produziu as imagens mais nítidas
+</h2>
+<div id="outline-text-headline-3" class="outline-text-2">
+<p>
+Uma GAN é um jogo de soma zero entre duas redes. O gerador <code>G(z)</code> mapeia ruído pra imagem. O discriminador <code>D(x)</code> classifica imagens como reais ou falsas. O discriminador quer maximizar <code>log D(real) + log(1 - D(fake))</code>. O gerador quer minimizar <code>log(1 - D(G(z)))</code>. Na prática, usa-se a versão não-saturante (<code>maximizar log D(G(z))</code>) porque o gradiente da original some quando o discriminador está ganhando.</p>
+<p>
+O treino alterna: um passo no discriminador, um passo no gerador. O discriminador aprende features cada vez melhores pra distinguir real de falso. O gerador aprende a produzir imagens que enganam essas features. Os dois melhoram juntos até o equilíbrio (fakes indistinguíveis de reais).</p>
+<p>
+Os problemas: mode collapse (o gerador descobre uma imagem que engana e produz só ela), discriminator-wins (discriminador fica bom demais, gradiente do gerador desaparece), oscilação (nenhum dos dois converge). A DCGAN (2015) estabeleceu cinco regras pra estabilizar: convoluções com stride (nada de pooling), BatchNorm nos dois lados, nada de fully-connected, ReLU no gerador, LeakyReLU no discriminador.</p>
+<p>
+Conditional GANs adicionam controle. Em vez de gerar qualquer imagem, você condiciona o gerador e o discriminador num rótulo ou imagem. Pix2Pix usa uma U-Net como gerador (skip connections preservam detalhes) e um PatchGAN como discriminador (classifica patches 70x70, não a imagem inteira, o que é mais rápido e captura textura local). O discriminador vê o par (input, output), forçando consistência entre eles. Uma loss L1 adicional mantém fidelidade ao target. CycleGAN estende pra dados não-pareados com perda de ciclo-consistência: traduza A→B, depois B→A, e o resultado deve ser igual ao original.</p>
+<p>
+StyleGAN desempatou o espaço latente. Em vez de injetar ruído diretamente no gerador, um mapping network de 8 camadas projeta <code>z</code> num espaço intermediário <code>w</code>. Esse <code>w</code> é injetado em cada resolução do gerador via AdaIN (Adaptive Instance Normalization), que modula estatísticas de feature com escala e viés derivados de <code>w</code>. Camadas grossas (baixa resolução) controlam pose e identidade; camadas finas (alta resolução) controlam iluminação e cor. O resultado é um espaço onde você pode editar atributos específicos sem afetar outros.</p>
+<p>
+Em 2026, GANs standalone foram substituídas por difusão pra geração de domínio aberto. Mas o treino adversarial sobreviveu como mecanismo de destilação: SDXL-Turbo e SD3-Turbo usam uma loss adversarial pra comprimir 50 passos de difusão em 1-4.</p>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-2">
+<h2 id="headline-4">
+Difusão: o império do ruído
+</h2>
+<div id="outline-text-headline-4" class="outline-text-2">
+<p>
+A difusão virou o backbone generativo universal por um motivo: treina com uma MSE. Sem adversarial, sem mode collapse, sem oscilação. Só regressão.</p>
+<div id="outline-container-headline-5" class="outline-3">
+<h3 id="headline-5">
+DDPM: destruir e reconstruir**
+</h3>
+<div id="outline-text-headline-5" class="outline-text-3">
+<p>
+O processo forward é uma cadeia de Markov fixa: <code>x_t = √(1-β_t)·x_{t-1} + √β_t·ε</code>, onde β_t cresce de 1e-4 a 0.02 ao longo de T=1000 passos. Depois de T passos, <code>x_T</code> é ruído puro. A mágica: <code>x_t</code> pode ser amostrado diretamente de <code>x_0</code> em um passo fechado: <code>x_t = √ᾱ_t·x_0 + √(1-ᾱ_t)·ε</code>, onde ᾱ_t = Π(1-β_s).</p>
+<p>
+O processo reverso treina uma U-Net <code>ε_θ(x_t, t)</code> pra prever o ruído adicionado. A loss é simplesmente <code>||ε - ε_θ(x_t, t)||²</code>. O modelo aprende a desruidificar um passo. Na inferência, comece com ruído puro <code>x_T ~ N(0,I)</code> e itere: <code>x_{t-1} = (1/√(1-β_t))·(x_t - (β_t/√(1-ᾱ_t))·ε_θ(x_t, t)) + σ_t·z</code>, onde σ_t controla estocasticidade (σ_t=0 é DDIM determinístico).</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">ddpm_sample</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">T</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">T</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">t_batch</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">1</span><span class="p">,),</span> <span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">noise_pred</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">t_batch</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">alpha</span> <span class="o">=</span> <span class="n">alphas</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">        <span class="n">alpha_bar</span> <span class="o">=</span> <span class="n">alpha_bars</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">        <span class="n">beta</span> <span class="o">=</span> <span class="n">betas</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">        <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">alpha</span><span class="p">))</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="p">(</span><span class="n">beta</span> <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha_bar</span><span class="p">))</span> <span class="o">*</span> <span class="n">noise_pred</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="n">t</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">x</span> <span class="o">+=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">beta</span><span class="p">)</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">x</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-3">
+<h3 id="headline-6">
+Stable Diffusion: difusão no espaço latente**
+</h3>
+<div id="outline-text-headline-6" class="outline-text-3">
+<p>
+Rodar difusão em pixels 512x512 é desperdício. O Stable Diffusion faz difusão no espaço latente 64x64 de um VAE congelado. Redução de 64x em FLOPs. Um encoder de texto (CLIP ou T5) condiciona a geração via cross-attention em cada camada da U-Net ou DiT. Classifier-free guidance mistura predição condicional e incondicional: <code>ε̂ = ε_uncond + w·(ε_cond - ε_uncond)</code>. w=7.5 é o padrão; w=1-3 pra fluxo retificado.</p>
+<p>
+A U-Net está sendo substituída pelo DiT (Diffusion Transformer). Patches do latente viram tokens, e blocos transformer com AdaLN-Zero (conditioning via layer norm adaptativa) processam tudo. SD3 e Flux.1 usam DiT. O text encoder migrou de CLIP-L pra T5-XXL, que entende prompts complexos muito melhor.</p>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-3">
+<h3 id="headline-7">
+ControlNet, LoRA e edição**
+</h3>
+<div id="outline-text-headline-7" class="outline-text-3">
+<p>
+Text alone é insuficiente. ControlNet adiciona controle espacial (pose, profundidade, bordas). Clone o encoder da U-Net, processe uma imagem de condicionamento por ele, e injete os features de volta via conexões zero-conv (inicializadas em zero, aprendem a deslocar). LoRA adiciona controle semântico (estilo, personagem) via deltas de baixo posto nas camadas de atenção: <code>ΔW = B·A</code> com rank 4-32, treinável em GPU de consumidor, 10-50 MB por adaptador. IP-Adapter injeta embeddings de imagem CLIP diretamente na cross-attention, permitindo condicionamento por imagem de referência.</p>
+<p>
+O toolkit de produção em 2026 é empilhar 2-5 LoRAs + 1-3 ControlNets + IP-Adapter. LoRA swap é sub-segundo por requisição. Serving multi-tenant com hot-swap de adaptadores.</p>
+<p>
+Inpainting regenera uma região mascarada preservando o resto. O modelo recebe entrada de 9 canais: <code>[latente ruidoso, imagem fonte codificada, máscara]</code>. A cada passo reverso, pixels fora da máscara são clampados no valor forward-diffused da fonte. SAM gera a máscara + SD-Inpaint preenche = o pipeline padrão de remoção de fundo.</p>
+</div>
+</div>
+<div id="outline-container-headline-8" class="outline-3">
+<h3 id="headline-8">
+Flow matching: endireitando a trajetória**
+</h3>
+<div id="outline-text-headline-8" class="outline-text-3">
+<p>
+Difusão segue uma curva de 1000 passos. Flow matching vai em linha reta do ruído aos dados: <code>x_t = (1-t)·x_0 + t·ε</code>. O modelo aprende o campo vetorial <code>v_θ(x_t, t)</code> que aponta de <code>x_t</code> pra <code>x_0</code> via MSE: <code>||(ε - x_0) - v_θ(x_t, t)||²</code>. Treino nunca desenrola a EDO; inferência integra <code>dx/dt = v_θ(x, t)</code> com Euler determinístico.</p>
+<p>
+Rectified flow adiciona iterações de reflow: gere pares (x_0, x_1) do modelo atual, retreine pra deixar a trajetória mais reta. Dois reflows produzem caminhos quase lineares, permitindo geração em 2-4 passos. Flux.1-schnell (4 passos, ~1.2s em 1024²) é o padrão de produção pra texto-para-imagem rápida. Flow matching + destilação é o default de 2026 pra qualquer modalidade generativa.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-2">
+<h2 id="headline-9">
+Geração além de imagens
+</h2>
+<div id="outline-text-headline-9" class="outline-text-2">
+<div id="outline-container-headline-10" class="outline-3">
+<h3 id="headline-10">
+Vídeo**
+</h3>
+<div id="outline-text-headline-10" class="outline-text-3">
+<p>
+Vídeo é um tensor 3D (tempo + 2D espaço). A teoria é idêntica à difusão de imagem, mas o custo é 10-100x maior. Um VAE 3D comprime o vídeo em latentes espaço-temporais. Um DiT processa patches com atenção fatorada: espacial dentro de cada frame, temporal entre frames (evitando O((THW)²)). Sora (OpenAI), Veo (Google), Kling (Kuaishou) e modelos abertos (CogVideoX, HunyuanVideo) usam essa arquitetura. O gargalo de produção é banda de memória.</p>
+</div>
+</div>
+<div id="outline-container-headline-11" class="outline-3">
+<h3 id="headline-11">
+Áudio**
+</h3>
+<div id="outline-text-headline-11" class="outline-text-3">
+<p>
+Áudio a 16-48 kHz gera sequências longas demais pra atenção direta. A solução: um codec neural (EnCodec, DAC, SoundStream) comprime o waveform em tokens discretos a 50-75 Hz via Residual Vector Quantization (RVQ). Um decoder-only transformer gera a sequência de tokens autoregressivamente (domina streaming) ou um modelo de flow matching gera em paralelo (melhor qualidade musical). MusicGen, Suno, ElevenLabs, todos usam codec + transformer.</p>
+</div>
+</div>
+<div id="outline-container-headline-12" class="outline-3">
+<h3 id="headline-12">
+3D**
+</h3>
+<div id="outline-text-headline-12" class="outline-text-3">
+<p>
+Geração 3D é um problema de duas etapas. Primeiro, gere múltiplas visões 2D consistentes com difusão multi-view (Zero123, MVDream). Depois, ajuste uma representação 3D (Gaussian Splatting: nuvem de ~1M gaussianas com posição, covariância, opacidade e cor harmônica) pra casar com essas visões. O forward render projeta gaussianas 3D em elipses 2D e faz alpha compositing; o backward otimiza os parâmetros por gradiente descendente. Meshy 4 e Rodin Gen-1.5 pra assets de jogos; Hunyuan3D 2.0 pra e-commerce.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-13" class="outline-2">
+<h2 id="headline-13">
+VAR: prevendo escalas, não tokens
+</h2>
+<div id="outline-text-headline-13" class="outline-text-2">
+<p>
+Visual Autoregressive Modeling inverte a lógica. Em vez de gerar tokens de imagem um por um em ordem raster (lento, O(N²) passos), gere escalas progressivamente mais finas. Primeiro, uma grade 1x1 (um token). Depois 2x2. Depois 4x4. Até a resolução final. Cada escala é produzida em paralelo pelo transformer, condicionada em todas as escalas anteriores.</p>
+<p>
+Um tokenizador VQ multi-escala produz K grades de tokens em resoluções crescentes via RVQ residual (cada escala codifica o que as escalas menores não capturaram). Um transformer com atenção scale-causal gera condicionado no histórico de escalas, prevendo todos os tokens da escala atual simultaneamente. Treino é cross-entropy padrão, organizado por escala. Geração leva K ~ 10 passos, comparado a 28-50 do DiT.</p>
+<p>
+VAR demonstrou power-law scaling (como GPT pra texto) em FID no ImageNet: dobrar compute reduz erro pela metade, confiavelmente. É mais rápido que DiT com orçamento de parâmetros equivalente. Variantes condicionadas a texto (HART, VARclip) são pesquisa ativa.</p>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-2">
+<h2 id="headline-14">
+Avaliação: como saber se o modelo presta
+</h2>
+<div id="outline-text-headline-14" class="outline-text-2">
+<p>
+Três métricas imperfeitas triangulam qualidade generativa. FID (Fréchet Inception Distance) mede fidelidade: distância de Fréchet entre distribuições de features Inception-v3 de imagens reais e geradas. Quanto menor, melhor. Precisa de N ≥ 10k amostras. CMMD substitui FID pra domínios fora do ImageNet. FD-DINOv2 oferece alternativa auto-supervisionada.</p>
+<p>
+CLIP score mede aderência ao prompt: similaridade de cosseno entre embedding da imagem e embedding do texto. Quanto maior, melhor. Média sobre 30k pares prompt-imagem. Captura se o modelo gerou o que foi pedido, mas não se o que foi pedido é bonito.</p>
+<p>
+Preferência humana agrega comparações A/B cegas via Elo (Bradley-Terry). LLM-as-judge (GPT-4o, Gemini) escala isso pra milhares de pares por noite. O pipeline de produção: CI roda 500 amostras por PR com FID+CLIP; nightly roda 10k samples com Elo completo; análise de falhas por categoria (mãos, texto, contagem, composição).</p>
+</div>
+</div>
+<div id="outline-container-headline-15" class="outline-2">
+<h2 id="headline-15">
+O que levar disso
+</h2>
+<div id="outline-text-headline-15" class="outline-text-2">
+<p>
+IA generativa em 2026 tem um arco claro:</p>
+<ul>
+<li>VAEs são o compressor universal (todo modelo de difusão latente usa um).</li>
+<li>GANs são as imagens mais nítidas (StyleGAN3, &lt;10ms), mas perderam a guerra de domínio aberto. O treino adversarial sobreviveu como destilação.</li>
+<li>Difusão (DDPM) é o backbone universal: treino com uma linha de MSE, qualidade SOTA. DDIM e DPM-Solver reduziram passos de 1000 pra 20-50.</li>
+<li>Stable Diffusion roda difusão no espaço latente do VAE. U-Net está sendo substituída por DiT. CLIP está sendo substituído por T5-XXL.</li>
+<li>ControlNet adiciona controle espacial. LoRA adiciona controle semântico (10-50 MB). IP-Adapter adiciona referência visual.</li>
+<li>Flow matching endireita a trajetória pra 1-4 passos. Flux.1-schnell é o padrão de produção.</li>
+<li>Vídeo é difusão espaço-temporal com atenção fatorada. Áudio é codec neural + transformer. 3D é multi-view difusão + Gaussian Splatting.</li>
+<li>VAR prevê escalas em vez de tokens, com power-law scaling.</li>
+<li>Avaliação é FID + CLIP score + preferência humana. Nenhum sozinho basta.</li>
+</ul>
+<p>Do ruído à imagem, do prompt ao vídeo, o caminho passa por cada uma dessas ideias. E cada uma delas é, no fundo, aprender a reverter entropia.</p>
+</div>
+</div>
+
+  </div>
+</article>
+
+    </main>
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>01 - AI Engineering from scratch: a fase zero da engenharia de IA — lobovit</title>
+  <link rel="stylesheet" href="/css/main.css?v=3">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
+    <main>
+      
+<article>
+  <header>
+    <h1>01 - AI Engineering from scratch: a fase zero da engenharia de IA</h1>
+    <p class="meta"><time>2026-05-27</time> · <span class="tag">AI</span><span class="tag">setup</span><span class="tag">tooling</span><span class="tag">python</span><span class="tag">go</span><span class="tag">docker</span><span class="tag">linux</span><span class="tag">gpu</span><span class="tag">amd</span><span class="tag">rocm</span><span class="tag">cuda</span><span class="tag">debugging</span></p>
+  </header>
+  <div class="content">
+    
+<p>
+Este artigo é uma parte de uma série de outros artigos que pretendo escrever sobre AI Engineering From Scratch baseados no projeto <a href="https://github.com/rohitg00/ai-engineering-from-scratch">ai-engineering-from-scratch</a> de Rohit Ghumare. Os artigos cobrem de regressão linear a agentes multi-modelo, passando por CNNs (redes convolucionais, as que reconhecem objetos em imagens), transformers (a arquitetura por trás do GPT e do Claude), RAG (Retrieval-Augmented Generation quando você dá documentos de contexto pro LLM antes de perguntar), fine-tuning (ajustar um modelo pré-treinado com seus próprios dados) e inferência em produção (servir o modelo treinado pra usuários reais). E nenhuma delas funciona se o ambiente não estiver pronto.</p>
+<p>
+A stack que vamos usar é Python + Go. Python é o rei do ecossistema de IA, PyTorch, JAX, transformers, datasets, Jupyter, tudo vive aqui. Go é a linguagem pra construir APIs, agentes, servidores MCP e tudo que precisa ser rápido, compilado e deployável com um binário só. Duas linguagens, zero gordura.</p>
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+O ambiente de desenvolvimento
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
+<p>
+Antes de qualquer modelo, antes de qualquer dataset, você precisa de um lugar onde o código <em>roda</em>. Não adianta ter o melhor notebook do mundo se o Python não encontra o NumPy, ou se seu agente em Go não compila.</p>
+<p>
+O que vamos fazer aqui: instalar Python (com <code>uv</code>) e Go, nessa ordem. O objetivo é chegar no fim com um terminal onde <code>python</code> e <code>go</code> respondem sem erro e você entende <em>por que</em> cada um está ali. Toda stack de engenharia de IA tem camadas. Se uma falha, a culpa cai na de cima e você nunca sabe onde foi o problema:</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph TD
+    A[&#34;4. Bibliotecas de IA&lt;br/&gt;PyTorch, JAX, transformers, etc.&#34;] --&gt; B[&#34;3. Runtimes de linguagem&lt;br/&gt;Python 3.12+, Go 1.23+&#34;]
+    B --&gt; C[&#34;2. Gerenciadores de pacote&lt;br/&gt;uv, go mod&#34;]
+    C --&gt; D[&#34;1. Fundação do sistema&lt;br/&gt;OS, shell, git, editor, drivers GPU&#34;]
+
+    classDef l4 fill:#1a1c2e,stroke:#4a4e6b,color:#b8bcd0
+    classDef l3 fill:#1e2040,stroke:#525580,color:#c0c4d8
+    classDef l2 fill:#222450,stroke:#5a5e90,color:#c8cce0
+    classDef l1 fill:#262860,stroke:#6266a0,color:#d0d4e8
+    class A l4
+    class B l3
+    class C l2
+    class D l1</code></pre>
+</div>
+<p>
+Em Python, ao menos neste experimento, prefira usar <code>uv</code> ao invés de <code>pip</code> por questão de praticidade e performance:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">curl -LsSf https://astral.sh/uv/install.sh <span class="p">|</span> sh
+</span></span><span class="line"><span class="cl">uv python install 3.12
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">uv venv
+</span></span><span class="line"><span class="cl"><span class="nb">source</span> .venv/bin/activate  <span class="c1"># ou .venv\Scripts\activate no Windows</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">uv pip install numpy matplotlib jupyter</span></span></code></pre></div>
+</div>
+<p>
+Verifique se tudo subiu:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">sys</span><span class="p">;</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Python </span><span class="si">{</span><span class="n">sys</span><span class="o">.</span><span class="n">version</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span><span class="p">;</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;NumPy </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">__version__</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Vector: </span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s2">, dot: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-2">
+<h2 id="headline-2">
+Go
+</h2>
+<div id="outline-text-headline-2" class="outline-text-2">
+<p>
+Python cuida dos modelos. Go cuida de todo o resto: APIs de LLM, agentes autônomos, servidores MCP, ferramentas de linha de comando, automação de infra. É a linguagem que você usa quando precisa de performance, deploy simples e zero dependência externa.</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># Linux/macOS</span>
+</span></span><span class="line"><span class="cl">curl -sSL https://go.dev/dl/go1.23.4.linux-amd64.tar.gz <span class="p">|</span> sudo tar -C /usr/local -xz
+</span></span><span class="line"><span class="cl"><span class="nb">echo</span> <span class="s1">&#39;export PATH=$PATH:/usr/local/go/bin&#39;</span> &gt;&gt; ~/.bashrc
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Windows (PowerShell como admin)</span>
+</span></span><span class="line"><span class="cl">winget install GoLang.Go.1.23
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Ou via gvm (gerenciador de versões, similar ao fnm)</span>
+</span></span><span class="line"><span class="cl">bash &lt; &lt;<span class="o">(</span>curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binds/gvm_install<span class="o">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">source</span> ~/.gvm/scripts/gvm
+</span></span><span class="line"><span class="cl">gvm install go1.23.4
+</span></span><span class="line"><span class="cl">gvm use go1.23.4</span></span></code></pre></div>
+</div>
+<p>
+Verifique:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">go version
+</span></span><span class="line"><span class="cl"><span class="c1"># go version go1.23.4 linux/amd64</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">mkdir -p ~/hello <span class="o">&amp;&amp;</span> <span class="nb">cd</span> ~/hello
+</span></span><span class="line"><span class="cl">go mod init hello
+</span></span><span class="line"><span class="cl">cat &gt; main.go <span class="s">&lt;&lt; &#39;EOF&#39;
+</span></span></span><span class="line"><span class="cl"><span class="s">package main
+</span></span></span><span class="line"><span class="cl"><span class="s">import &#34;fmt&#34;
+</span></span></span><span class="line"><span class="cl"><span class="s">func main() { fmt.Println(&#34;Go pronto pra IA.&#34;) }
+</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
+</span></span><span class="line"><span class="cl">go run main.go</span></span></code></pre></div>
+</div>
+<blockquote>
+<p><em>Em miúdos:</em> <code>Go</code> (ou Golang) foi criada pelo Google pra resolver problemas de infraestrutura em escala. Ela compila em segundos, gera um binário estático (sem dependências externas) e tem concorrência nativa com goroutines, perfeito pra agentes que fazem dezenas de chamadas de API em paralelo. <code>MCP</code> (Model Context Protocol) é um protocolo aberto da Anthropic que padroniza como agentes de IA se conectam a ferramentas externas (bancos de dados, APIs, sistemas de arquivos), Go é uma das linguagens mais usadas pra implementar servidores MCP. <code>Go modules</code> (<code>go mod</code>) é o gerenciador de dependências nativo do Go, similar ao <code>uv</code> no Python.</p>
+</blockquote>
+<blockquote>
+<p><em>Saiba mais:</em> se seu terminal diz &#34;command not found&#34; depois de instalar, você provavelmente esqueceu de reiniciar o shell ou rodar o <code>source</code> do profile. Acontece com todo mundo.</p>
+</blockquote>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-2">
+<h2 id="headline-3">
+GPU: local, nuvem ou Colab?
+</h2>
+<div id="outline-text-headline-3" class="outline-text-2">
+<p>
+Você já tem Python e Go rodando. Agora a pergunta que define se seu treino vai durar 10 minutos ou 8 horas: <em>onde está sua GPU?</em></p>
+<p>
+O que vamos fazer aqui: verificar se você tem GPU local tanto NVIDIA quanto AMD, aprender a usar o Google Colab como alternativa gratuita, e rodar um benchmark pra ver o speedup real. No fim, você vai saber qual opção usar e como instalar o PyTorch certo pro seu hardware.</p>
+<p>
+Treinar em CPU é ok pra aprender. Treinar pra valer em CPU é dormir 8 horas esperando um <em>epoch</em> (uma passada completa do modelo por todo o dataset de treino se seu dataset tem 50 mil imagens, uma epoch significa que o modelo viu cada uma delas uma vez). GPU acelera isso por um fator de 50 a 200x. Você tem três opções e nenhuma é universalmente melhor:</p>
+<table>
+<thead>
+<tr>
+<th>Opção</th>
+<th>Custo</th>
+<th>Setup</th>
+<th>Ideal para</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GPU local (NVIDIA ou AMD)</td>
+<td>$0 (já é sua)</td>
+<td>Instalar driver + PyTorch</td>
+<td>Uso diário, datasets grandes</td>
+</tr>
+<tr>
+<td>Google Colab (T4 grátis)</td>
+<td>$0</td>
+<td>Nenhum</td>
+<td>Experimentos rápidos, sem GPU em casa</td>
+</tr>
+<tr>
+<td>Cloud GPU (Lambda, RunPod)</td>
+<td>$0.20–2.00/h</td>
+<td>SSH + instalação</td>
+<td>Treinamento pesado, modelos grandes</td>
+</tr>
+</tbody>
+</table>
+<p>
+<strong><strong>Se você tem NVIDIA</strong></strong>, verifique com:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">nvidia-smi</span></span></code></pre></div>
+</div>
+<p>
+Instale o PyTorch com CUDA:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124</span></span></code></pre></div>
+</div>
+<p>
+<strong><strong>Se você tem AMD</strong></strong> (como eu), verifique com:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">rocm-smi
+</span></span><span class="line"><span class="cl"><span class="c1"># ou, se não tiver o rocm-smi instalado:</span>
+</span></span><span class="line"><span class="cl">rocminfo <span class="p">|</span> grep -E <span class="s2">&#34;Name:|VRAM&#34;</span></span></span></code></pre></div>
+</div>
+<p>
+Instale o PyTorch com ROCm:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.0</span></span></code></pre></div>
+</div>
+<p>
+O bonito é que, depois de instalado, o código Python é <em>idêntico</em> pros dois. O PyTorch trata ROCm como um backend CUDA-like, você continua usando <code>torch.cuda.is_available()</code> e <code>model.to(&#34;cuda&#34;)</code>, e ele resolve pra você. Não precisa de <code>if nvidia elif amd</code> no código. E no Python, o teste pra ambos:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">torch</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;GPU disponível: </span><span class="si">{</span><span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;GPU: </span><span class="si">{</span><span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">get_device_name</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;VRAM: </span><span class="si">{</span><span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">get_device_properties</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">total_memory</span> <span class="o">/</span> <span class="mf">1e9</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> GB&#34;</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<p>
+O benchmark que compara CPU e GPU na multiplicação de matrizes 5000x5000:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">torch</span><span class="o">,</span> <span class="nn">time</span>
+</span></span><span class="line"><span class="cl"><span class="n">size</span> <span class="o">=</span> <span class="mi">5000</span>
+</span></span><span class="line"><span class="cl"><span class="n">a_cpu</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">size</span><span class="p">);</span> <span class="n">b_cpu</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="n">c_cpu</span> <span class="o">=</span> <span class="n">a_cpu</span> <span class="o">@</span> <span class="n">b_cpu</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;CPU: </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">    <span class="n">a_gpu</span> <span class="o">=</span> <span class="n">a_cpu</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&#34;cuda&#34;</span><span class="p">);</span> <span class="n">b_gpu</span> <span class="o">=</span> <span class="n">b_cpu</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&#34;cuda&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="n">c_gpu</span> <span class="o">=</span> <span class="n">a_gpu</span> <span class="o">@</span> <span class="n">b_gpu</span>
+</span></span><span class="line"><span class="cl">    <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;GPU: </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Speedup: </span><span class="si">{</span><span class="n">cpu_time</span> <span class="o">/</span> <span class="n">gpu_time</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">x&#34;</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<p>
+Na primeira vez que eu rodei isso na minha AMD, o speedup foi de 140x. Depois disso você nunca mais quer treinar em CPU.</p>
+<blockquote>
+<p><em>Em miúdos:</em> <code>CUDA</code> é a plataforma de computação paralela da NVIDIA, é ela que deixa você rodar código na GPU em vez da CPU. <code>ROCm</code> (Radeon Open Compute) é o equivalente da AMD, mesma ideia, implementação diferente, mesma API no PyTorch. <code>cuDNN</code> é uma biblioteca otimizada de redes neurais que roda em cima do CUDA. A AMD tem a <code>MIOpen</code> como equivalente. <code>VRAM</code> é a memória de vídeo da GPU, aquele número em GB que limita o tamanho do modelo que você consegue treinar. E <code>device-agnostic</code> é o padrão de código que pergunta &#34;tem GPU?&#34; antes de mandar o modelo pra lá, o <code>model.to(device)</code> que você vai escrever umas mil vezes.</p>
+</blockquote>
+<p>
+<strong>Sem GPU?</strong></p>
+<p>
+A maioria dos tutoriais e experimentos iniciais roda em CPU. Os mais pesados que precisam de GPU geralmente incluem links pro Colab. O device-agnostic pattern que você vai usar o tempo inteiro:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&#34;cuda&#34;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&#34;cpu&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">model</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-2">
+<h2 id="headline-4">
+APIs e chaves: o padrão que nunca muda
+</h2>
+<div id="outline-text-headline-4" class="outline-text-2">
+<p>
+Modelos grandes como GPT e Claude não rodam no seu laptop, eles vivem em servidores, e você conversa com eles via API. É como pedir comida por aplicativo: você faz o pedido (request), o restaurante prepara (processamento) e entrega (response). A chave de API é seu endereço de entrega, sem ela, ninguém sabe quem está pedindo.</p>
+<p>
+O que vamos fazer aqui: guardar chaves com segurança (nunca no código!), fazer a primeira chamada a um LLM usando Python, e entender o que acontece por baixo dos panos quando você usa um SDK. No fim, você vai saber debugar os quatro erros HTTP mais comuns sem precisar do Google.</p>
+<p>
+Quando você começar a trabalhar com LLMs, vai chamar APIs da Anthropic, OpenAI e Google. Mais adiante, quando estiver construindo agentes autônomos, essas chamadas vão acontecer em loop. Toda API funciona do mesmo jeito:</p>
+<ol>
+<li>Um endpoint (URL)</li>
+<li>Uma chave (autenticação)</li>
+<li>Um corpo de requisição (o que você quer)</li>
+<li>Um corpo de resposta (o que volta)</li>
+</ol>
+<p>A primeira chamada, via SDK:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">anthropic</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">client</span> <span class="o">=</span> <span class="n">anthropic</span><span class="o">.</span><span class="n">Anthropic</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">messages</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="n">model</span><span class="o">=</span><span class="s2">&#34;claude-sonnet-4-20250514&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="n">max_tokens</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="n">messages</span><span class="o">=</span><span class="p">[{</span><span class="s2">&#34;role&#34;</span><span class="p">:</span> <span class="s2">&#34;user&#34;</span><span class="p">,</span> <span class="s2">&#34;content&#34;</span><span class="p">:</span> <span class="s2">&#34;O que é uma rede neural em uma frase?&#34;</span><span class="p">}]</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<p>
+E a versão HTTP crua, que é o que o SDK faz por baixo e você precisa entender pra debugar:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">urllib.request</span><span class="o">,</span> <span class="nn">json</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">url</span> <span class="o">=</span> <span class="s2">&#34;https://api.anthropic.com/v1/messages&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;Content-Type&#34;</span><span class="p">:</span> <span class="s2">&#34;application/json&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;x-api-key&#34;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&#34;ANTHROPIC_API_KEY&#34;</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;anthropic-version&#34;</span><span class="p">:</span> <span class="s2">&#34;2023-06-01&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="n">body</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;model&#34;</span><span class="p">:</span> <span class="s2">&#34;claude-sonnet-4-20250514&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;max_tokens&#34;</span><span class="p">:</span> <span class="mi">256</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="s2">&#34;messages&#34;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&#34;role&#34;</span><span class="p">:</span> <span class="s2">&#34;user&#34;</span><span class="p">,</span> <span class="s2">&#34;content&#34;</span><span class="p">:</span> <span class="s2">&#34;O que é uma rede neural em uma frase?&#34;</span><span class="p">}],</span>
+</span></span><span class="line"><span class="cl"><span class="p">})</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">req</span> <span class="o">=</span> <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">Request</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">body</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&#34;POST&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">with</span> <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">req</span><span class="p">)</span> <span class="k">as</span> <span class="n">resp</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">result</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&#34;content&#34;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">&#34;text&#34;</span><span class="p">])</span></span></span></code></pre></div>
+</div>
+<p>
+Regra número um: <em>nunca</em> ponha chave de API no código. Use variáveis de ambiente ou um <code>.env</code> (que vai pro <code>.gitignore</code>). Regra número dois: leia a mensagem de erro. <code>401</code> é chave errada, <code>429</code> é rate limit, <code>400</code> é corpo malformado. Os erros de API são surpreendentemente informativos quando você para pra ler.</p>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>Quando precisa</th>
+<th>Crédito grátis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Anthropic (Claude)</td>
+<td>Agentes, ferramentas, LLMs</td>
+<td>$5 no cadastro</td>
+</tr>
+<tr>
+<td>OpenAI</td>
+<td>Comparação, benchmarks</td>
+<td>$5 no cadastro</td>
+</tr>
+<tr>
+<td>Hugging Face</td>
+<td>Modelos, datasets, embeddings</td>
+<td>Grátis</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><em>Em miúdos:</em> <code>LLM</code> (Large Language Model) é o modelo de linguagem grande, GPT, Claude, Gemini. <code>SDK</code> (Software Development Kit) é uma biblioteca pronta que empacota as chamadas HTTP pra você não precisar escrever <code>urllib.request</code> manualmente. <code>Rate limit</code> é o limite de requisições por minuto que a API impõe pra evitar abuso; quando você estoura, recebe HTTP 429 e precisa esperar. <code>Token</code>, no contexto de APIs, é a unidade de cobrança: cada palavra (ou pedaço de palavra) que você manda ou recebe conta como token. O <code>max_tokens=256</code> do código acima significa &#34;não me cobre mais do que 256 tokens de resposta&#34;. E <code>variável de ambiente</code> é aquela configuração que fica fora do código, você define no terminal com <code>export</code> ou num arquivo <code>.env</code>, e o programa lê de lá. Isso evita que sua chave secreta vá parar no GitHub.</p>
+</blockquote>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-2">
+<h2 id="headline-5">
+Jupyter: o laboratório de IA
+</h2>
+<div id="outline-text-headline-5" class="outline-text-2">
+<p>
+Toda competição do Kaggle, todo paper com código, todo tutorial de fine-tuning usa Jupyter. Não é frescura, é que notebook deixa você rodar código em pedaços, ver output inline e iterar sem rerodar o script inteiro.</p>
+<p>
+Mas notebook também é uma arma carregada. Os três tiros no pé mais comuns:</p>
+<ul>
+<li><em>Execução fora de ordem.</em> Você roda célula 5, depois a 2, depois a 7. Funciona na sua máquina. Quebra quando alguém roda de cima pra baixo. Corrige com <code>Kernel &gt; Restart &amp; Run All</code>.</li>
+<li><em>Estado fantasma.</em> Você deleta uma célula, mas a variável que ela criou continua na memória. O notebook parece limpo, mas depende de um fantasma. Reinicie o kernel regularmente.</li>
+<li><em>Vazamento de memória.</em> Você carrega um dataset de 4 GB, treina um modelo, carrega outro dataset. Nada é liberado. <code>del variavel</code> e <code>gc.collect()</code>, ou reinicie o kernel.</li>
+</ul>
+<p>Os magic commands que salvam tempo:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="o">%</span><span class="n">timeit</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">10000</span><span class="p">)</span>       <span class="c1"># microbenchmark (roda N vezes e faz média)</span>
+</span></span><span class="line"><span class="cl"><span class="o">%%</span><span class="n">time</span>                                <span class="c1"># mede a célula inteira (uma vez)</span>
+</span></span><span class="line"><span class="cl"><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="o">%</span><span class="n">matplotlib</span> <span class="n">inline</span>                    <span class="c1"># plots renderizam direto no notebook</span>
+</span></span><span class="line"><span class="cl"><span class="err">!</span><span class="n">pip</span> <span class="n">install</span> <span class="n">scikit</span><span class="o">-</span><span class="n">learn</span>             <span class="c1"># shell command sem sair do notebook</span>
+</span></span><span class="line"><span class="cl"><span class="o">%</span><span class="n">env</span> <span class="n">CUDA_VISIBLE_DEVICES</span>             <span class="c1"># checa variável de ambiente</span></span></span></code></pre></div>
+</div>
+<p>
+A regra de ouro: <em>explore em notebooks, envie em scripts</em>. Prototipe no <code>.ipynb</code>, depois extraia o que funciona pra um <code>.py</code> e importe de volta.</p>
+<blockquote>
+<p><em>Em miúdos:</em> <code>Kernel</code> é o processo Python que roda por trás do notebook, é ele que executa suas células e mantém as variáveis em memória. Toda vez que você reinicia o kernel, perde as variáveis e precisa rerodar as células. <code>Magic commands</code> são comandos especiais do Jupyter que começam com <code>%</code> (linha) ou <code>%%</code> (célula inteira), eles não são Python, são atalhos do ambiente. <code>%timeit</code> mede performance rodando o código várias vezes, <code>%%time</code> mede uma vez só, <code>%matplotlib inline</code> faz gráficos aparecerem dentro do notebook. E <code>!pip install</code> é um escape pro shell: o <code>!</code> manda o comando pro terminal sem sair do notebook. <code>.ipynb</code> é o formato de arquivo do Jupyter, um JSON que contém as células, os outputs e os metadados.</p>
+</blockquote>
+<blockquote>
+<p><em>Saiba mais:</em> o Colab é um Jupyter grátis na nuvem com GPU T4. Vai em <a href="https://colab.research.google.com">colab.research.google.com</a>, Runtime &gt; Change runtime type &gt; T4 GPU. Sessões expiram depois de 90 minutos de inatividade no tier gratuito. Monte o Google Drive pra persistência: <code>from google.colab import drive; drive.mount(&#39;/content/drive&#39;)</code>.</p>
+</blockquote>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-2">
+<h2 id="headline-6">
+Ambientes Python: o fim do dependency hell
+</h2>
+<div id="outline-text-headline-6" class="outline-text-2">
+<p>
+Você instala PyTorch 2.4 pra um projeto de fine-tuning. Semana seguinte, outro projeto precisa de PyTorch 2.1 porque o build CUDA é pinado. Você faz upgrade global. O primeiro projeto quebra. Você faz downgrade. O segundo quebra.</p>
+<p>
+Isso se chama <em>dependency hell</em> e é endêmico em IA porque PyTorch, JAX e TensorFlow cada um embarca seus próprios bindings CUDA. A cura: cada projeto no seu próprio ambiente isolado.</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph TD
+    subgraph sem[&#34;Sem virtualenv&#34;]
+        SP[System Python] --&gt; T24[&#34;torch 2.4 (CUDA 12.4)&#34;]
+        SP --&gt; T21[&#34;torch 2.1 (CUDA 11.8)&#34;]
+        SP --&gt; CONFLITO[&#34;CONFLITO: só uma versão pode existir&#34;]
+    end
+    subgraph com[&#34;Com virtualenv&#34;]
+        PA[&#34;Projeto A (.venv/)&#34;] --&gt; P1[&#34;torch 2.4 (CUDA 12.4)&#34;]
+        PB[&#34;Projeto B (.venv/)&#34;] --&gt; P2[&#34;torch 2.1 (CUDA 11.8)&#34;]
+    end
+
+    classDef base fill:#1e1e30,stroke:#4a4e6b,color:#b8bcd0
+    classDef dep fill:#222240,stroke:#525580,color:#c0c4d8
+    classDef conflict fill:#301a1f,stroke:#8b4a5a,color:#e0b8c0
+    classDef good fill:#1a2a22,stroke:#4a7a5a,color:#b8d8c0
+    class SP,PA,PB base
+    class T24,T21,P1,P2 dep
+    class CONFLITO conflict</code></pre>
+</div>
+<p>
+Três opções, uma recomendação:</p>
+<table>
+<thead>
+<tr>
+<th>Ferramenta</th>
+<th>Quando usar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uv venv</code> (recomendado)</td>
+<td>Sempre. 10-100x mais rápido que pip.</td>
+</tr>
+<tr>
+<td><code>venv</code> (built-in)</td>
+<td>Quando não pode instalar nada. Vem com Python.</td>
+</tr>
+<tr>
+<td><code>conda</code></td>
+<td>Quando precisa de CUDA toolkit específico sem instalar no sistema.</td>
+</tr>
+</tbody>
+</table>
+<p>
+Uma regra: se você usa conda, use <em>só</em> conda pra todos os pacotes daquele ambiente. Misturar <code>pip install</code> dentro de conda é receita pra conflito.</p>
+<p>
+O <code>pyproject.toml</code> substitui <code>setup.py</code>, <code>setup.cfg</code> e <code>requirements.txt</code> em um arquivo só:</p>
+<div class="src src-toml">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-toml" data-lang="toml"><span class="line"><span class="cl"><span class="p">[</span><span class="nx">project</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">name</span> <span class="p">=</span> <span class="s2">&#34;meu-projeto-ia&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">version</span> <span class="p">=</span> <span class="s2">&#34;0.1.0&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">requires-python</span> <span class="p">=</span> <span class="s2">&#34;&gt;=3.11&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">dependencies</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;numpy&gt;=1.26&#34;</span><span class="p">,</span> <span class="s2">&#34;matplotlib&gt;=3.8&#34;</span><span class="p">,</span> <span class="s2">&#34;scikit-learn&gt;=1.4&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">[</span><span class="nx">project</span><span class="p">.</span><span class="nx">optional-dependencies</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">torch</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;torch&gt;=2.3&#34;</span><span class="p">,</span> <span class="s2">&#34;torchvision&gt;=0.18&#34;</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="nx">llm</span> <span class="p">=</span> <span class="p">[</span><span class="s2">&#34;anthropic&gt;=0.39&#34;</span><span class="p">,</span> <span class="s2">&#34;openai&gt;=1.50&#34;</span><span class="p">]</span></span></span></code></pre></div>
+</div>
+<p>
+E o lockfile (<code>uv.lock</code> ou <code>requirements.lock</code>) garante que todo mundo que clonar o repositório instale exatamente as mesmas versões. Comite o lockfile. Não comite o <code>.venv/</code> (200 MB a 2 GB de arquivos não-portáteis).</p>
+<blockquote>
+<p><em>Em miúdos:</em> <code>Dependency hell</code> (&#34;inferno de dependências&#34;) é quando dois projetos precisam de versões diferentes da mesma biblioteca e você só pode ter uma instalada no sistema. O virtualenv resolve isso dando a cada projeto sua própria cópia isolada do Python e das bibliotecas. <code>Lockfile</code> é o arquivo que congela todas as versões exatas (incluindo dependências das dependências) pra garantir que daqui a seis meses, quando você clonar o projeto de novo, vai instalar exatamente as mesmas versões de tudo. <code>Bindings CUDA</code> são a ponte entre o PyTorch e o CUDA: cada versão do PyTorch é compilada contra uma versão específica do CUDA (11.8, 12.1, 12.4…), e se você instalar o PyTorch errado pra sua GPU, o <code>torch.cuda.is_available()</code> volta <code>False</code> e você treina em CPU sem saber por quê.</p>
+</blockquote>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-2">
+<h2 id="headline-7">
+Docker: &#34;na minha máquina funciona&#34;
+</h2>
+<div id="outline-text-headline-7" class="outline-text-2">
+<p>
+Você treinou um modelo no seu laptop com PyTorch 2.3, CUDA 12.4 e Python 3.12. Seu colega tem PyTorch 2.1, CUDA 11.8 e Python 3.10. O modelo quebra na máquina dele. O Dockerfile funciona nas duas.</p>
+<p>
+Projetos de IA são pesadelos de dependência. Uma stack típica inclui Python, PyTorch, drivers CUDA, cuDNN, bibliotecas C de sistema e pacotes especializados como <code>flash-attn</code> que exigem versões exatas de compilador. Docker empacota tudo isso numa imagem que roda idêntica em qualquer lugar.</p>
+<p>
+O Dockerfile mínimo pra desenvolvimento com GPU:</p>
+<div class="src src-dockerfile">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-dockerfile" data-lang="dockerfile"><span class="line"><span class="cl"><span class="k">FROM</span><span class="w"> </span><span class="s">nvidia/cuda:12.4.1-devel-ubuntu22.04</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="k">ENV</span> <span class="nv">DEBIAN_FRONTEND</span><span class="o">=</span>noninteractive
+</span></span><span class="line"><span class="cl"><span class="k">ENV</span> <span class="nv">PYTHONUNBUFFERED</span><span class="o">=</span><span class="m">1</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">RUN</span> apt-get update <span class="o">&amp;&amp;</span> apt-get install -y --no-install-recommends <span class="se">\
+</span></span></span><span class="line"><span class="cl">    python3.12 python3.12-venv python3.12-dev python3-pip <span class="se">\
+</span></span></span><span class="line"><span class="cl">    git curl build-essential <span class="se">\
+</span></span></span><span class="line"><span class="cl">    <span class="o">&amp;&amp;</span> rm -rf /var/lib/apt/lists/*<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="k">RUN</span> python -m pip install --no-cache-dir <span class="se">\
+</span></span></span><span class="line"><span class="cl">    torch torchvision torchaudio <span class="se">\
+</span></span></span><span class="line"><span class="cl">    --index-url https://download.pytorch.org/whl/cu124<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="k">RUN</span> python -m pip install --no-cache-dir <span class="se">\
+</span></span></span><span class="line"><span class="cl">    numpy pandas scikit-learn matplotlib jupyter transformers datasets<span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="k">WORKDIR</span><span class="w"> </span><span class="s">/workspace</span><span class="err">
+</span></span></span><span class="line"><span class="cl"><span class="k">VOLUME</span> <span class="p">[</span><span class="s2">&#34;/workspace&#34;</span><span class="p">,</span> <span class="s2">&#34;/models&#34;</span><span class="p">]</span></span></span></code></pre></div>
+</div>
+<p>
+Builda e roda (NVIDIA):</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">docker build -t ai-dev .
+</span></span><span class="line"><span class="cl">docker run --rm -it --gpus all <span class="se">\
+</span></span></span><span class="line"><span class="cl">    -v <span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/workspace <span class="se">\
+</span></span></span><span class="line"><span class="cl">    -v ~/models:/models <span class="se">\
+</span></span></span><span class="line"><span class="cl">    ai-dev python -c <span class="s2">&#34;import torch; print(torch.cuda.is_available())&#34;</span></span></span></code></pre></div>
+</div>
+<p>
+E pra AMD com ROCm (o <code>--device</code> expõe a GPU sem precisar do NVIDIA Container Toolkit):</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">docker build -t ai-dev-amd -f- . <span class="s">&lt;&lt;&#39;EOF&#39;
+</span></span></span><span class="line"><span class="cl"><span class="s">FROM ubuntu:22.04
+</span></span></span><span class="line"><span class="cl"><span class="s">ENV DEBIAN_FRONTEND=noninteractive
+</span></span></span><span class="line"><span class="cl"><span class="s">RUN apt-get update &amp;&amp; apt-get install -y --no-install-recommends \
+</span></span></span><span class="line"><span class="cl"><span class="s">    python3.12 python3.12-venv python3.12-dev python3-pip git curl \
+</span></span></span><span class="line"><span class="cl"><span class="s">    &amp;&amp; rm -rf /var/lib/apt/lists/*
+</span></span></span><span class="line"><span class="cl"><span class="s">RUN python3 -m pip install --no-cache-dir \
+</span></span></span><span class="line"><span class="cl"><span class="s">    torch torchvision torchaudio \
+</span></span></span><span class="line"><span class="cl"><span class="s">    --index-url https://download.pytorch.org/whl/rocm6.0
+</span></span></span><span class="line"><span class="cl"><span class="s">WORKDIR /workspace
+</span></span></span><span class="line"><span class="cl"><span class="s">VOLUME [&#34;/workspace&#34;, &#34;/models&#34;]
+</span></span></span><span class="line"><span class="cl"><span class="s">EOF</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">docker run --rm -it <span class="se">\
+</span></span></span><span class="line"><span class="cl">    --device<span class="o">=</span>/dev/kfd --device<span class="o">=</span>/dev/dri <span class="se">\
+</span></span></span><span class="line"><span class="cl">    -v <span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/workspace <span class="se">\
+</span></span></span><span class="line"><span class="cl">    -v ~/models:/models <span class="se">\
+</span></span></span><span class="line"><span class="cl">    ai-dev-amd python -c <span class="s2">&#34;import torch; print(torch.cuda.is_available())&#34;</span></span></span></code></pre></div>
+</div>
+<p>
+Os volumes são críticos. Seus modelos de 14 GB não podem viver dentro do container, eles morrem junto com ele. Monte um diretório do host e carregue de lá:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">transformers</span> <span class="kn">import</span> <span class="n">AutoModel</span>
+</span></span><span class="line"><span class="cl"><span class="n">model</span> <span class="o">=</span> <span class="n">AutoModel</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s2">&#34;/models/llama-7b&#34;</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<p>
+Três padrões de container que você vai encontrar:</p>
+<table>
+<thead>
+<tr>
+<th>Container</th>
+<th>Tamanho</th>
+<th>Quando usar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dev</td>
+<td>Grande (toolkit completo, Jupyter)</td>
+<td>Desenvolvimento e experimentação</td>
+</tr>
+<tr>
+<td>Training</td>
+<td>Médio (só o script e dependências)</td>
+<td>Cluster GPU, sem editor</td>
+</tr>
+<tr>
+<td>Inference</td>
+<td>Pequeno (otimizado pra servir)</td>
+<td>Produção, atrás de load balancer</td>
+</tr>
+</tbody>
+</table>
+<p>
+E o Docker Compose pra aplicações multi-serviço. Pra NVIDIA:</p>
+<div class="src src-yaml">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="nt">services</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">ai-dev</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">build</span><span class="p">:</span><span class="w"> </span><span class="l">.</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">deploy</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span><span class="nt">resources</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">        </span><span class="nt">reservations</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">          </span><span class="nt">devices</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">            </span>- <span class="nt">driver</span><span class="p">:</span><span class="w"> </span><span class="l">nvidia</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">count</span><span class="p">:</span><span class="w"> </span><span class="l">all</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">              </span><span class="nt">capabilities</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="l">gpu]</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">volumes</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="l">.:/workspace</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="l">~/models:/models</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">ports</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="s2">&#34;8888:8888&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="nt">qdrant</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l">qdrant/qdrant:v1.12.5</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">ports</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="s2">&#34;6333:6333&#34;</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">    </span><span class="nt">volumes</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="l">qdrant_data:/qdrant/storage</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="nt">volumes</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="l">qdrant_data:</span></span></span></code></pre></div>
+</div>
+<p>
+Pra AMD, troque o bloco <code>deploy</code> por:</p>
+<div class="src src-yaml">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-yaml" data-lang="yaml"><span class="line"><span class="cl"><span class="w">    </span><span class="nt">devices</span><span class="p">:</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="l">/dev/kfd:/dev/kfd</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">      </span>- <span class="l">/dev/dri:/dev/dri</span></span></span></code></pre></div>
+</div>
+<p>
+Um <code>docker compose up -d</code> e seu container de IA enxerga o banco vetorial em <code>http://qdrant:6333</code> pelo nome do serviço. Rede compartilhada, automática, sem configurar IP.</p>
+<blockquote>
+<p><em>Em miúdos:</em> <code>Container</code> é como uma máquina virtual leve: ele isola seu código, runtime, bibliotecas e ferramentas de sistema num pacote que roda idêntico em qualquer lugar, mas compartilha o kernel do sistema operacional, por isso ele inicia em segundos, não em minutos. <code>Imagem</code> é o molde (construído a partir de um Dockerfile); <code>container</code> é a instância rodando da imagem. <code>Volume</code> é um diretório do seu computador real montado dentro do container, essencial pra modelos de 14 GB que você não quer perder quando o container morrer. <code>Inferência</code> é o ato de usar um modelo já treinado pra fazer predições (vs <code>treinamento</code>, que é ensinar o modelo). <code>flash-attn</code> e <code>bitsandbytes</code> são bibliotecas que otimizam atenção (o mecanismo central dos transformers) e quantização (reduzir precisão dos pesos pra caber em menos memória). <code>Vector database</code> como o Qdrant armazena embeddings, representações numéricas de texto, pra buscas por similaridade, o coração do RAG. E pra GPU: NVIDIA usa <code>--gpus all</code> com o NVIDIA Container Toolkit; AMD usa <code>--device=/dev/kfd --device=/dev/dri</code> pra expor a GPU via ROCm.</p>
+</blockquote>
+</div>
+</div>
+<div id="outline-container-headline-8" class="outline-2">
+<h2 id="headline-8">
+Editor: seu copiloto silencioso
+</h2>
+<div id="outline-text-headline-8" class="outline-text-2">
+<p>
+Você passa mais tempo no editor do que dormindo. Um editor mal configurado é atrito constante: sem autocomplete, sem type hints, sem erros inline, formatação manual. O setup certo leva 20 minutos. Pular ele custa 20 minutos todo dia.</p>
+<p>
+O VS Code é a recomendação porque é grátis, roda em todo OS, tem suporte nativo a Jupyter e o ecossistema de extensões cobre tudo. As extensões essenciais:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">code --install-extension ms-python.python
+</span></span><span class="line"><span class="cl">code --install-extension ms-python.vscode-pylance
+</span></span><span class="line"><span class="cl">code --install-extension ms-toolsai.jupyter
+</span></span><span class="line"><span class="cl">code --install-extension eamodio.gitlens
+</span></span><span class="line"><span class="cl">code --install-extension ms-vscode-remote.remote-ssh
+</span></span><span class="line"><span class="cl">code --install-extension ms-python.debugpy
+</span></span><span class="line"><span class="cl">code --install-extension ms-python.black-formatter
+</span></span><span class="line"><span class="cl">code --install-extension charliermarsh.ruff</span></span></code></pre></div>
+</div>
+<p>
+O que cada uma faz: Python (detecção de virtualenv, run/debug), Pylance (type checking rápido, autocomplete), Jupyter (notebooks dentro do VS Code), GitLens (git blame inline), Remote SSH (abre pasta em GPU remota como se fosse local), Debugpy (debug passo a passo), Black (formata ao salvar), Ruff (linting rápido).</p>
+<p>
+As settings que importam pra IA:</p>
+<div class="src src-jsonc">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-jsonc" data-lang="jsonc"><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;python.analysis.typeCheckingMode&#34;</span><span class="p">:</span> <span class="s2">&#34;basic&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;editor.formatOnSave&#34;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;editor.rulers&#34;</span><span class="p">:</span> <span class="p">[</span><span class="mi">88</span><span class="p">,</span> <span class="mi">120</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;notebook.output.scrolling&#34;</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nt">&#34;files.autoSave&#34;</span><span class="p">:</span> <span class="s2">&#34;afterDelay&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
+</div>
+<ul>
+<li><em>Type checking basic</em>: pega argumento errado antes de rodar. Salva horas de debug em shape mismatch de tensor.</li>
+<li><em>Format on save</em>: nunca mais pense em formatação. Black resolve.</li>
+<li><em>Rulers em 88 e 120</em>: Black quebra em 88 colunas. O marker de 120 mostra quando docstrings tão longas.</li>
+<li><em>Notebook output scrolling</em>: loop de treino imprime milhares de linhas. Sem scrolling, o painel explode.</li>
+<li><em>Auto-save</em>: você vai esquecer de salvar. Seu script de treino vai rodar código velho. Auto-save previne.</li>
+</ul>
+<p>O Remote SSH é a extensão mais importante. Você vai treinar em máquinas remotas. Ela deixa você abrir o filesystem remoto, editar arquivos, rodar terminais e debugar como se fosse local. Configura uma vez no <code>~/.ssh/config</code>:</p>
+<div class="src src-conf">
+<pre tabindex="0"><code class="language-conf" data-lang="conf">Host gpu-box
+    HostName 203.0.113.50
+    User ubuntu
+    IdentityFile ~/.ssh/id_ed25519
+    ForwardAgent yes</code></pre>
+</div>
+<p>
+Depois <code>Ctrl+Shift+P &gt; Remote-SSH: Connect to Host &gt; gpu-box</code>.</p>
+<blockquote>
+<p><em>Em miúdos:</em> <code>Type checking</code> (verificação de tipos) é o editor inspecionando seu código <em>antes</em> de rodar pra avisar que você passou uma string onde o modelo espera um tensor, pega shape mismatch antes de queimar 6 horas de treino. <code>Linting</code> é o Ruff ou Pylance analisando seu código por problemas de estilo e bugs comuns (variável não usada, import não utilizado). <code>Format on save</code> é o Black reformatando seu código automaticamente ao salvar, indentação, espaçamento, quebras de linha, pra você nunca mais pensar nisso. E <code>Remote SSH</code> é a extensão que instala um servidor leve na máquina remota e faz o VS Code da sua máquina se comportar como se estivesse rodando lá, você edita, debuga e usa o terminal como se a GPU box fosse local.</p>
+</blockquote>
+<blockquote>
+<p><em>Saiba mais:</em> se você já usa Vim ou Neovim e é produtivo, fique. O setup mínimo pra Python com IA: pyright (type checking via Mason), nvim-lspconfig, molten-nvim (execução estilo notebook), telescope.nvim (busca), none-ls.nvim com black e ruff. Se você <em>não</em> usa Vim, não comece agora. A curva de aprendizado compete com aprender engenharia de IA. Use VS Code.</p>
+</blockquote>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-2">
+<h2 id="headline-9">
+Git: o mínimo que você precisa
+</h2>
+<div id="outline-text-headline-9" class="outline-text-2">
+<p>
+Você vai escrever centenas de arquivos de código. Sem controle de versão, você perde trabalho, quebra coisa sem poder desfazer e não tem como colaborar.</p>
+<p>
+O fluxo diário se resume a cinco comandos:</p>
+<table>
+<thead>
+<tr>
+<th>Comando</th>
+<th>Quando</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>git clone</code></td>
+<td>Clonar o repositório</td>
+</tr>
+<tr>
+<td><code>git add</code> + <code>git commit</code></td>
+<td>Salvar seu progresso</td>
+</tr>
+<tr>
+<td><code>git push</code></td>
+<td>Fazer backup no GitHub</td>
+</tr>
+<tr>
+<td><code>git checkout -b</code></td>
+<td>Testar algo sem quebrar a main</td>
+</tr>
+<tr>
+<td><code>git log --oneline</code></td>
+<td>Ver o que você fez</td>
+</tr>
+</tbody>
+</table>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">git clone https://github.com/rohitg00/ai-engineering-from-scratch.git
+</span></span><span class="line"><span class="cl"><span class="nb">cd</span> ai-engineering-from-scratch
+</span></span><span class="line"><span class="cl">git checkout -b my-progress
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># trabalha nos arquivos, commita seu código</span>
+</span></span><span class="line"><span class="cl">git add meu-modelo.py
+</span></span><span class="line"><span class="cl">git commit -m <span class="s2">&#34;Implementa perceptron do zero&#34;</span>
+</span></span><span class="line"><span class="cl">git push origin my-progress</span></span></code></pre></div>
+</div>
+<p>
+Três coisas pra lembrar: salve sempre (<code>commit</code>), faça backup (<code>push</code>), ramifique pra experimentos (<code>checkout -b</code>). Você não precisa de rebase, cherry-pick ou submodules.</p>
+<p>
+O <code>.gitignore</code> que evita commitar checkpoints e binários:</p>
+<div class="src src-conf">
+<pre tabindex="0"><code class="language-conf" data-lang="conf">*.bin
+*.safetensors
+*.pt
+*.pth
+*.onnx
+.venv/
+__pycache__/</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-10" class="outline-2">
+<h2 id="headline-10">
+Dados: o combustível
+</h2>
+<div id="outline-text-headline-10" class="outline-text-2">
+<p>
+Modelo nenhum aprende sem dado. E dado de IA raramente vem num .csv arrumadinho, vem em formatos diferentes, tamanhos diferentes, de fontes diferentes. Você precisa saber carregar, converter, dividir e versionar tudo isso sem que vire uma bagunça.</p>
+<p>
+O que vamos fazer aqui: usar a biblioteca <code>datasets</code> da Hugging Face pra carregar datasets com uma linha, fazer streaming de arquivos que não cabem no disco, converter entre CSV, JSON, Parquet e Arrow, e criar splits de treino/validação/teste com seed fixa pra resultados reprodutíveis. No fim, você tem um pipeline de dados que funciona igual toda vez que roda.</p>
+<p>
+Modelo nenhum funciona sem dado. O <code>datasets</code> da Hugging Face é a biblioteca padrão pra carregar, fazer streaming, converter formatos e dividir dados:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">datasets</span> <span class="kn">import</span> <span class="n">load_dataset</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">dataset</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span><span class="s2">&#34;imdb&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">dataset</span><span class="p">[</span><span class="s2">&#34;train&#34;</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span></span></span></code></pre></div>
+</div>
+<p>
+Depois do primeiro download, o cache em <code>~/.cache/huggingface/datasets/</code> resolve. Pra datasets grandes demais pra caber em disco, use streaming:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">dataset</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span><span class="s2">&#34;wikimedia/wikipedia&#34;</span><span class="p">,</span> <span class="s2">&#34;20220301.en&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                        <span class="n">split</span><span class="o">=</span><span class="s2">&#34;train&#34;</span><span class="p">,</span> <span class="n">streaming</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">example</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dataset</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="n">example</span><span class="p">[</span><span class="s2">&#34;title&#34;</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="mi">4</span><span class="p">:</span> <span class="k">break</span></span></span></code></pre></div>
+</div>
+<p>
+Streaming carrega linha por linha. A memória fica constante independente do tamanho do dataset.</p>
+<p>
+Formatos e quando usar cada um:</p>
+<table>
+<thead>
+<tr>
+<th>Formato</th>
+<th>Tamanho</th>
+<th>Leitura</th>
+<th>Ideal para</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CSV</td>
+<td>Grande</td>
+<td>Lenta</td>
+<td>Legibilidade humana, planilhas</td>
+</tr>
+<tr>
+<td>JSON</td>
+<td>Grande</td>
+<td>Lenta</td>
+<td>APIs, dados aninhados</td>
+</tr>
+<tr>
+<td>Parquet</td>
+<td>Pequeno</td>
+<td>Rápida</td>
+<td>Analytics, queries colunares</td>
+</tr>
+<tr>
+<td>Arrow</td>
+<td>Pequeno</td>
+<td>Mais rápida</td>
+<td>Processamento em memória (interno do datasets)</td>
+</tr>
+</tbody>
+</table>
+<p>
+Pra IA, Parquet é o melhor formato de armazenamento. Arrow é o que você usa em memória. CSV e JSON são pra intercâmbio.</p>
+<p>
+O split de dados que todo projeto ML precisa:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="n">dataset</span> <span class="o">=</span> <span class="n">load_dataset</span><span class="p">(</span><span class="s2">&#34;imdb&#34;</span><span class="p">,</span> <span class="n">split</span><span class="o">=</span><span class="s2">&#34;train&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">split</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">train_test_split</span><span class="p">(</span><span class="n">test_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">train_val</span> <span class="o">=</span> <span class="n">split</span><span class="p">[</span><span class="s2">&#34;train&#34;</span><span class="p">]</span><span class="o">.</span><span class="n">train_test_split</span><span class="p">(</span><span class="n">test_size</span><span class="o">=</span><span class="mf">0.125</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">train_ds</span> <span class="o">=</span> <span class="n">train_val</span><span class="p">[</span><span class="s2">&#34;train&#34;</span><span class="p">]</span>   <span class="c1"># 80% de 80% = 64%</span>
+</span></span><span class="line"><span class="cl"><span class="n">val_ds</span> <span class="o">=</span> <span class="n">train_val</span><span class="p">[</span><span class="s2">&#34;test&#34;</span><span class="p">]</span>       <span class="c1"># 20% de 80% = 16%</span>
+</span></span><span class="line"><span class="cl"><span class="n">test_ds</span> <span class="o">=</span> <span class="n">split</span><span class="p">[</span><span class="s2">&#34;test&#34;</span><span class="p">]</span>          <span class="c1"># 20%</span></span></span></code></pre></div>
+</div>
+<p>
+Sempre fixe a seed. A mesma seed produz o mesmo split toda vez. Sem seed, cada execução embaralha diferente e você nunca sabe se o modelo melhorou ou se os dados mudaram.</p>
+<p>
+Pra versionar datasets grandes, três opções: <code>.gitignore</code> (pessoal, datasets que você pode refazer download), Git LFS (arquivos grandes no git, 1 GB grátis no GitHub), DVC (controle de versão de dados, integra com S3/GCS). <code>.gitignore</code> resolve na maioria dos casos.</p>
+<blockquote>
+<p><em>Em miúdos:</em> <code>Streaming</code> é carregar dados sob demanda, linha por linha, sem baixar o dataset inteiro, ideal pra datasets de 100 GB que não cabem no seu disco. <code>Seed</code> é a semente do gerador de números aleatórios: fixar a seed (ex: <code>seed=42</code>) faz o embaralhamento ser sempre igual, o que significa que seus resultados são reprodutíveis. <code>Split</code> é a divisão do dataset em treino (o modelo aprende), validação (você ajusta hiperparâmetros) e teste (avaliação final, intocada até o fim). <code>Parquet</code> é um formato colunar comprimido do ecossistema Apache, menor e mais rápido que CSV. <code>Arrow</code> é o formato em memória que o Parquet usa por baixo; a biblioteca <code>datasets</code> da Hugging Face carrega tudo como Arrow internamente pra acesso sem cópia. <code>Git LFS</code> (Large File Storage) troca arquivos grandes por ponteiros no git. <code>DVC</code> (Data Version Control) é tipo git pra dados e modelos, com backend em S3/GCS/Drive.</p>
+</blockquote>
+</div>
+</div>
+<div id="outline-container-headline-11" class="outline-2">
+<h2 id="headline-11">
+Terminal: onde engenheiros de IA vivem
+</h2>
+<div id="outline-text-headline-11" class="outline-text-2">
+<p>
+Treinos rodam no terminal. Logs aparecem no terminal. GPU se monitora no terminal. Servidores remotos se acessam pelo terminal. Se você depende do mouse pra tudo, está deixando velocidade na mesa.</p>
+<p>
+O que vamos fazer aqui: dominar pipes e redirects pra processar logs sem abrir arquivo, usar tmux pra manter treinos rodando depois que você fecha o laptop, monitorar GPU e CPU em tempo real, transferir arquivos pra servidores remotos sem corromper nada, e criar aliases que economizam dezenas de digitações por dia. No fim, o terminal vira uma extensão dos seus dedos, não um obstáculo.</p>
+<p>
+<em>Piping e redirects</em>, o básico que você usa todo dia:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># Conta quantas vezes &#34;loss&#34; aparece no log</span>
+</span></span><span class="line"><span class="cl">cat train.log <span class="p">|</span> grep <span class="s2">&#34;loss&#34;</span> <span class="p">|</span> wc -l
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Extrai só os valores de loss</span>
+</span></span><span class="line"><span class="cl">grep <span class="s2">&#34;loss:&#34;</span> train.log <span class="p">|</span> awk <span class="s1">&#39;{print $NF}&#39;</span> &gt; losses.txt
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Monitora o log em tempo real filtrando erros</span>
+</span></span><span class="line"><span class="cl">tail -f train.log <span class="p">|</span> grep --line-buffered <span class="s2">&#34;ERROR&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Redireciona stdout e stderr pra arquivos diferentes</span>
+</span></span><span class="line"><span class="cl">python train.py &gt; output.log 2&gt; errors.log
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Ou pro mesmo arquivo</span>
+</span></span><span class="line"><span class="cl">python train.py &gt; train_full.log 2&gt;<span class="p">&amp;</span><span class="m">1</span></span></span></code></pre></div>
+</div>
+<p>
+<em>tmux</em>, a ferramenta mais útil pra gerenciar treinos longos. Cria sessões persistentes com múltiplos painéis. Você pode desconectar, ir pra casa, reconectar via SSH e o treino continua rodando:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">tmux new -s training
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Dentro do tmux:</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Ctrl+B, &#34; → divide horizontal</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Ctrl+B, % → divide vertical</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Ctrl+B, setas → navega entre painéis</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># Ctrl+B, d → desconecta (treino continua)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Depois:</span>
+</span></span><span class="line"><span class="cl">tmux attach -t training   <span class="c1"># reconecta</span>
+</span></span><span class="line"><span class="cl">tmux ls                    <span class="c1"># lista sessões</span></span></span></code></pre></div>
+</div>
+<p>
+Um setup típico: painel 1 com <code>python train.py</code>, painel 2 com <code>watch -n1 nvidia-smi</code> (ou <code>watch -n1 rocm-smi</code> pra AMD), painel 3 com <code>tail -f logs/experiment.log</code>. Três coisas rodando, uma janela.</p>
+<p>
+<em>Monitoramento</em>, <code>htop</code> pra processos do sistema. Pra GPU:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># NVIDIA</span>
+</span></span><span class="line"><span class="cl">nvidia-smi
+</span></span><span class="line"><span class="cl">watch -n1 nvidia-smi
+</span></span><span class="line"><span class="cl">nvidia-smi --query-compute-apps<span class="o">=</span>pid,name,used_memory --format<span class="o">=</span>csv
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># AMD</span>
+</span></span><span class="line"><span class="cl">rocm-smi
+</span></span><span class="line"><span class="cl">watch -n1 rocm-smi
+</span></span><span class="line"><span class="cl">rocm-smi --showuse</span></span></code></pre></div>
+</div>
+<p>
+O <code>nvtop</code> também funciona com ambos (NVIDIA e AMD) e mostra barras de uso em tempo real.</p>
+<p>
+<em>SSH e transferência de arquivos</em>, quando você aluga GPU na nuvem:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">ssh user@gpu-box-ip
+</span></span><span class="line"><span class="cl">scp model.pt user@gpu-box-ip:~/models/
+</span></span><span class="line"><span class="cl">scp user@gpu-box-ip:~/results/metrics.json ./
+</span></span><span class="line"><span class="cl">rsync -avz ./data/ user@gpu-box-ip:~/data/   <span class="c1"># melhor que scp pra volumes grandes</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Port forward pra acessar Jupyter/TensorBoard remoto localmente</span>
+</span></span><span class="line"><span class="cl">ssh -L 8888:localhost:8888 user@gpu-box-ip
+</span></span><span class="line"><span class="cl"><span class="c1"># Agora abre localhost:8888 no navegador</span></span></span></code></pre></div>
+</div>
+<p>
+Use <code>rsync</code> em vez de <code>scp</code> pra qualquer coisa grande. Ele só transfere bytes alterados e retoma conexões interrompidas.</p>
+<blockquote>
+<p><em>Em miúdos:</em> <code>stdout</code> (standard output) é a saída normal de um programa, o que aparece no terminal quando tudo funciona. <code>stderr</code> (standard error) é a saída de erro, logs de crash, warnings, exceções. O <code>&gt;</code> redireciona stdout pra um arquivo; <code>2&gt;</code> redireciona stderr. O pipe <code>|</code> conecta a saída de um comando à entrada do próximo, por isso <code>cat log | grep &#34;loss&#34;</code> funciona: o <code>cat</code> imprime o arquivo e o <code>grep</code> filtra o que recebeu. <code>Port forward</code> (encaminhamento de porta) cria um túnel SSH que mapeia uma porta do servidor remoto pra uma porta local, como se o serviço remoto estivesse rodando na sua máquina. <code>Alias</code> é um apelido que você dá pra um comando longo no seu <code>.bashrc</code> pra digitar menos.</p>
+</blockquote>
+<p>
+Os aliases que economizam digitação (adicione ao <code>~/.bashrc</code> ou <code>~/.zshrc</code>):</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># NVIDIA</span>
+</span></span><span class="line"><span class="cl"><span class="nb">alias</span> <span class="nv">gpu</span><span class="o">=</span><span class="s1">&#39;nvidia-smi --query-gpu=index,name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader&#39;</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># AMD</span>
+</span></span><span class="line"><span class="cl"><span class="nb">alias</span> <span class="nv">gpu</span><span class="o">=</span><span class="s1">&#39;rocm-smi --showuse --csv&#39;</span>
+</span></span><span class="line"><span class="cl"><span class="nb">alias</span> <span class="nv">killtraining</span><span class="o">=</span><span class="s1">&#39;pkill -f &#34;python.*train&#34;&#39;</span>
+</span></span><span class="line"><span class="cl"><span class="nb">alias</span> <span class="nv">ae</span><span class="o">=</span><span class="s1">&#39;source .venv/bin/activate&#39;</span>
+</span></span><span class="line"><span class="cl"><span class="nb">alias</span> <span class="nv">watchloss</span><span class="o">=</span><span class="s1">&#39;tail -f logs/*.log | grep --line-buffered &#34;loss&#34;&#39;</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-12" class="outline-2">
+<h2 id="headline-12">
+Linux pra sobreviver
+</h2>
+<div id="outline-text-headline-12" class="outline-text-2">
+<p>
+Você desenvolve no macOS ou Windows. Mas no momento que você aluga uma GPU na nuvem, SSH vai te jogar num Ubuntu. Sem interface gráfica, sem Finder, sem Explorer, só você, o cursor piscando e a pressão de estar pagando por hora.</p>
+<p>
+O que vamos fazer aqui: aprender os 15 comandos que resolvem 95% das situações numa GPU box, navegar, criar e apagar arquivos, instalar pacotes, gerenciar permissões, monitorar processos e disco, transferir arquivos e manter sessões vivas com tmux. Também cobrimos as diferenças macOS vs Linux que mais derrubam gente (spoiler: <code>sed</code> no macOS é diferente) e como usar WSL2 no Windows. No fim, você não vai mais travar ao ver um terminal Ubuntu.</p>
+<p>
+Os 15 comandos que cobrem 95% do que você faz numa GPU box:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1"># Navegação</span>
+</span></span><span class="line"><span class="cl"><span class="nb">pwd</span> <span class="o">&amp;&amp;</span> ls -la <span class="o">&amp;&amp;</span> <span class="nb">cd</span> /path <span class="o">&amp;&amp;</span> <span class="nb">cd</span> ~ <span class="o">&amp;&amp;</span> <span class="nb">cd</span> ..
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Arquivos</span>
+</span></span><span class="line"><span class="cl">mkdir -p a/b/c <span class="o">&amp;&amp;</span> cp file backup <span class="o">&amp;&amp;</span> mv old new <span class="o">&amp;&amp;</span> rm file <span class="o">&amp;&amp;</span> rm -rf dir/
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Leitura</span>
+</span></span><span class="line"><span class="cl">cat file <span class="o">&amp;&amp;</span> head -20 file <span class="o">&amp;&amp;</span> tail -20 file <span class="o">&amp;&amp;</span> tail -f log.txt <span class="o">&amp;&amp;</span> less file
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Busca</span>
+</span></span><span class="line"><span class="cl">grep <span class="s2">&#34;error&#34;</span> training.log <span class="o">&amp;&amp;</span> grep -r <span class="s2">&#34;learning_rate&#34;</span> . <span class="o">&amp;&amp;</span> find . -name <span class="s2">&#34;*.py&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Permissões (quando dá &#34;Permission denied&#34;)</span>
+</span></span><span class="line"><span class="cl">chmod +x script.sh <span class="o">&amp;&amp;</span> chmod <span class="m">755</span> deploy.sh <span class="o">&amp;&amp;</span> chmod <span class="m">644</span> config.yaml
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Pacotes</span>
+</span></span><span class="line"><span class="cl">sudo apt update <span class="o">&amp;&amp;</span> sudo apt install -y htop tmux build-essential git curl wget unzip
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Processos</span>
+</span></span><span class="line"><span class="cl">htop <span class="o">&amp;&amp;</span> ps aux <span class="p">|</span> grep python <span class="o">&amp;&amp;</span> <span class="nb">kill</span> <span class="m">12345</span> <span class="o">&amp;&amp;</span> <span class="nb">kill</span> -9 <span class="m">12345</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Disco</span>
+</span></span><span class="line"><span class="cl">df -h <span class="o">&amp;&amp;</span> du -sh * <span class="o">&amp;&amp;</span> du -sh ~/.cache
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Rede</span>
+</span></span><span class="line"><span class="cl">wget https://example.com/model.bin <span class="o">&amp;&amp;</span> curl -O https://example.com/data.tar.gz
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Sessões</span>
+</span></span><span class="line"><span class="cl">tmux new -s train <span class="o">&amp;&amp;</span> tmux attach -t train</span></span></code></pre></div>
+</div>
+<p>
+As diferenças macOS vs Linux que mais derrubam gente:</p>
+<table>
+<thead>
+<tr>
+<th>macOS</th>
+<th>Linux</th>
+<th>Nota</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>brew install</code></td>
+<td><code>sudo apt install</code></td>
+<td>Alguns nomes de pacote diferem</td>
+</tr>
+<tr>
+<td><code>open file.txt</code></td>
+<td><code>xdg-open file.txt</code></td>
+<td>Mas você não tem GUI na box remota. Use <code>cat</code> ou <code>less</code>.</td>
+</tr>
+<tr>
+<td><code>~/.zshrc</code></td>
+<td><code>~/.bashrc</code></td>
+<td>macOS default é zsh. Linux server geralmente é bash.</td>
+</tr>
+<tr>
+<td><code>sed -i &#39;&#39; &#39;s/a/b/&#39; file</code></td>
+<td><code>sed -i &#39;s/a/b/&#39; file</code></td>
+<td>macOS sed exige string vazia depois do <code>-i</code>.</td>
+</tr>
+<tr>
+<td>Case-insensitive</td>
+<td>Case-sensitive</td>
+<td><code>Model.py</code> e <code>model.py</code> são dois arquivos diferentes no Linux.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><em>Saiba mais:</em> se você está no Windows, o WSL2 te dá um ambiente Linux real sem dual-boot. <code>wsl --install -d Ubuntu-24.04</code> no PowerShell (admin). Tudo nessa seção funciona dentro dele. GPU passthrough funciona com drivers instalados no Windows: pra NVIDIA, instale o driver Windows (não o Linux) e o CUDA aparece no WSL2. Pra AMD, o ROCm no WSL2 está em preview, verifique a compatibilidade da sua placa com o programa <a href="https://www.amd.com/en/developer/rocm-hub.html">ROCm on Windows</a>.</p>
+</blockquote>
+</div>
+</div>
+<div id="outline-container-headline-13" class="outline-2">
+<h2 id="headline-13">
+Debugging: quando o código não quebra, mas também não funciona
+</h2>
+<div id="outline-text-headline-13" class="outline-text-2">
+<p>
+Código de IA falha diferente de código normal. Uma aplicação web crasha com stack trace, você sabe exatamente onde quebrou. Um loop de treino mal configurado roda por 8 horas, queima $200 em GPU, termina com um sorriso e produz um modelo que prevê a média de todo input. O código nunca deu erro. O problema é silencioso: um tensor no device errado, um <code>.detach()</code> esquecido, labels vazando pros features de treino.</p>
+<p>
+O que vamos fazer aqui: aprender a debugar em três níveis, Python básico (print, pdb, logging), operações com tensores (shape, device, NaN) e dinâmica de treino (TensorBoard). Vamos construir um arsenal de funções utilitárias (debug_print, NaN detector, data leakage checker, device checker) e aprender a usá-las no momento certo. E tem um glossário com ~20 termos porque, convenhamos, ninguém nasce sabendo o que é backpropagation. No fim, você vai olhar pra um treino que não converge e saber exatamente onde cutucar.</p>
+<p>
+Debugging de IA opera em três níveis:</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph TD
+    L3[&#34;3. Dinâmica de treino&lt;br/&gt;Curvas de loss, gradientes, ativações&#34;] --&gt; L2
+    L2[&#34;2. Operações com tensores&lt;br/&gt;Shapes, dtypes, devices, NaN/Inf&#34;] --&gt; L1
+    L1[&#34;1. Python padrão&lt;br/&gt;Breakpoints, logging, profiling, memória&#34;]
+
+    classDef l3d fill:#1a202e,stroke:#4a5a7b,color:#b0bcd0
+    classDef l2d fill:#1e2438,stroke:#526080,color:#b8c4d4
+    classDef l1d fill:#222842,stroke:#5a6888,color:#c0c8d8
+    class L3 l3d
+    class L2 l2d
+    class L1 l1d</code></pre>
+</div>
+<p>
+A maioria pula direto pro nível 3 (olhando TensorBoard). Mas 80% dos bugs de IA vivem nos níveis 1 e 2.</p>
+<blockquote>
+<p><em>Em miúdos, o vocabulário do debugging de IA:</em> <code>Tensor</code> é a estrutura de dados fundamental: uma matriz multidimensional de números (escalar = tensor 0D, vetor = 1D, matriz = 2D, e assim vai). Tudo no PyTorch é tensor. <code>Shape</code> são as dimensões, <code>[32, 3, 224, 224]</code> significa 32 imagens, 3 canais de cor (RGB), 224x224 pixels cada. <code>Device</code> é onde o tensor mora: <code>cpu</code> ou <code>cuda:0</code> (sim, <code>cuda:0</code> também pra AMD, o PyTorch usa o mesmo nome de device pros dois backends). <code>Forward pass</code> é o caminho de ida: os dados entram no modelo e saem como predição. <code>Backward pass</code> (ou backpropagation) é o caminho de volta: o erro da predição é propagado camada por camada pra ajustar os pesos. <code>Gradiente</code> é a seta que diz &#34;ajuste o peso nessa direção e nessa intensidade&#34;. <code>Loss function</code> (função de perda) mede quão errada a predição está, o treino inteiro existe pra minimizar esse número. <code>Optimizer</code> é o algoritmo que decide <em>como</em> ajustar os pesos com base nos gradientes (SGD, Adam, etc.). <code>Learning rate</code> (taxa de aprendizado, <code>lr</code>) controla o tamanho do passo de ajuste, alto demais explode o treino, baixo demais não sai do lugar. <code>Batch</code> é um subconjunto do dataset processado de uma vez, em vez de passar 50 mil imagens, você passa lotes de 32. <code>Batch size</code> é o tamanho desse lote. <code>NaN</code> (Not a Number) aparece quando uma operação matemática produz algo indefinido (divisão por zero, log de negativo). <code>Inf</code> é infinito, gradientes explodindo. <code>Epoch</code> é uma passada completa por todo o dataset. <code>Overfitting</code> é quando o modelo decora o treino e vai mal no teste. <code>Vanishing gradients</code> é quando os gradientes encolhem tanto nas camadas iniciais que elas param de aprender, comum em redes muito profundas. <code>Mixed precision</code> treina com 16 bits em vez de 32, reduzindo a memória pela metade com perda mínima de qualidade. <code>Gradient checkpointing</code> troca computação por memória: recalcula ativações durante o backward em vez de guardá-las. E <code>OOM</code> (Out of Memory) é o temido &#34;acabou a VRAM&#34;, seu modelo não cabe na GPU.</p>
+</blockquote>
+<p>
+<strong>Print debugging (sim, funciona)</strong></p>
+<p>
+Pra código com tensores, um print bem colocado bate stepping em debugger porque você precisa ver shapes, dtypes e intervalos de valores de uma vez:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">debug_print</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">tensor</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: shape=</span><span class="si">{</span><span class="n">tensor</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">, dtype=</span><span class="si">{</span><span class="n">tensor</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">, &#34;</span>
+</span></span><span class="line"><span class="cl">          <span class="sa">f</span><span class="s2">&#34;device=</span><span class="si">{</span><span class="n">tensor</span><span class="o">.</span><span class="n">device</span><span class="si">}</span><span class="s2">, &#34;</span>
+</span></span><span class="line"><span class="cl">          <span class="sa">f</span><span class="s2">&#34;min=</span><span class="si">{</span><span class="n">tensor</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, max=</span><span class="si">{</span><span class="n">tensor</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, &#34;</span>
+</span></span><span class="line"><span class="cl">          <span class="sa">f</span><span class="s2">&#34;mean=</span><span class="si">{</span><span class="n">tensor</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, &#34;</span>
+</span></span><span class="line"><span class="cl">          <span class="sa">f</span><span class="s2">&#34;has_nan=</span><span class="si">{</span><span class="n">tensor</span><span class="o">.</span><span class="n">isnan</span><span class="p">()</span><span class="o">.</span><span class="n">any</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<p>
+Chame depois de toda operação suspeita. Quando o bug for encontrado, remova. Simples.</p>
+<p>
+<strong>pdb e breakpoint condicional</strong></p>
+<p>
+<code>breakpoint()</code> dentro do loop de treino com condição é uma das coisas mais subestimadas pra debug de IA. Você só para quando algo parece errado, não em todo passo de um treino de 10.000 iterações:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">training_step</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">batch</span><span class="p">,</span> <span class="n">criterion</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">inputs</span><span class="p">,</span> <span class="n">labels</span> <span class="o">=</span> <span class="n">batch</span>
+</span></span><span class="line"><span class="cl">    <span class="n">outputs</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">loss</span> <span class="o">=</span> <span class="n">criterion</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">100</span> <span class="ow">or</span> <span class="n">torch</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">loss</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">breakpoint</span><span class="p">()</span>   <span class="c1"># só para aqui se algo explodiu</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span></span></span></code></pre></div>
+</div>
+<p>
+Dentro do debugger: <code>p outputs.shape</code>, <code>p loss.item()</code>, <code>p torch.isnan(outputs).sum()</code>, <code>p model.fc1.weight.grad</code>. <code>c</code> pra continuar, <code>q</code> pra sair.</p>
+<p>
+<strong>Logging (evolutivo)</strong></p>
+<p>
+Quando o debugging passa de uma checagem rápida, troque prints por logging. Logging te dá timestamps, níveis de severidade e saída em arquivo. Quando o treino falha às 3 da manhã, você quer um arquivo de log, não output de terminal que já scrollou:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">logging</span>
+</span></span><span class="line"><span class="cl"><span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">format</span><span class="o">=</span><span class="s2">&#34;</span><span class="si">%(asctime)s</span><span class="s2"> [</span><span class="si">%(levelname)s</span><span class="s2">] </span><span class="si">%(message)s</span><span class="s2">&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">    <span class="n">handlers</span><span class="o">=</span><span class="p">[</span><span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">(</span><span class="s2">&#34;training.log&#34;</span><span class="p">),</span> <span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">()]</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&#34;Iniciando treino: lr=</span><span class="si">%.4f</span><span class="s2">, batch_size=</span><span class="si">%d</span><span class="s2">&#34;</span><span class="p">,</span> <span class="n">lr</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&#34;Spike de loss detectado: </span><span class="si">%.4f</span><span class="s2"> no passo </span><span class="si">%d</span><span class="s2">&#34;</span><span class="p">,</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span> <span class="n">step</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&#34;NaN loss no passo </span><span class="si">%d</span><span class="s2">, parando&#34;</span><span class="p">,</span> <span class="n">step</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<p>
+<strong>Profiling: onde o tempo some</strong></p>
+<p>
+Saber onde o tempo vai é o primeiro passo pra otimizar:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">time</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Timer</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&#34;&#34;</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">();</span> <span class="k">return</span> <span class="bp">self</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">s&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">with</span> <span class="n">Timer</span><span class="p">(</span><span class="s2">&#34;data loading&#34;</span><span class="p">):</span> <span class="n">batch</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">dataloader_iter</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">with</span> <span class="n">Timer</span><span class="p">(</span><span class="s2">&#34;forward pass&#34;</span><span class="p">):</span> <span class="n">outputs</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">with</span> <span class="n">Timer</span><span class="p">(</span><span class="s2">&#34;backward pass&#34;</span><span class="p">):</span> <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span></span></span></code></pre></div>
+</div>
+<p>
+Descoberta comum: data loading consome 60% do tempo de treino. A correção é <code>num_workers &gt; 0</code> no DataLoader, não uma GPU mais rápida. Pra profiling mais pesado: <code>python -m cProfile -s cumtime train.py</code> (funções por tempo cumulativo) ou <code>kernprof -l -v train.py</code> com <code>line_profiler</code> (linha por linha).</p>
+<p>
+<strong>Os cinco bugs de IA mais comuns</strong></p>
+<p>
+<em>1. Shape mismatch.</em> O tensor tem shape <code>[batch, features]</code> e o modelo espera <code>[batch, channels, height, width]</code>. Use um hook de forward pra mapear toda transformação de shape do modelo uma vez com um batch de amostra.</p>
+<p>
+<em>2. NaN loss.</em> Algo explodiu. Causas: learning rate alto demais, divisão por zero na loss customizada, log de número negativo, gradientes explodindo em RNNs. Rodeie com:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">detect_nan</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">loss</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">loss</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;NaN loss no passo </span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">                <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;  NaN gradient em </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">                <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;  Inf gradient em </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="kc">True</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">False</span></span></span></code></pre></div>
+</div>
+<p>
+<em>3. Data leakage.</em> Seu modelo acerta 99% no teste na primeira época. Não é skill, é vazamento. Cheque se há sobreposição entre treino e teste:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">check_data_leakage</span><span class="p">(</span><span class="n">train_set</span><span class="p">,</span> <span class="n">test_set</span><span class="p">,</span> <span class="n">id_column</span><span class="o">=</span><span class="s2">&#34;id&#34;</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">train_ids</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">train_set</span><span class="p">[</span><span class="n">id_column</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">    <span class="n">test_ids</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">test_set</span><span class="p">[</span><span class="n">id_column</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">    <span class="n">overlap</span> <span class="o">=</span> <span class="n">train_ids</span> <span class="o">&amp;</span> <span class="n">test_ids</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">overlap</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;DATA LEAKAGE: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">overlap</span><span class="p">)</span><span class="si">}</span><span class="s2"> amostras em treino E teste&#34;</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<p>
+<em>4. Tensor no device errado.</em> Tensores em dispositivos diferentes geram erro de runtime. Mas às vezes um tensor <em>silenciosamente</em> fica na CPU enquanto tudo mais tá na GPU, e o treino só fica lento.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">check_devices</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="o">*</span><span class="n">tensors</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">model_device</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span><span class="o">.</span><span class="n">device</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tensors</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">device</span> <span class="o">!=</span> <span class="n">model_device</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;  WARNING: tensor </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> em </span><span class="si">{</span><span class="n">t</span><span class="o">.</span><span class="n">device</span><span class="si">}</span><span class="s2">, modelo em </span><span class="si">{</span><span class="n">model_device</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<p>
+<em>5. OOM (Out of Memory).</em></p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Alocado: </span><span class="si">{</span><span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">memory_allocated</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e9</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> GB&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Cache: </span><span class="si">{</span><span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">memory_reserved</span><span class="p">()</span> <span class="o">/</span> <span class="mf">1e9</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> GB&#34;</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<p>
+Respostas, em ordem: reduza batch size, <code>torch.cuda.empty_cache()</code>, <code>del tensor</code> + <code>empty_cache()</code>, mixed precision (<code>torch.cuda.amp</code>), gradient checkpointing.</p>
+<p>
+<strong>TensorBoard</strong></p>
+<p>
+O TensorBoard mostra o que acontece <em>dentro</em> do treino ao longo do tempo. Instala com <code>pip install tensorboard</code> e instrumenta:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">torch.utils.tensorboard</span> <span class="kn">import</span> <span class="n">SummaryWriter</span>
+</span></span><span class="line"><span class="cl"><span class="n">writer</span> <span class="o">=</span> <span class="n">SummaryWriter</span><span class="p">(</span><span class="s2">&#34;runs/experimento_1&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_steps</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">loss</span> <span class="o">=</span> <span class="n">train_step</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">batch</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">writer</span><span class="o">.</span><span class="n">add_scalar</span><span class="p">(</span><span class="s2">&#34;loss/train&#34;</span><span class="p">,</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span> <span class="n">step</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">writer</span><span class="o">.</span><span class="n">add_scalar</span><span class="p">(</span><span class="s2">&#34;lr&#34;</span><span class="p">,</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">param_groups</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&#34;lr&#34;</span><span class="p">],</span> <span class="n">step</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">step</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">            <span class="n">writer</span><span class="o">.</span><span class="n">add_histogram</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;weights/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">,</span> <span class="n">param</span><span class="p">,</span> <span class="n">step</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">                <span class="n">writer</span><span class="o">.</span><span class="n">add_histogram</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;grads/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">,</span> <span class="n">param</span><span class="o">.</span><span class="n">grad</span><span class="p">,</span> <span class="n">step</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">writer</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></span></span></code></pre></div>
+</div>
+<p>
+Rodeia <code>tensorboard --logdir=runs</code> e abre <code>localhost:6006</code>. O que olhar: loss não desce (lr baixo ou arquitetura errada), loss oscila (lr alto), loss vai pra NaN (instabilidade numérica), loss de treino desce e validação sobe (overfitting), histogramas de peso colapsando pra zero (vanishing gradients).</p>
+<blockquote>
+<p><em>Saiba mais:</em> o fluxo de debugging que pega a maioria dos bugs de IA: 1) Antes de treinar, rode <code>check_shapes</code> com batch de amostra. 2) Nos primeiros 10 passos, use <code>debug_print</code> em loss, outputs e gradientes. 3) Durante o treino, faça log de loss, lr e gradientes. Use TensorBoard. 4) Quando algo quebrar, droppe <code>breakpoint()</code> condicional. 5) Pra performance, meça data loading vs forward vs backward. Profile memória se estiver perto de OOM.</p>
+</blockquote>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-2">
+<h2 id="headline-14">
+O que levar disso
+</h2>
+<div id="outline-text-headline-14" class="outline-text-2">
+<p>
+Setup não tem algoritmos, não tem paper, não tem modelo. Tem <code>nvidia-smi</code>, <code>tmux</code>, <code>uv venv</code>, <code>docker build</code>, <code>breakpoint()</code>. As ferramentas que ninguém posta no Twitter mas que separam quem <em>entrega</em> modelo de quem <em>debuga</em> ambiente.</p>
+<p>
+Se você seguiu até aqui:</p>
+<ul>
+<li>Seu ambiente de desenvolvimento tem Python, Node, Rust e Julia com gerenciadores de pacote que não brigam entre si.</li>
+<li>Seu Git está configurado com o fluxo de add, commit, push e branch que você vai repetir 500 vezes.</li>
+<li>Sua GPU (local, Colab ou cloud) responde a <code>torch.cuda.is_available()</code> e você sabe o speedup que ela te dá.</li>
+<li>Suas chaves de API estão em variáveis de ambiente, nunca no código.</li>
+<li>Seu Jupyter tem magic commands, atalhos de teclado e você sabe a diferença entre <code>%timeit</code> e <code>%%time</code>.</li>
+<li>Seus ambientes Python são isolados, versionados com lockfile e não vão quebrar quando você instalar PyTorch 2.5 daqui a seis meses.</li>
+<li>Seu Dockerfile produz a mesma stack em qualquer máquina com GPU.</li>
+<li>Seu VS Code formata ao salvar, faz type checking e conecta em GPU remota como se fosse local.</li>
+<li>Seus datasets carregam com streaming, convertem pra Parquet e têm splits reprodutíveis.</li>
+<li>Seu terminal tem tmux com três painéis, aliases que salvam digitação e <code>rsync</code> que não corrompe arquivo grande.</li>
+<li>Seu Linux de sobrevivência cobre os 15 comandos que resolvem 95% dos perrengues em GPU box.</li>
+<li>Seu debugging não depende de &#34;rodar de novo pra ver se passa&#34;, você tem breakpoint condicional, NaN detector, data leakage checker e TensorBoard.</li>
+</ul>
+<p>O resto assume que isso funciona. E agora funciona.</p>
+<blockquote>
+<p>Este artigo é baseado nas lições de setup do projeto open-source <a href="https://github.com/rohitg00/ai-engineering-from-scratch">ai-engineering-from-scratch</a>, de Rohit Ghumare. O material original está em inglês, eu reorganizei, traduzi e adaptei pro formato que você acabou de ler.</p>
+</blockquote>
+</div>
+</div>
+
+  </div>
+</article>
+
+    </main>
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
+</body>
+</html>

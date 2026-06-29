@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Pytorch on lobovit</title>
+    <link>https://lobovit.github.io/tags/pytorch/</link>
+    <description>Recent content in Pytorch on lobovit</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Thu, 28 May 2026 17:00:00 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/pytorch/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>07 - AI Engineering from scratch: do self-attention ao speculative decoding</title>
+      <link>https://lobovit.github.io/ai-transformers-deep-dive/</link>
+      <pubDate>Thu, 28 May 2026 17:00:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/ai-transformers-deep-dive/</guid>
+      <description>&lt;p&gt;&#xA;Todo modelo que você usa em 2026, do GPT ao Claude, do Whisper ao Stable Diffusion, é um transformer. A arquitetura não mudou fundamentalmente desde 2017. O que mudou foi escala, dados e truques de engenharia que transformaram O(N²) de &amp;#34;impraticável&amp;#34; em &amp;#34;roda no celular&amp;#34;.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Este artigo vai do zero ao speculative decoding em 16 tópicos. Você vai implementar self-attention em Python puro, entender por que RoPE substituiu embeddings posicionais, ver como Mixture of Experts empacota 671 bilhões de parâmetros em 37 bilhões ativos, e aprender o truque matemático que faz speculative decoding acelerar inferência 4x sem perder qualidade. Stack: Python pra treino, Go pra servir.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>04 - AI Engineering from scratch: do pixel ao modelo de mundo</title>
+      <link>https://lobovit.github.io/ai-cv/</link>
+      <pubDate>Mon, 25 May 2026 20:00:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/ai-cv/</guid>
+      <description>&lt;p&gt;&#xA;Uma imagem digital é uma matriz de números. Um pixel é um valor entre 0 e 255. Três canais (RGB) por pixel, 224 linhas, 224 colunas. Isso dá 150 mil números. E em cima desses 150 mil números a gente constrói modelos que reconhecem rostos, dirigem carros, geram arte e simulam física.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Visão computacional é o campo que ensina máquinas a extrair significado de pixels. Este artigo percorre 28 tópicos, dos fundamentos de imagem até modelos de mundo que preveem o futuro em vídeo. A stack é Python (PyTorch) pra treino e experimentação, Go pra inferência em produção.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>03 - AI Engineering from scratch: do perceptron ao debug de rede neural</title>
+      <link>https://lobovit.github.io/ai-deep-learning/</link>
+      <pubDate>Mon, 25 May 2026 17:00:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/ai-deep-learning/</guid>
+      <description>&lt;p&gt;&#xA;Deep learning parece mágica. Você joga dados num buraco negro de matrizes, espera alguns minutos (ou dias) e sai um modelo que reconhece gatos, traduz idiomas e escreve código. Mas não é mágica. São 13 peças que se encaixam, e quando você entende cada uma, o buraco negro vira um mecanismo de relógio.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Este artigo percorre essas 13 peças. Do perceptron (um único neurônio que decide sim ou não) até um framework completo de deep learning em 500 linhas. Depois conecta com PyTorch, dá uma olhada no JAX e fecha com o capítulo mais importante e mais ignorado: como debugar uma rede neural quando ela falha sem dar erro.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

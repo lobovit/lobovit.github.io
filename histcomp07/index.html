@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Petzold07 - Múltiplos Fluxos, Múltiplos Núcleos — lobovit</title>
+  <link rel="stylesheet" href="/css/main.css?v=3">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
+    <main>
+      
+<article>
+  <header>
+    <h1>Petzold07 - Múltiplos Fluxos, Múltiplos Núcleos</h1>
+    <p class="meta"><time>2026-05-14</time> · <span class="tag">concorrência</span><span class="tag">paralelismo</span><span class="tag">threads</span><span class="tag">SIMD</span><span class="tag">sincronização</span><span class="tag">história</span><span class="tag">computação</span></p>
+  </header>
+  <div class="content">
+    
+<p>
+Imagine uma cozinha com um único chef. Ele pica os vegetais, depois prepara o molho, depois coloca a água para ferver, depois corta a carne. Tudo em sequência, uma tarefa após a outra. O jantar demora.</p>
+<p>
+Agora imagine a mesma cozinha com três chefs trabalhando lado a lado. Enquanto um pica os vegetais, outro prepara o molho e o terceiro coloca a água no fogo. O jantar fica pronto muito mais rápido, desde que os chefs não disputem a mesma faca, não sujem a tábua um do outro e não esperem eternamente que o colega libere o fogão.</p>
+<p>
+Esta é a essência da computação moderna: <em>concorrência</em> (múltiplas tarefas progredindo ao mesmo tempo) e <em>paralelismo</em> (múltiplas tarefas executando literalmente em simultâneo). Nas últimas décadas, a indústria descobriu que fazer processadores rodarem mais rápido está ficando cada vez mais difícil, e a saída foi colocar mais &#34;cozinheiros&#34; dentro da máquina.</p>
+<p>
+Este artigo é um mergulho nos diferentes níveis de paralelismo que existem em um computador moderno, desde truques invisíveis que a CPU faz sozinha até o desafio mais espinhoso da programação contemporânea: fazer múltiplos fluxos de execução cooperarem sem se destruir.</p>
+<hr>
+<div id="outline-container-headline-1" class="outline-3">
+<h3 id="headline-1">
+1. O Gargalo da Sequencialidade
+</h3>
+<div id="outline-text-headline-1" class="outline-text-3">
+<p>
+Durante décadas, a lei de <a href="https://pt.wikipedia.org/wiki/Lei_de_Moore">Moore</a> e o aumento da frequência do relógio foram a receita mágica do progresso: a cada nova geração, processadores rodavam mais rápido e programas antigos simplesmente aceleravam sem precisar de modificação.</p>
+<p>
+Isso mudou por volta de 2003. Os chips começaram a esbarrar no que ficou conhecido como <em>&#34;Power Wall&#34;</em> (Muro da Energia). Aumentar a frequência exige mais tensão, que gera mais calor, que derrete o chip. Os fabricantes perceberam que não conseguiriam mais fazer um único núcleo rodar significativamente mais rápido sem gastar energia demais.</p>
+<p>
+A solução? Em vez de um chef monstruoso, colocar vários chefs modestos trabalhando lado a lado. Nasceu a era dos <em>processadores multi-core</em> (multinúcleo). Mas isso transferiu um problema enorme para os programadores: para aproveitar esses núcleos, o software precisa ser escrito de forma <em>concorrente</em>, e isso é muito mais difícil do que parece.</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph TD
+  subgraph &#34;Evolução dos Processadores&#34;
+    A[&#34;Anos 1980-2000:&lt;br&gt;Aumento de frequência&#34;] --&gt; B[&#34;Anos 2000-2005:&lt;br&gt;Aumento encontra o Power Wall&#34;]
+    B --&gt; C[&#34;Anos 2005-2010:&lt;br&gt;Múltiplos núcleos&lt;br&gt;Hyper-threading&#34;]
+    C --&gt; D[&#34;Anos 2010-hoje:&lt;br&gt;Dezenas de núcleos&lt;br&gt;SIMD profundo&lt;br&gt;GPUs&#34;]
+  end</code></pre>
+</div>
+<p>
+Antes de falarmos de múltiplos núcleos, porém, precisamos entender que o paralelismo já existia dentro de um único núcleo, escondido do programador, mas absolutamente real.</p>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-3">
+<h3 id="headline-2">
+2. Paralelismo em Nível de Instrução (ILP)
+</h3>
+<div id="outline-text-headline-2" class="outline-text-3">
+<p>
+O processador Intel 8080, que usamos como modelo nos artigos anteriores, executa uma instrução por vez: busca, decodifica, executa, busca a próxima. É simples, correto e lento. Processadores modernos fazem algo muito mais esperto: <em>executam várias instruções ao mesmo tempo</em>, mantendo a ilusão de que tudo ocorre em sequência.</p>
+<div id="outline-container-headline-3" class="outline-4">
+<h4 id="headline-3">
+Pipeline: A Linha de Montagem
+</h4>
+<div id="outline-text-headline-3" class="outline-text-4">
+<p>
+O truque mais básico é o <em>pipeline</em>. Em vez de esperar uma instrução terminar completamente para começar a próxima, a CPU divide cada instrução em estágios (busca, decodificação, execução, acesso à memória, escrita do resultado) e sobrepõe a execução. Enquanto a instrução 1 está no estágio de execução, a instrução 2 já está sendo decodificada e a instrução 3 já está sendo buscada na memória.</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">gantt
+  title Pipeline de 5 estágios
+  dateFormat HH:mm
+  axisFormat %H:%M
+  
+  section Instrução 1
+  Busca   :i1f, 00:00, 1m
+  Decodifica :i1d, after i1f, 1m
+  Executa  :i1e, after i1d, 1m
+  Memória  :i1m, after i1e, 1m
+  Escreve  :i1w, after i1m, 1m
+  
+  section Instrução 2
+  Busca   :i2f, after i1f, 1m
+  Decodifica :i2d, after i2f, 1m
+  Executa  :i2e, after i2d, 1m
+  Memória  :i2m, after i2e, 1m
+  Escreve  :i2w, after i2m, 1m
+  
+  section Instrução 3
+  Busca   :i3f, after i2f, 1m
+  Decodifica :i3d, after i3f, 1m
+  Executa  :i3e, after i3d, 1m
+  Memória  :i3m, after i3e, 1m
+  Escreve  :i3w, after i3m, 1m</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-4">
+<h4 id="headline-4">
+Superscalar e Execução Fora de Ordem
+</h4>
+<div id="outline-text-headline-4" class="outline-text-4">
+<p>
+O pipeline acelera as coisas, mas ainda executa uma instrução por ciclo no máximo. Processadores <em>superscalares</em> vão além: eles têm múltiplas unidades funcionais (somadores, multiplicadores, unidades de carga/armazenamento) e podem emitir várias instruções num mesmo ciclo de clock, desde que elas não dependam umas das outras.</p>
+<p>
+O nome disso é <em>paralelismo em nível de instrução</em> (ILP), e ele é explorado automaticamente pelo hardware. Um Core i7 moderno pode manter até 6 instruções por ciclo em situações ideais. Mais impressionante ainda: a CPU faz <em>especulação</em>. Ela adivinha o resultado de desvios condicionais (branch prediction), executa instruções adiante, e se errar, descarta tudo e recomeça, como um xadrezista que calcula lances antecipados.</p>
+<hr>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-3">
+<h3 id="headline-5">
+3. SIMD: Uma Instrução, Múltiplos Dados
+</h3>
+<div id="outline-text-headline-5" class="outline-text-3">
+<p>
+O ILP acelera programas sem que o programador precise fazer nada. Mas há outro nível de paralelismo que exige colaboração explícita: o <em>SIMD</em> (Single Instruction, Multiple Data, uma única instrução operando sobre múltiplos dados simultaneamente).</p>
+<p>
+A ideia é simples: se você precisa somar dois vetores de 4 números, por que executar 4 instruções de soma se o hardware pode fazer tudo de uma vez?</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph LR
+  subgraph &#34;Sem SIMD (4 instruções)&#34;
+    S1[&#34;ADD a[0], b[0]&#34;] --&gt; R1[&#34;r[0]&#34;]
+    S2[&#34;ADD a[1], b[1]&#34;] --&gt; R2[&#34;r[1]&#34;]
+    S3[&#34;ADD a[2], b[2]&#34;] --&gt; R3[&#34;r[2]&#34;]
+    S4[&#34;ADD a[3], b[3]&#34;] --&gt; R4[&#34;r[3]&#34;]
+  end
+  subgraph &#34;Com SIMD (1 instrução)&#34;
+    SIMD[&#34;ADD a[0..3], b[0..3]&#34;] --&gt; SIMDR[&#34;r[0..3]&#34;]
+  end</code></pre>
+</div>
+<p>
+Em 1997, a Intel introduziu o conjunto de instruções <em>MMX</em> (MultiMedia eXtensions), seguido pelo <em>SSE</em> (Streaming SIMD Extensions) em 1999. Versões modernas como <em>AVX</em> (Advanced Vector Extensions) trabalham com registradores de 256 e até 512 bits, capazes de processar 8 números de ponto flutuante de 32 bits em paralelo com uma única instrução.</p>
+<p>
+Onde o SIMD brilha:</p>
+<p>
+/ /Processamento de áudio e vídeo:* Cada frame de vídeo é uma matriz de pixels, operações SIMD ideais.
+/ /Criptografia:* Algoritmos como AES se beneficiam enormemente de operações paralelas.
+/ /Aprendizado de máquina:* Redes neurais realizam essencialmente multiplicações de matrizes, o paraíso do SIMD.
+/ /Jogos:* Cálculos de transformação geométrica e iluminação são intrinsecamente paralelos.</p>
+<p>
+Programadores que dominam SIMD conseguem ganhos de desempenho de 4, a 8, em operações numéricas sem trocar de processador.</p>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-3">
+<h3 id="headline-6">
+4. Concorrência entre Processos e Threads
+</h3>
+<div id="outline-text-headline-6" class="outline-text-3">
+<p>
+Até aqui falamos de paralelismo que acontece dentro de um único fluxo de execução. Mas o tipo mais visível de concorrência é aquele em que <em>múltiplos fluxos de execução</em> compartilham o processador.</p>
+<div id="outline-container-headline-7" class="outline-4">
+<h4 id="headline-7">
+Processos: Ilhas Isoladas
+</h4>
+<div id="outline-text-headline-7" class="outline-text-4">
+<p>
+Como vimos no artigo anterior, o sistema operacional cria <em>processos</em> para executar programas. Cada processo tem seu próprio espaço de endereçamento, memória, pilha, registradores, completamente isolado dos demais. Um processo não pode ler ou escrever na memória de outro sem mecanismos explícitos de comunicação (IPC).</p>
+<p>
+Isolamento é seguro, mas torna a comunicação lenta. Para compartilhar dados entre processos, é preciso usar pipes, filas de mensagens, memória compartilhada ou soquetes, cada operação custando uma chamada ao kernel.</p>
+</div>
+</div>
+<div id="outline-container-headline-8" class="outline-4">
+<h4 id="headline-8">
+Threads: Vizinhos no Mesmo Andar
+</h4>
+<div id="outline-text-headline-8" class="outline-text-4">
+<p>
+<em>Threads</em> são uma alternativa mais leve. Uma thread é uma linha de execução que roda <em>dentro</em> de um processo. Todas as threads de um mesmo processo compartilham o mesmo espaço de endereçamento, código, dados e arquivos abertos. Cada thread tem apenas sua própria pilha, seus registradores e seu contador de programa.</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph TD
+  subgraph &#34;Múltiplos Processos&#34;
+    P1[&#34;Processo 1&#34;] --- M1[&#34;Memória&lt;br&gt;Privada&#34;]
+    P2[&#34;Processo 2&#34;] --- M2[&#34;Memória&lt;br&gt;Privada&#34;]
+  end
+  subgraph &#34;Um Processo com Múltiplas Threads&#34;
+    TH1[&#34;Thread 1&#34;] --- SHM[&#34;Memória&lt;br&gt;Compartilhada&#34;]
+    TH2[&#34;Thread 2&#34;] --- SHM
+    TH3[&#34;Thread 3&#34;] --- SHM
+  end</code></pre>
+</div>
+<p>
+A vantagem é enorme: threads podem compartilhar dados simplesmente lendo e escrevendo nas mesmas variáveis globais. A desvantagem é que esse compartilhamento é uma faca de dois gumes, e é aí que mora o perigo.</p>
+<p>
+A tabela abaixo resume as diferenças:</p>
+<table>
+<thead>
+<tr>
+<th>Característica</th>
+<th>Processos</th>
+<th>Threads</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Espaço de endereçamento</td>
+<td>Independente</td>
+<td>Compartilhado</td>
+</tr>
+<tr>
+<td>Comunicação</td>
+<td>IPC (lento)</td>
+<td>Memória compartilhada (rápido)</td>
+</tr>
+<tr>
+<td>Criação</td>
+<td>Mais lenta (fork)</td>
+<td>Mais rápida (pthread_create)</td>
+</tr>
+<tr>
+<td>Chaveamento</td>
+<td>Contexto pesado (kernel)</td>
+<td>Contexto leve (kernel, mesmo processo)</td>
+</tr>
+<tr>
+<td>Isolamento</td>
+<td>Total (seguro)</td>
+<td>Nenhum (perigoso)</td>
+</tr>
+<tr>
+<td>Sincronização</td>
+<td>Necessária (IPC)</td>
+<td>Crucial (variáveis compartilhadas)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-4">
+<h4 id="headline-9">
+O Modelo de Memória Compartilhada
+</h4>
+<div id="outline-text-headline-9" class="outline-text-4">
+<p>
+Em um programa com múltiplas threads, tudo que está no espaço de endereçamento é acessível a todas as threads. Variáveis globais, objetos no heap, código, arquivos abertos, tudo é compartilhado. Apenas as variáveis locais (na pilha) de cada thread são privadas.</p>
+<div class="src src-c">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;stdio.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;pthread.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="n">contador_global</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="c1">// Compartilhado entre todas as threads
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">void</span> <span class="o">*</span><span class="nf">minha_thread</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="kt">int</span> <span class="n">local</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="c1">// Privado desta thread
+</span></span></span><span class="line"><span class="cl">  <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">1000000</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">contador_global</span><span class="o">++</span><span class="p">;</span> <span class="c1">// Perigo! Acesso concorrente
+</span></span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="kt">pthread_t</span> <span class="n">t1</span><span class="p">,</span> <span class="n">t2</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="nf">pthread_create</span><span class="p">(</span><span class="o">&amp;</span><span class="n">t1</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">minha_thread</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="nf">pthread_create</span><span class="p">(</span><span class="o">&amp;</span><span class="n">t2</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">minha_thread</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="nf">pthread_join</span><span class="p">(</span><span class="n">t1</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="nf">pthread_join</span><span class="p">(</span><span class="n">t2</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="nf">printf</span><span class="p">(</span><span class="s">&#34;Contador: %d (esperado: 2000000)</span><span class="se">\n</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">contador_global</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
+</div>
+<p>
+O código acima parece inofensivo, duas threads incrementam um contador. Mas na prática, o resultado quase nunca é o esperado. Executando o programa compilado, vemos algo como:</p>
+<div class="src src-text">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">$ ./contador 1000000
+</span></span><span class="line"><span class="cl">Contador: 1445085 (esperado: 2000000)
+</span></span><span class="line"><span class="cl">$ ./contador 1000000
+</span></span><span class="line"><span class="cl">Contador: 1915220 (esperado: 2000000)
+</span></span><span class="line"><span class="cl">$ ./contador 1000000
+</span></span><span class="line"><span class="cl">Contador: 1404746 (esperado: 2000000)</span></span></code></pre></div>
+</div>
+<p>
+Cada execução produz um resultado <em>diferente e incorreto</em>. O valor nunca é 2.000.000. Isso não é um bug do compilador ou do hardware, é uma <em>condição de corrida</em> entre as duas threads.</p>
+<blockquote>
+<p><em>Para testar você mesmo:</em> salve o código como <code>contador.c</code>, compile com <code>gcc contador.c -lpthread -o contador</code> e execute <code>./contador 1000000</code>. O resultado provavelmente será diferente de 2000000, e diferente a cada execução.</p>
+</blockquote>
+<hr>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-10" class="outline-3">
+<h3 id="headline-10">
+5. O Desafio da Sincronização
+</h3>
+<div id="outline-text-headline-10" class="outline-text-3">
+<p>
+O problema do contador ilustra um dos conceitos mais sutis da programação concorrente: a <em>race condition</em> (condição de corrida).</p>
+<div id="outline-container-headline-11" class="outline-4">
+<h4 id="headline-11">
+A Condição de Corrida
+</h4>
+<div id="outline-text-headline-11" class="outline-text-4">
+<p>
+Para entender por que o contador falha, vejamos o que acontece nos bastidores. Incrementar uma variável (<code>contador++</code>) não é uma operação atômica. A máquina executa três passos:</p>
+<ol>
+<li><em>Ler</em> o valor da memória para um registrador</li>
+<li><em>Incrementar</em> o registrador</li>
+<li><em>Escrever</em> o registrador de volta na memória</li>
+</ol>
+<p>Se duas threads executam esses três passos simultaneamente, o interleave (entrelaçamento) pode ser desastroso:</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">sequenceDiagram
+  participant M as Memória (contador = 5)
+  participant A as Thread A
+  participant B as Thread B
+  
+  A-&gt;&gt;M: Lê contador → 5
+  B-&gt;&gt;M: Lê contador → 5
+  A-&gt;&gt;A: Incrementa (6)
+  B-&gt;&gt;B: Incrementa (6)
+  A-&gt;&gt;M: Escreve 6
+  B-&gt;&gt;M: Escreve 6
+  Note over M: Valor final: 6 (deveria ser 7!)</code></pre>
+</div>
+<p>
+Ambas as threads leram o mesmo valor 5, ambas incrementaram para 6, e ambas escreveram 6. Perdeu-se um incremento. Se isso acontece 50.000 vezes durante a execução, o resultado final pode ser qualquer coisa entre 1.000.000 e 2.000.000, imprevisível e incorreto.</p>
+</div>
+</div>
+<div id="outline-container-headline-12" class="outline-4">
+<h4 id="headline-12">
+A Solução: Exclusão Mútua com Semáforos
+</h4>
+<div id="outline-text-headline-12" class="outline-text-4">
+<p>
+Para impedir essas condições de corrida, precisamos garantir que apenas uma thread execute a seção crítica (o trecho de código que acessa a variável compartilhada) por vez. A ferramenta clássica para isso é o <em>semáforo</em>, proposto por Edsger Dijkstra em 1965.</p>
+<p>
+Um semáforo funciona como um sinaleiro de trânsito: ele pode estar verde (liberado) ou vermelho (bloqueado). A operação <code>P</code> (do holandês <em>Proberen</em>, testar) tenta passar, se o sinal está vermelho, a thread espera. A operação <code>V</code> (<em>Verhogen</em>, incrementar) libera o sinal, acordando uma thread que esteja esperando.</p>
+<div class="src src-c">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="cp">#include</span> <span class="cpf">&lt;semaphore.h&gt;</span><span class="cp">
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">sem_t</span> <span class="n">mutex</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">void</span> <span class="o">*</span><span class="nf">minha_thread</span><span class="p">(</span><span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">1000000</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">sem_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">mutex</span><span class="p">);</span> <span class="c1">// P: tenta entrar
+</span></span></span><span class="line"><span class="cl">    <span class="n">contador_global</span><span class="o">++</span><span class="p">;</span> <span class="c1">// Seção crítica
+</span></span></span><span class="line"><span class="cl">    <span class="nf">sem_post</span><span class="p">(</span><span class="o">&amp;</span><span class="n">mutex</span><span class="p">);</span> <span class="c1">// V: libera
+</span></span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="nb">NULL</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nf">sem_init</span><span class="p">(</span><span class="o">&amp;</span><span class="n">mutex</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span> <span class="c1">// Inicia verde (valor 1)
+</span></span></span><span class="line"><span class="cl">  <span class="c1">// ... cria threads, espera, imprime
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
+</div>
+<p>
+Com o semáforo, a execução se torna segura: quando a Thread A está na seção crítica, a Thread B que tentar entrar será bloqueada até que A termine. O resultado passa a ser sempre 2.000.000, como esperado:</p>
+<div class="src src-text">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">$ ./contador_sync 1000000
+</span></span><span class="line"><span class="cl">Contador: 2000000 (esperado: 2000000)
+</span></span><span class="line"><span class="cl">$ ./contador_sync 1000000
+</span></span><span class="line"><span class="cl">Contador: 2000000 (esperado: 2000000)</span></span></code></pre></div>
+</div>
+<p>
+A desvantagem é que o programa fica mais lento, cada incremento agora requer duas chamadas de sistema (P e V), e as threads passam parte do tempo bloqueadas esperando o mutex ser liberado. Este é o <em>preço da correção</em>: sincronizar é mais lento, mas não sincronizar é simplesmente errado.</p>
+</div>
+</div>
+<div id="outline-container-headline-13" class="outline-4">
+<h4 id="headline-13">
+O Preço da Sincronização
+</h4>
+<div id="outline-text-headline-13" class="outline-text-4">
+<p>
+Garantir exclusão mútua resolve a correção, mas tem um custo. Se as threads passam muito tempo esperando umas pelas outras, o paralelismo diminui. Em casos extremos, o programa pode rodar <em>mais devagar</em> com múltiplas threads do que com uma só, um paradoxo conhecido como <em>contenção de lock</em>.</p>
+<p>
+É por isso que programação concorrente é considerada uma arte: é preciso equilibrar a segurança dos dados com a eficiência da execução. Escolher o tamanho certo das seções críticas, minimizar o compartilhamento e usar estruturas de dados projetadas para concorrência são habilidades que separam programadores experientes dos demais.</p>
+<hr>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-3">
+<h3 id="headline-14">
+6. Deadlocks: O Abraço Fatal
+</h3>
+<div id="outline-text-headline-14" class="outline-text-3">
+<p>
+Se a condição de corrida é o problema mais comum da concorrência, o <em>deadlock</em> é o mais temido.</p>
+<p>
+Um deadlock ocorre quando duas ou mais threads ficam esperando eternamente por recursos que uma detém e a outra precisa. É o &#34;abraço fatal&#34;: você precisa do que eu tenho, eu preciso do que você tem, e ninguém cede.</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph TD
+  A[&#34;Thread A&#34;] --&gt;|&#34;Travou&lt;br&gt;Recurso X&#34;| RX[&#34;Recurso X&#34;]
+  B[&#34;Thread B&#34;] --&gt;|&#34;Travou&lt;br&gt;Recurso Y&#34;| RY[&#34;Recurso Y&#34;]
+  A -.-&gt;|&#34;Espera Y&#34;| RY
+  B -.-&gt;|&#34;Espera X&#34;| RX</code></pre>
+</div>
+<p>
+O exemplo clássico é o <em>jantar dos filósofos</em>, proposto por Dijkstra. Cinco filósofos estão sentados em uma mesa redonda, cada um com um garfo à sua esquerda. Para comer, um filósofo precisa dos dois garfos, o da esquerda e o da direita. Se todos pegam o garfo da esquerda simultaneamente, ninguém consegue pegar o da direita, e todos ficam esperando eternamente.</p>
+<p>
+Na prática, deadlocks acontecem quando:</p>
+<ol>
+<li><em>Exclusão mútua:</em> Recursos não podem ser compartilhados</li>
+<li><em>Posse e espera:</em> Threads seguram recursos enquanto esperam por outros</li>
+<li><em>Não preempção:</em> Recursos não podem ser tomados à força</li>
+<li><em>Espera circular:</em> Existe um ciclo de threads esperando umas pelas outras</li>
+</ol>
+<p>A boa notícia é que existem estratégias para evitar deadlocks: adquirir todos os recursos de uma vez, estabelecer uma ordem global de aquisição (sempre travar o Recurso X antes do Y), ou usar algoritmos de detecção que matam threads emperradas.</p>
+<div id="outline-container-headline-15" class="outline-4">
+<h4 id="headline-15">
+🔧 Exercícios
+</h4>
+<div id="outline-text-headline-15" class="outline-text-4">
+<p>
+<em>1. Condição de corrida:</em> Duas threads executam o seguinte código concorrentemente, onde <code>cont</code> começa em 0:</p>
+<div class="src src-c">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-c" data-lang="c"><span class="line"><span class="cl"><span class="c1">// Thread A e Thread B executam isso:
+</span></span></span><span class="line"><span class="cl"><span class="kt">int</span> <span class="n">tmp</span> <span class="o">=</span> <span class="n">cont</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="n">tmp</span> <span class="o">=</span> <span class="n">tmp</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="n">cont</span> <span class="o">=</span> <span class="n">tmp</span><span class="p">;</span></span></span></code></pre></div>
+</div>
+<p>Qual é O MENOR valor possível de <code>cont</code> ao final? E o MAIOR? (Desconsidere reordenações do compilador.)</p>
+<p>
+<em>2. Semáforos na prática:</em> No problema do contador (seção 5), o que aconteceria se esquecêssemos de chamar <code>sem_post(&amp;mutex)</code> dentro do loop? E se esquecêssemos <code>sem_wait(&amp;mutex)</code>?</p>
+<p>
+<em>3. Detectando deadlock:</em> Dois processos, P1 e P2, acessam dois arquivos, A e B. P1 abre A, depois B. P2 abre B, depois A. Em que circunstância ocorre um deadlock? Como quebrá-lo?</p>
+<p>
+<em>4. Produtor-consumidor:</em> Escreva uma sequência de operações P e V em um buffer de 1 slot (um semáforo <code>slots</code> iniciado em 1, um semáforo <code>items</code> iniciado em 0) que permita a um produtor e um consumidor alternarem sem race condition.</p>
+<p>
+&lt;details&gt;
+&lt;summary&gt;&lt;b&gt;Respostas&lt;/b&gt;&lt;/summary&gt;</p>
+<ol>
+<li><em>Menor:</em> 1 (ambas leem 0, ambas escrevem 1). <em>Maior:</em> 2 (execução sequencial ideal). A race faz o resultado variar entre 1 e 2.</li>
+<li>Sem <code>sem_post</code>: a primeira thread trava o mutex, executa a seção crítica, e depois nunca libera, a segunda thread fica bloqueada eternamente (<em>deadlock</em>). Sem <code>sem_wait</code>: não há exclusão mútua, ambas acessam <code>cont</code> simultaneamente e a race condition retorna.</li>
+<li>Deadlock ocorre se P1 abre A e P2 abre B simultaneamente: cada um espera pelo recurso que o outro detém. Soluções: (a) ambos adquirirem os recursos na mesma ordem (sempre A antes de B); (b) usar um timeout que libera o primeiro recurso se o segundo não for obtido.</li>
+<li>Produtor: <code>P(slots)</code>, produz item, <code>V(items)</code>. Consumidor: <code>P(items)</code>, consome item, <code>V(slots)</code>. O buffer de 1 slot garante alternância forçada.</li>
+</ol>
+<p>&lt;/details&gt;</p>
+<hr>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-16" class="outline-3">
+<h3 id="headline-16">
+7. O Futuro dos Múltiplos Fluxos
+</h3>
+<div id="outline-text-headline-16" class="outline-text-3">
+<p>
+Onde estamos hoje e para onde vamos?</p>
+<p>
+<em>Processadores many-core:</em> CPUs com dezenas de núcleos já são realidade. O processador de servidor AMD EPYC tem até 96 núcleos, 192 threads com hyper-threading. Aproveitar todo esse potencial exige software altamente concorrente.</p>
+<p>
+<em>GPUs como aceleradores paralelos:</em> Uma GPU moderna como a NVIDIA RTX 4090 tem mais de 16.000 núcleos SIMD. Programadas corretamente (via CUDA, OpenCL ou Vulkan), elas executam milhares de operações matemáticas em paralelo, ideais para aprendizado de máquina e simulações científicas.</p>
+<p>
+<em>Paralelismo em nível de tarefa:</em> Linguagens modernas como Go, Rust e Java incorporam primitivas de concorrência diretamente na linguagem, tornando mais seguro para programadores comuns escrever código concorrente sem medo de condições de corrida.</p>
+<p>
+O hardware não vai parar de adicionar núcleos, e a pressão sobre os programadores para escrever código paralelo só aumenta. Entender concorrência, seus mecanismos, seus perigos e suas soluções, não é mais uma especialidade; é uma habilidade fundamental.</p>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-17" class="outline-3">
+<h3 id="headline-17">
+Conclusão
+</h3>
+<div id="outline-text-headline-17" class="outline-text-3">
+<p>
+Começamos este artigo com uma cozinha de três chefs. Vimos que o paralelismo existe em múltiplos níveis: dentro do processador (ILP, SIMD), entre processos (isolamento total) e entre threads (memória compartilhada). Em cada nível, o desafio é o mesmo: coordenar os fluxos para que trabalhem juntos sem atrapalhar uns aos outros.</p>
+<p>
+Por décadas, programadores puderam ignorar esses problemas, a frequência dos processadores dobrava a cada 18 meses e programas velhos rodavam mais rápido em máquinas novas. Esse mundo acabou. Hoje, escrever código que realmente aproveita o hardware exige entender concorrência, sincronização e deadlocks.</p>
+<p>
+A boa notícia é que as ferramentas estão amadurecendo. Semáforos, mutexes, monitores, canais e atores são abstrações que tornam a programação concorrente cada vez mais segura. Cabe a nós, programadores, dominá-las.</p>
+<hr>
+<p>
+<em>Fonte:</em> <a href="https://a.co/d/0a3DsSsn">Code: The Hidden Language of Computer Hardware and Software</a>, 2ª ed., Charles Petzold&lt;br&gt;
+<a href="https://csapp.cs.cmu.edu">Computer Systems: A Programmer&#39;s Perspective</a>, 2ª ed., Randal E. Bryant e David R. O&#39;Hallaron</p>
+</div>
+</div>
+
+  </div>
+</article>
+
+    </main>
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
+</body>
+</html>

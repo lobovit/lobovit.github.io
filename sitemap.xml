@@ -2,97 +2,97 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://scovl.github.io/fixgo02/</loc>
+    <loc>http://localhost:1313/fixgo02/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/fixgo01/</loc>
+    <loc>http://localhost:1313/fixgo01/</loc>
     <lastmod>2026-05-07T10:00:00-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tps/</loc>
+    <loc>http://localhost:1313/tps/</loc>
     <lastmod>2026-05-05T19:41:45-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/page/about/</loc>
+    <loc>http://localhost:1313/page/about/</loc>
     <lastmod>2025-07-28T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/rustcomp/</loc>
+    <loc>http://localhost:1313/rustcomp/</loc>
     <lastmod>2025-07-21T12:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/cgo/</loc>
+    <loc>http://localhost:1313/tags/cgo/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/go/</loc>
+    <loc>http://localhost:1313/tags/go/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/ollanta/</loc>
+    <loc>http://localhost:1313/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/post/</loc>
+    <loc>http://localhost:1313/tags/ollanta/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/</loc>
+    <loc>http://localhost:1313/post/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/static-analysis/</loc>
+    <loc>http://localhost:1313/tags/static-analysis/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/</loc>
+    <loc>http://localhost:1313/tags/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/tree-sitter/</loc>
+    <loc>http://localhost:1313/tags/tree-sitter/</loc>
     <lastmod>2026-05-08T18:40:00-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/channels/</loc>
+    <loc>http://localhost:1313/tags/channels/</loc>
     <lastmod>2026-05-07T10:00:00-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/concurrency/</loc>
+    <loc>http://localhost:1313/tags/concurrency/</loc>
     <lastmod>2026-05-07T10:00:00-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/arquitetura-de-software/</loc>
+    <loc>http://localhost:1313/tags/arquitetura-de-software/</loc>
     <lastmod>2026-05-05T19:41:45-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/compress%C3%A3o/</loc>
+    <loc>http://localhost:1313/tags/compress%C3%A3o/</loc>
     <lastmod>2026-05-05T19:41:45-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/lat%C3%AAncia/</loc>
+    <loc>http://localhost:1313/tags/lat%C3%AAncia/</loc>
     <lastmod>2026-05-05T19:41:45-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/performance/</loc>
+    <loc>http://localhost:1313/tags/performance/</loc>
     <lastmod>2026-05-05T19:41:45-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/protobuf/</loc>
+    <loc>http://localhost:1313/tags/protobuf/</loc>
     <lastmod>2026-05-05T19:41:45-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/zstd/</loc>
+    <loc>http://localhost:1313/tags/zstd/</loc>
     <lastmod>2026-05-05T19:41:45-03:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/page/contact/</loc>
+    <loc>http://localhost:1313/page/contact/</loc>
     <lastmod>2025-07-28T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/page/</loc>
+    <loc>http://localhost:1313/page/</loc>
     <lastmod>2025-07-28T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/compiladores/</loc>
+    <loc>http://localhost:1313/tags/compiladores/</loc>
     <lastmod>2025-07-21T12:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/llvm/</loc>
+    <loc>http://localhost:1313/tags/llvm/</loc>
     <lastmod>2025-07-21T12:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/mem%C3%B3ria/</loc>
+    <loc>http://localhost:1313/tags/mem%C3%B3ria/</loc>
     <lastmod>2025-07-21T12:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/rust/</loc>
+    <loc>http://localhost:1313/tags/rust/</loc>
     <lastmod>2025-07-21T12:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/tags/seguran%C3%A7a/</loc>
+    <loc>http://localhost:1313/tags/seguran%C3%A7a/</loc>
     <lastmod>2025-07-21T12:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/en/page/about/</loc>
+    <loc>http://localhost:1313/en/page/about/</loc>
     <lastmod>2024-01-15T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/en/page/contact/</loc>
+    <loc>http://localhost:1313/en/page/contact/</loc>
     <lastmod>2024-01-15T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>https://scovl.github.io/en/</loc>
+    <loc>http://localhost:1313/en/</loc>
     <lastmod>2024-01-15T00:00:00+00:00</lastmod>
   </url>
 </urlset>

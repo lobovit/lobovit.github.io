@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>02 - AI Engineering from scratch: a matemática que a IA realmente usa — lobovit</title>
+  <link rel="stylesheet" href="/css/main.css?v=3">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
+    <main>
+      
+<article>
+  <header>
+    <h1>02 - AI Engineering from scratch: a matemática que a IA realmente usa</h1>
+    <p class="meta"><time>2026-05-25</time> · <span class="tag">AI</span><span class="tag">math</span><span class="tag">linear-algebra</span><span class="tag">calculus</span><span class="tag">probability</span><span class="tag">optimization</span><span class="tag">python</span></p>
+  </header>
+  <div class="content">
+    
+<p>
+Matemática assusta. E matemática pra IA assusta mais ainda, porque você ouve termos como &#34;decomposição em valores singulares&#34;, &#34;retropropagação via regra da cadeia&#34; e &#34;amostragem de Metropolis-Hastings&#34; antes mesmo de ter certeza do que é um autovalor. A sensação é de que você precisa de um doutorado antes de importar o PyTorch.</p>
+<p>
+Não precisa.</p>
+<p>
+A matemática que a IA usa de verdade cabe em quatro grandes blocos. Álgebra linear (tudo é tensor, tudo é multiplicação de matriz). Cálculo e otimização (como o modelo aprende, como a loss desce o morro). Probabilidade e estatística (como o modelo lida com incerteza, como você avalia se ele presta). E um quarto bloco de tópicos aplicados que conectam esses três ao mundo real: teoria da informação, redução de dimensionalidade, estabilidade numérica, Fourier.</p>
+<p>
+Este artigo percorre os quatro blocos. Cada seção explica o conceito, mostra a fórmula (sem abuso de notação), conecta com a IA e, onde couber, traz código Python ou Go. O objetivo não é te transformar em matemático. É te dar vocabulário e intuição pra ler um paper, debugar um gradiente que explodiu e saber o que está acontecendo quando o <code>torch.linalg.svd</code> roda.</p>
+<p>
+Nada de magia. Vamos lá.</p>
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+Álgebra linear: a língua franca da IA
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
+<p>
+Tudo no PyTorch é tensor. Toda camada de rede neural é multiplicação de matriz. Todo score de atenção é produto escalar. Se você entende álgebra linear, você entende o esqueleto de qualquer modelo.</p>
+<div id="outline-container-headline-2" class="outline-3">
+<h3 id="headline-2">
+Vetores, matrizes e o que eles representam
+</h3>
+<div id="outline-text-headline-2" class="outline-text-3">
+<p>
+Um vetor é uma lista de números. Pode ser um ponto no espaço (<code>[x, y, z]</code>), uma direção, ou um embedding de palavra. Uma matriz é uma tabela de números: linhas e colunas. Pode ser uma transformação (rotacionar vetores), um lote de embeddings, ou os pesos de uma camada densa.</p>
+<p>
+O produto escalar mede similaridade: <code>a·b = Σ a_i b_i</code>. Se o resultado é alto, os vetores apontam na mesma direção. Se é zero, são ortogonais. Toda atenção de transformer usa produto escalar: a query e a key são vetores, e o score de atenção é o produto escalar entre eles.</p>
+<p>
+O produto matriz-vetor <code>W @ x</code> aplica uma transformação linear. Toda camada fully-connected de rede neural é exatamente isso: <code>output = ReLU(W @ x + b)</code>. O <code>W</code> são os pesos que o treino ajusta.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Produto escalar: quão similares são dois vetores?</span>
+</span></span><span class="line"><span class="cl"><span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="n">similaridade</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>  <span class="c1"># 1</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Produto matriz-vetor: toda camada densa de rede neural</span>
+</span></span><span class="line"><span class="cl"><span class="n">W</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">784</span><span class="p">)</span>  <span class="c1"># pesos</span>
+</span></span><span class="line"><span class="cl"><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">784</span><span class="p">)</span>        <span class="c1"># input (imagem achatada)</span>
+</span></span><span class="line"><span class="cl"><span class="n">output</span> <span class="o">=</span> <span class="n">W</span> <span class="o">@</span> <span class="n">x</span>                   <span class="c1"># shape (128,)</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-3">
+<h3 id="headline-3">
+Transformações: rotacionar, escalar, cisalhar
+</h3>
+<div id="outline-text-headline-3" class="outline-text-3">
+<p>
+Multiplicar por uma matriz transforma o espaço. Uma matriz de rotação gira vetores sem mudar o comprimento. Uma matriz diagonal escala cada eixo independentemente. Uma matriz de cisalhamento inclina.</p>
+<p>
+Essa intuição visual importa porque autovalores e autovetores descrevem as direções que uma transformação &#34;preserva&#34;. Se <code>A @ v = λ v</code>, então aplicar A ao vetor v só multiplica ele por λ, sem mudar a direção. Autovalores são a chave do PCA (os componentes principais são os autovetores da matriz de covariância). E são também o diagnóstico de vanishing/exploding gradients em RNNs: se o maior autovalor da matriz de recorrência for maior que 1, gradientes explodem; se for menor, desaparecem.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">4</span>  <span class="c1"># 45 graus</span>
+</span></span><span class="line"><span class="cl"><span class="n">R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">),</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">)],</span>
+</span></span><span class="line"><span class="cl">              <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">),</span>  <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">)]])</span>
+</span></span><span class="line"><span class="cl"><span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">R</span> <span class="o">@</span> <span class="n">v</span><span class="p">)</span>  <span class="c1"># [0.707, 0.707], girado 45 graus</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Autovalores e autovetores</span>
+</span></span><span class="line"><span class="cl"><span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]])</span>
+</span></span><span class="line"><span class="cl"><span class="n">eigenvalues</span><span class="p">,</span> <span class="n">eigenvectors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eig</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">eigenvalues</span><span class="p">)</span>  <span class="c1"># [3, 1], as direções preservadas</span></span></span></code></pre></div>
+</div>
+<blockquote>
+<p><em>Em miúdos:</em> <code>Autovalor</code> é o fator pelo qual uma transformação estica ou encolhe um vetor numa direção específica. <code>Autovetor</code> é a direção que não muda (só estica ou encolhe). Pense numa foto sendo ampliada: as bordas crescem, mas as linhas do chão continuam paralelas. <code>Determinante</code> é o fator de escala do volume: se <code>det(A) = 0</code>, a matriz achata o espaço numa dimensão menor e não tem inversa. <code>Posto (rank)</code> é quantas dimensões a matriz realmente ocupa depois da transformação.</p>
+</blockquote>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-3">
+<h3 id="headline-4">
+SVD: a decomposição que explica tudo
+</h3>
+<div id="outline-text-headline-4" class="outline-text-3">
+<p>
+A decomposição em valores singulares (SVD) fatura qualquer matriz em três pedaços: <code>A = U Σ V^T</code>. O <code>U</code> são os vetores singulares esquerdos, o <code>V^T</code> os direitos, e o <code>Σ</code> é uma matriz diagonal com os valores singulares em ordem decrescente de importância.</p>
+<p>
+O SVD é onipresente na IA: compressão de imagens (joga fora os valores singulares pequenos), sistemas de recomendação (fatoração de matriz usuário-item, o que a Netflix usava), LSA em NLP (fatoração da matriz termo-documento), e o PCA do scikit-learn é implementado com SVD por baixo.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">U</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">Vt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">full_matrices</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Reconstrução com k=2 componentes</span>
+</span></span><span class="line"><span class="cl"><span class="n">k</span> <span class="o">=</span> <span class="mi">2</span>
+</span></span><span class="line"><span class="cl"><span class="n">A_approx</span> <span class="o">=</span> <span class="n">U</span><span class="p">[:,</span> <span class="p">:</span><span class="n">k</span><span class="p">]</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">S</span><span class="p">[:</span><span class="n">k</span><span class="p">])</span> <span class="o">@</span> <span class="n">Vt</span><span class="p">[:</span><span class="n">k</span><span class="p">,</span> <span class="p">:]</span>
+</span></span><span class="line"><span class="cl"><span class="n">erro</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">A</span> <span class="o">-</span> <span class="n">A_approx</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Erro de reconstrução com k=</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">erro</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-3">
+<h3 id="headline-5">
+Tensores e einsum
+</h3>
+<div id="outline-text-headline-5" class="outline-text-3">
+<p>
+Tensor é a generalização de matriz pra N dimensões. Escalar é tensor 0D, vetor é 1D, matriz é 2D, e assim vai. Uma imagem RGB em batch é um tensor 4D: <code>[batch, canais, altura, largura]</code>. Toda operação no PyTorch preserva ou contrai dimensões.</p>
+<p>
+O <code>einsum</code> é uma notação compacta que substitue dezenas de linhas de reshape/transpose/matmul. Ele usa a convenção de Einstein: índices repetidos são somados.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Matmul: ik,kj -&gt; ij</span>
+</span></span><span class="line"><span class="cl"><span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;ik,kj-&gt;ij&#39;</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">B</span><span class="p">)</span>  <span class="c1"># mesmo que A @ B</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Atenção multi-cabeça: bhtd,bhsd -&gt; bhts</span>
+</span></span><span class="line"><span class="cl"><span class="n">Q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>  <span class="c1"># batch, heads, tokens, dim</span>
+</span></span><span class="line"><span class="cl"><span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">64</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">scores</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s1">&#39;bhtd,bhsd-&gt;bhts&#39;</span><span class="p">,</span> <span class="n">Q</span><span class="p">,</span> <span class="n">K</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-3">
+<h3 id="headline-6">
+Sistemas lineares e regressão
+</h3>
+<div id="outline-text-headline-6" class="outline-text-3">
+<p>
+No fundo, regressão linear é resolver <code>X @ w = y</code> pra encontrar os pesos <code>w</code>. As equações normais dão a solução fechada: <code>w = (X^T X)^(-1) X^T y</code>. Adicionar regularização L2 (Ridge) vira <code>w = (X^T X + λI)^(-1) X^T y</code>.</p>
+<p>
+Na prática, ninguém inverte matriz grande. Usa-se decomposições: LU (matrizes quadradas), Cholesky (simétricas positivas definidas, como kernels de Gaussian Processes), QR (mínimos quadrados estáveis, inicialização ortogonal de pesos). O número de condição <code>κ(A) = σ_max / σ_min</code> mede quão sensível o sistema é a erros numéricos: se for alto, pequenas variações nos dados produzem grandes variações na solução (multicolinearidade).</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">y</span> <span class="o">=</span> <span class="n">X</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="o">-</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.1</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Equações normais</span>
+</span></span><span class="line"><span class="cl"><span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">X</span><span class="p">)</span> <span class="o">@</span> <span class="n">X</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">y</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Ridge</span>
+</span></span><span class="line"><span class="cl"><span class="n">lam</span> <span class="o">=</span> <span class="mf">1.0</span>
+</span></span><span class="line"><span class="cl"><span class="n">w_ridge</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">X</span> <span class="o">+</span> <span class="n">lam</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span> <span class="o">@</span> <span class="n">X</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">y</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">w_ridge</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-3">
+<h3 id="headline-7">
+Grafos e GNNs
+</h3>
+<div id="outline-text-headline-7" class="outline-text-3">
+<p>
+Um grafo é um monte de nós conectados por arestas. A matriz de adjacência <code>A</code> tem <code>A[i][j] = 1</code> se o nó i conecta ao j. O Laplaciano <code>L = D - A</code> (onde D é a matriz de graus) concentra toda a estrutura do grafo. O segundo menor autovalor do Laplaciano (o <em>Fiedler vector</em>) indica como partir o grafo em duas comunidades, isso é spectral clustering.</p>
+<p>
+Graph Neural Networks (GNNs) operam por passagem de mensagem: cada nó agrega informação dos vizinhos, aplica uma transformação linear e passa adiante. A fórmula da GCN é <code>H^(l+1) = σ(D_hat^(-½) A_hat D_hat^(-½) H^(l) W^(l))</code>. No fundo, é multiplicação de matriz esparsa com pesos aprendidos.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Grafo: 4 nós, arestas 0-1, 1-2, 2-3</span>
+</span></span><span class="line"><span class="cl"><span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">              <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">              <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">              <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]])</span>
+</span></span><span class="line"><span class="cl"><span class="n">D</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="n">A</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="n">L</span> <span class="o">=</span> <span class="n">D</span> <span class="o">-</span> <span class="n">A</span>  <span class="c1"># Laplaciano</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Spectral clustering: segundo menor autovalor</span>
+</span></span><span class="line"><span class="cl"><span class="n">eigenvalues</span><span class="p">,</span> <span class="n">eigenvectors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigh</span><span class="p">(</span><span class="n">L</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">fiedler</span> <span class="o">=</span> <span class="n">eigenvectors</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="n">particao</span> <span class="o">=</span> <span class="n">fiedler</span> <span class="o">&gt;</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">particao</span><span class="p">)</span>  <span class="c1"># [False, False, True, True], dois grupos</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-8" class="outline-2">
+<h2 id="headline-8">
+Cálculo e otimização: como o modelo aprende
+</h2>
+<div id="outline-text-headline-8" class="outline-text-2">
+<p>
+Se álgebra linear é o esqueleto, cálculo é o sistema nervoso. É ele que diz &#34;ajuste o peso 0.003 pra esquerda e 0.001 pra baixo&#34;. Toda rede neural aprende descendo o gradiente da função de perda.</p>
+<div id="outline-container-headline-9" class="outline-3">
+<h3 id="headline-9">
+Derivadas, gradientes e gradiente descendente
+</h3>
+<div id="outline-text-headline-9" class="outline-text-3">
+<p>
+A derivada mede a taxa de variação instantânea: se <code>f(x) = x²</code>, então <code>f&#39;(x) = 2x</code>. Em <code>x = 3</code>, a derivada é 6: um passo infinitesimal pra direita aumenta a função 6 vezes mais rápido. O gradiente é a derivada pra funções de múltiplas variáveis: um vetor que aponta na direção de maior crescimento. O gradiente descendente anda na direção oposta (a de maior <em>decrescimento</em>).</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">gradiente_descendente</span><span class="p">(</span><span class="n">f_grad</span><span class="p">,</span> <span class="n">x0</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">steps</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">x</span> <span class="o">=</span> <span class="n">x0</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">steps</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">x</span> <span class="o">-=</span> <span class="n">lr</span> <span class="o">*</span> <span class="n">f_grad</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">x</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Minimizar f(x,y) = x² + y²</span>
+</span></span><span class="line"><span class="cl"><span class="n">f_grad</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">x</span>
+</span></span><span class="line"><span class="cl"><span class="n">minimo</span> <span class="o">=</span> <span class="n">gradiente_descendente</span><span class="p">(</span><span class="n">f_grad</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">]))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">minimo</span><span class="p">)</span>  <span class="c1"># [~0, ~0]</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-10" class="outline-3">
+<h3 id="headline-10">
+A regra da cadeia e a retropropagação
+</h3>
+<div id="outline-text-headline-10" class="outline-text-3">
+<p>
+Quando você tem funções compostas <code>f(g(h(x)))</code>, a derivada é o produto das derivadas de cada camada: <code>f&#39;(g(h(x))) * g&#39;(h(x)) * h&#39;(x)</code>. Isso é a regra da cadeia.</p>
+<p>
+Redes neurais são composições gigantes de funções. A retropropagação (backprop) aplica a regra da cadeia da saída pra entrada, calculando o gradiente de cada peso em relação à loss. O PyTorch faz isso automaticamente com o grafo computacional: cada operação (<code>+</code>, <code>*</code>, <code>matmul</code>) registra como desfazê-la, e o <code>.backward()</code> percorre o grafo de trás pra frente.</p>
+<p>
+A ideia central: <em>forward mode</em> calcula derivadas da entrada pra saída (bom pra funções com poucas entradas e muitas saídas). <em>Reverse mode</em> calcula da saída pra entrada (bom pra muitas entradas e uma saída, exatamente o caso de uma rede neural com milhões de parâmetros e uma loss escalar). PyTorch, JAX e TensorFlow usam reverse mode.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">torch</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">2.0</span><span class="p">],</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">y</span> <span class="o">=</span> <span class="n">x</span><span class="o">**</span><span class="mi">3</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">x</span>  <span class="c1"># f(x) = x³ + 2x² + x</span>
+</span></span><span class="line"><span class="cl"><span class="n">y</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>  <span class="c1"># 3*4 + 4*2 + 1 = 21, a derivada em x=2</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-11" class="outline-3">
+<h3 id="headline-11">
+Otimizadores: SGD, Momentum, Adam
+</h3>
+<div id="outline-text-headline-11" class="outline-text-3">
+<p>
+O gradiente descendente puro (SGD) é <code>w = w - lr * grad</code>. Funciona, mas é lento e fica preso em saddle points. Momentum adiciona inércia: <code>v = β*v + grad; w = w - lr*v</code>. O acúmulo de velocidade ajuda a atravessar platôs.</p>
+<p>
+Adam (Adaptive Moment Estimation) é o padrão da indústria. Ele mantém duas médias móveis: uma do gradiente (<code>m</code>, &#34;momentum&#34;) e uma do gradiente ao quadrado (<code>v</code>, &#34;escala adaptativa&#34;). Cada parâmetro ganha sua própria taxa de aprendizado efetiva. Isso faz o Adam ser robusto a escalas diferentes dos gradientes (comum quando uma camada tem pesos 1000x maiores que outra).</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Adam</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span> <span class="n">beta1</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span> <span class="n">beta2</span><span class="o">=</span><span class="mf">0.999</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">lr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">b1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">b2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps</span> <span class="o">=</span> <span class="n">lr</span><span class="p">,</span> <span class="n">beta1</span><span class="p">,</span> <span class="n">beta2</span><span class="p">,</span> <span class="n">eps</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">grad</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="bp">self</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">+=</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">b1</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">b1</span><span class="p">)</span> <span class="o">*</span> <span class="n">grad</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">v</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">b2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">b2</span><span class="p">)</span> <span class="o">*</span> <span class="n">grad</span><span class="o">**</span><span class="mi">2</span>
+</span></span><span class="line"><span class="cl">        <span class="n">m_hat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">b1</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="n">v_hat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">b2</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">w</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">lr</span> <span class="o">*</span> <span class="n">m_hat</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">v_hat</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-12" class="outline-3">
+<h3 id="headline-12">
+Otimização convexa e por que redes neurais funcionam mesmo sem ser
+</h3>
+<div id="outline-text-headline-12" class="outline-text-3">
+<p>
+Uma função convexa tem um único mínimo global (pense numa tigela). Regressão linear, regressão logística e SVMs são convexos. Isso significa que o gradiente descendente <em>sempre</em> converge pro melhor resultado possível, devagar ou rápido.</p>
+<p>
+Redes neurais não são convexas. A superfície de loss tem milhares de mínimos locais e saddle points. Então por que funcionam? Dois motivos: (1) em altas dimensões, a maioria dos pontos críticos são saddle points (onde o gradiente é zero mas não é mínimo), não mínimos locais; (2) redes superparametrizadas (mais parâmetros que dados) tendem a ter paisagens de loss mais &#34;suaves&#34;, com muitos mínimos de qualidade similar. Na prática, o Adam acha um deles e a validação confirma se é bom.</p>
+<p>
+Multiplicadores de Lagrange e condições KKT são a teoria por trás de restrições: L1/L2 podem ser vistas como &#34;minimize a loss, mas mantenha os pesos dentro de uma bola de raio R&#34;. É assim que SVMs derivam o kernel trick via formulação dual.</p>
+<blockquote>
+<p><em>Em miúdos:</em> <code>Gradiente</code> é a seta que aponta pro topo do morro; você anda no sentido contrário pra descer. <code>Learning rate</code> é o tamanho do passo: grande demais, você pula o vale; pequeno demais, não sai do lugar. <code>Momentum</code> é inércia: continue andando na direção que você já estava, mesmo que o chão esteja plano. <code>Convexidade</code> é garantia de que não tem vale falso: toda descida leva ao fundo de verdade. <code>Saddle point</code> é um ponto plano que não é mínimo nem máximo: o gradiente é zero, mas você não está no fundo e precisa de momentum pra escapar.</p>
+</blockquote>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-13" class="outline-2">
+<h2 id="headline-13">
+Probabilidade e estatística: como a IA lida com incerteza
+</h2>
+<div id="outline-text-headline-13" class="outline-text-2">
+<p>
+Modelos de IA fazem previsões, e previsões são probabilidades. &#34;Este pixel é um gato com 87% de confiança&#34;. &#34;A próxima palavra provável é &#39;cachorro&#39; com probabilidade 0.23&#34;. Toda essa confiança é modelada com probabilidade.</p>
+<div id="outline-container-headline-14" class="outline-3">
+<h3 id="headline-14">
+Distribuições, esperança e entropia
+</h3>
+<div id="outline-text-headline-14" class="outline-text-3">
+<p>
+Uma distribuição de probabilidade descreve quão provável cada resultado é. A normal (Gaussiana) reina na natureza e nos pesos iniciais de redes neurais (inicialização de Kaiming/He). A categórica reina nas saídas de classificação.</p>
+<p>
+A <em>entropia</em> mede incerteza: <code>H(P) = -Σ p(x) log(p(x))</code>. Uma moeda justa (50/50) tem entropia máxima. Uma moeda viciada (100/0) tem entropia zero. A entropia cruzada <code>H(P, Q)</code> mede quão bem a distribuição Q aproxima a verdadeira P. E é exatamente isso que a loss de classificação minimiza: <code>CrossEntropy(y_true, y_pred)</code>.</p>
+<p>
+A <em>divergência KL</em> mede a diferença entre duas distribuições: <code>KL(P||Q) = H(P,Q) - H(P)</code>. É usada em VAEs (Variational Autoencoders: aproxime a distribuição latente da normal), RLHF (alinhar o modelo com preferências humanas) e compressão de modelos.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">entropia</span><span class="p">(</span><span class="n">p</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">p</span> <span class="o">=</span> <span class="n">p</span><span class="p">[</span><span class="n">p</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">p</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">p</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">entropia_cruzada</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">q</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="mf">1e-12</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">p</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">q</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Moeda justa vs viciada</span>
+</span></span><span class="line"><span class="cl"><span class="n">p_justa</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="n">p_viciada</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">entropia</span><span class="p">(</span><span class="n">p_justa</span><span class="p">))</span>    <span class="c1"># 1.0 bit</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">entropia</span><span class="p">(</span><span class="n">p_viciada</span><span class="p">))</span>  <span class="c1"># 0.47 bits</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">entropia_cruzada</span><span class="p">(</span><span class="n">p_justa</span><span class="p">,</span> <span class="n">p_viciada</span><span class="p">))</span>  <span class="c1"># alto = predição ruim</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-15" class="outline-3">
+<h3 id="headline-15">
+Bayes: o teorema que atualiza crenças
+</h3>
+<div id="outline-text-headline-15" class="outline-text-3">
+<p>
+O teorema de Bayes diz como atualizar o que você acredita quando aparece evidência nova: <code>P(A|B) = P(B|A) * P(A) / P(B)</code>. O <code>P(A)</code> é o prior (o que você acreditava antes). O <code>P(B|A)</code> é a verossimilhança (quão bem a evidência se encaixa na sua crença). O <code>P(A|B)</code> é o posterior (sua crença atualizada).</p>
+<p>
+Naive Bayes é o classificador mais simples que existe. Apesar do pressuposto ingênuo de independência entre features (&#34;a palavra &#39;grátis&#39; não tem nada a ver com &#39;dinheiro&#39;&#34;), ele funciona surpreendentemente bem pra classificação de texto e spam.</p>
+<p>
+Na prática de deep learning, Bayes aparece discretamente: regularização L2 é equivalente a um prior Gaussiano nos pesos (MAP, Maximum A Posteriori). Dropout é uma aproximação Bayesiana (MC Dropout). O aprendizado online é literalmente atualização Bayesiana sequencial.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">NaiveBayes</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">n_classes</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">prior</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">likelihood</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_classes</span><span class="p">,</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_classes</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">            <span class="n">X_c</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">y</span> <span class="o">==</span> <span class="n">c</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">            <span class="bp">self</span><span class="o">.</span><span class="n">likelihood</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">X_c</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">X_c</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">+</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">log_posterior</span> <span class="o">=</span> <span class="n">X</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">likelihood</span><span class="o">.</span><span class="n">T</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prior</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">log_posterior</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-16" class="outline-3">
+<h3 id="headline-16">
+Estatística pra ML: como saber se seu modelo presta
+</h3>
+<div id="outline-text-headline-16" class="outline-text-3">
+<p>
+Acurácia sozinha engana. Se 99% dos seus dados são da classe A, um modelo que sempre chuta A tem 99% de acurácia e zero utilidade. Você precisa de mais.</p>
+<p>
+O <em>teste t pareado</em> compara dois modelos nos mesmos folds de validação cruzada: o modelo A é significativamente melhor que o B ou foi sorte? O <em>bootstrap</em> reconstrói o intervalo de confiança de qualquer métrica reamostrando os dados com reposição. O <em>tamanho de efeito</em> (Cohen&#39;s d) mede a magnitude da diferença, não só se ela existe: um modelo pode ser &#34;significativamente&#34; melhor com p &lt; 0.001 mas a diferença prática ser irrelevante.</p>
+<p>
+O Teorema Central do Limite (CLT) é o que faz tudo isso funcionar: médias de amostras tendem a uma distribuição normal conforme o tamanho da amostra cresce, independentemente da distribuição original. É por isso que o SGD funciona: o gradiente de um mini-batch é uma média, e o CLT diz que essa média é aproximadamente normal em torno do gradiente verdadeiro.</p>
+</div>
+</div>
+<div id="outline-container-headline-17" class="outline-3">
+<h3 id="headline-17">
+Amostragem: como gerar dados sintéticos
+</h3>
+<div id="outline-text-headline-17" class="outline-text-3">
+<p>
+Às vezes você precisa gerar amostras de uma distribuição complicada. A inversão da CDF resolve quando você conhece a cumulativa. Amostragem por rejeição resolve quando você conhece a densidade e pode envolvê-la numa distribuição mais simples.</p>
+<p>
+MCMC (Markov Chain Monte Carlo) resolve quando a distribuição é complexa demais pra qualquer envelope simples. O Metropolis-Hastings propõe um passo aleatório e aceita ou rejeita baseado em quão melhor o novo ponto é. O Gibbs faz isso coordenada por coordenada. São a base da inferência Bayesiana moderna.</p>
+<p>
+E as técnicas de amostragem são o coração dos LLMs: <em>temperature</em> achata ou afia a distribuição de probabilidade (T &gt; 1 = mais criativo, T &lt; 1 = mais determinístico). <em>top-k</em> restringe às k palavras mais prováveis. <em>top-p</em> (nucleus sampling) acumula probabilidade até bater um limiar. O <em>reparameterization trick</em> (z = μ + σ·ε) faz sampling diferenciável, o que torna VAEs treináveis. E <em>diffusion models</em> são literalmente cadeias de amostragem iterativa: parta do ruído puro e vá removendo ruído passo a passo guiado por uma rede neural.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">temperatura</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">T</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">probs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">logits</span> <span class="o">/</span> <span class="n">T</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">probs</span> <span class="o">/</span> <span class="n">probs</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">top_k</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argpartition</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="o">-</span><span class="n">k</span><span class="p">)[</span><span class="o">-</span><span class="n">k</span><span class="p">:]</span>
+</span></span><span class="line"><span class="cl">    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">logits</span><span class="p">)</span> <span class="o">*</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+</span></span><span class="line"><span class="cl">    <span class="n">mask</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">logits</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="n">probs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">mask</span> <span class="o">-</span> <span class="n">mask</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">probs</span> <span class="o">/</span> <span class="n">probs</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">logits</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;T=1.0:&#34;</span><span class="p">,</span> <span class="n">temperatura</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>  <span class="c1"># normal</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;T=0.5:&#34;</span><span class="p">,</span> <span class="n">temperatura</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">))</span>  <span class="c1"># mais determinístico</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;T=2.0:&#34;</span><span class="p">,</span> <span class="n">temperatura</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">))</span>  <span class="c1"># mais criativo</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;top-3:&#34;</span><span class="p">,</span> <span class="n">top_k</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-18" class="outline-3">
+<h3 id="headline-18">
+Processos estocásticos
+</h3>
+<div id="outline-text-headline-18" class="outline-text-3">
+<p>
+Um processo estocástico é uma sequência de variáveis aleatórias indexadas no tempo. O mais simples é o passeio aleatório: a cada passo, jogue uma moeda e ande pra esquerda ou direita. A distância esperada depois de <code>n</code> passos é <code>√n</code> (não <code>n</code>, porque os passos se cancelam parcialmente).</p>
+<p>
+Cadeias de Markov são processos onde o próximo estado só depende do atual (não de toda a história). A geração de tokens em LLMs é uma cadeia de Markov: cada token é amostrado condicionado no contexto da janela, e o próximo depende do que foi gerado. O movimento browniano (versão contínua do passeio aleatório) é a base matemática dos modelos de difusão.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">random_walk</span><span class="p">(</span><span class="n">steps</span><span class="o">=</span><span class="mi">1000</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">pos</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="n">steps</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">pos</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>  <span class="c1"># deve ser ~sqrt(steps)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Distância esperada: ~</span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;Distância observada: ~</span><span class="si">{</span><span class="n">random_walk</span><span class="p">()</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-19" class="outline-2">
+<h2 id="headline-19">
+Tópicos aplicados: o que conecta a teoria ao treino real
+</h2>
+<div id="outline-text-headline-19" class="outline-text-2">
+<p>
+Os três blocos anteriores cobrem a espinha dorsal. O último bloco cobre ferramentas matemáticas que aparecem em situações específicas de treino e inferência.</p>
+<div id="outline-container-headline-20" class="outline-3">
+<h3 id="headline-20">
+Estabilidade numérica
+</h3>
+<div id="outline-text-headline-20" class="outline-text-3">
+<p>
+Computadores representam números com precisão finita (float32, float16, bfloat16). Quando você soma números de magnitudes muito diferentes, os pequenos desaparecem (underflow). Quando multiplica números grandes, o resultado excede o representável (overflow). Quando subtrai números quase iguais, perde precisão (cancelamento catastrófico).</p>
+<p>
+O log-sum-exp trick é a solução mais importante: <code>log(Σ exp(x_i)) = max(x) + log(Σ exp(x_i - max(x)))</code>. Subtrair o máximo antes de exponenciar evita overflow. Toda <code>CrossEntropyLoss</code> do PyTorch faz isso internamente.</p>
+<p>
+Mixed precision (AMP) treina com float16 nas operações pesadas (forward, backward) e float32 nas críticas (atualização de pesos). Acelera o treino sem perder qualidade. Bfloat16 é ainda melhor: mesma faixa do float32 (8 bits de expoente), menos precisão nos 7 bits de mantissa, mas o bastante pra gradientes.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">softmax_estavel</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">x_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">exp_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">x_max</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">exp_x</span> <span class="o">/</span> <span class="n">exp_x</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">cross_entropy_estavel</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">target</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">log_probs</span> <span class="o">=</span> <span class="n">logits</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">logits</span> <span class="o">-</span> <span class="n">logits</span><span class="o">.</span><span class="n">max</span><span class="p">())))</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="o">-</span><span class="n">log_probs</span><span class="p">[</span><span class="n">target</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="mi">1000</span><span class="p">])</span>  <span class="c1"># valores grandes</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">softmax_estavel</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>  <span class="c1"># [0.33, 0.33, 0.33], correto e sem NaN</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-21" class="outline-3">
+<h3 id="headline-21">
+Normas e distâncias
+</h3>
+<div id="outline-text-headline-21" class="outline-text-3">
+<p>
+A distância entre dois vetores pode ser medida de vários jeitos, e a escolha muda tudo. Distância Euclidiana (L2) é a mais comum: hipotenusa, menor caminho. Distância Manhattan (L1) soma as diferenças absolutas: como andar em quarteirões. Distância Chebyshev (L∞) pega só a maior diferença entre coordenadas.</p>
+<p>
+Similaridade de cosseno mede o ângulo, não a magnitude. É a métrica dominante em NLP e embeddings porque dois textos sobre o mesmo assunto têm vetores que apontam na mesma direção, mesmo que um seja muito mais longo que o outro (magnitudes diferentes). Todo banco vetorial (Qdrant, Pinecone, Weaviate) usa similaridade de cosseno como padrão.</p>
+<p>
+A regularização L1 (LASSO) produz pesos esparsos: muitos pesos viram exatamente zero, o que é seleção automática de features. L2 (Ridge) encolhe todos os pesos proporcionalmente, o que é bom pra multicolinearidade.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;L1:&#34;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="n">b</span><span class="p">)))</span>                 <span class="c1"># 2 (Manhattan)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;L2:&#34;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">a</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)))</span>           <span class="c1"># 1.414 (Euclidiana)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;Cosseno:&#34;</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="n">b</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">b</span><span class="p">)))</span>  <span class="c1"># 1.0 (ortogonais)</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-22" class="outline-3">
+<h3 id="headline-22">
+Redução de dimensionalidade
+</h3>
+<div id="outline-text-headline-22" class="outline-text-3">
+<p>
+PCA (Principal Component Analysis) encontra as direções de maior variância nos dados e projeta tudo nelas. Você centraliza os dados, calcula a matriz de covariância, extrai os autovetores (componentes principais) e projeta. O gráfico de variância explicada acumulada mostra quantos componentes você precisa pra reter 95% da informação.</p>
+<p>
+t-SNE e UMAP são não-lineares: eles preservam distâncias locais (pontos próximos no espaço original ficam próximos na projeção 2D/3D), mas distorcem as globais. São ferramentas de visualização, não de pré-processamento. Não use t-SNE pra reduzir features antes de treinar; use PCA.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">pca</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">n_components</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">X_centered</span> <span class="o">=</span> <span class="n">X</span> <span class="o">-</span> <span class="n">X</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">cov</span> <span class="o">=</span> <span class="p">(</span><span class="n">X_centered</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">X_centered</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">eigenvalues</span><span class="p">,</span> <span class="n">eigenvectors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigh</span><span class="p">(</span><span class="n">cov</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">eigenvalues</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">X_centered</span> <span class="o">@</span> <span class="n">eigenvectors</span><span class="p">[:,</span> <span class="n">idx</span><span class="p">[:</span><span class="n">n_components</span><span class="p">]]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">X_proj</span> <span class="o">=</span> <span class="n">pca</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">X_proj</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>  <span class="c1"># (200, 2)</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-23" class="outline-3">
+<h3 id="headline-23">
+Complexos e Fourier
+</h3>
+<div id="outline-text-headline-23" class="outline-text-3">
+<p>
+Números complexos (<code>a + bi</code>) são uma ferramenta elegante pra representar rotações. Euler mostrou que <code>e^(iθ) = cos(θ) + i·sin(θ)</code>: a exponencial complexa é um ponto no círculo unitário. Multiplicar por <code>e^(iθ)</code> gira um vetor em θ radianos.</p>
+<p>
+Os positional encodings dos Transformers usam senos e cossenos de diferentes frequências, que, na forma complexa, são simplesmente <code>e^(i·pos·freq)</code>, rotações de ângulos proporcionais à posição da palavra. RoPE (Rotary Position Embedding) leva isso ao extremo: gira os vetores de atenção por um ângulo que depende da posição, aplicando uma matriz de rotação 2D a pares de dimensões.</p>
+<p>
+A Transformada de Fourier decompõe um sinal em suas frequências constituintes. A FFT (Cooley-Tukey) faz isso em O(N log N) dividindo e conquistando. O teorema da convolução diz que convolução no domínio do tempo = multiplicação no domínio da frequência: <code>conv(x, h) = IFFT(FFT(x) * FFT(h))</code>. Pra kernels grandes, é mais rápido fazer via FFT. O FNet é um transformer que substitui atenção por FFT, indo de O(N²) pra O(N log N).</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">dft</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">N</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">n</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">k</span> <span class="o">=</span> <span class="n">n</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">N</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="n">j</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">k</span> <span class="o">*</span> <span class="n">n</span> <span class="o">/</span> <span class="n">N</span><span class="p">),</span> <span class="n">x</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">signal</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="n">frequencias</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">dft</span><span class="p">(</span><span class="n">signal</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">frequencias</span><span class="p">)</span>  <span class="c1"># pico na frequência dominante</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-24" class="outline-2">
+<h2 id="headline-24">
+O que levar disso
+</h2>
+<div id="outline-text-headline-24" class="outline-text-2">
+<p>
+Matemática pra IA não é decoreba de fórmula. É um conjunto de ferramentas mentais que te deixam ler um paper, entender por que seu treino divergiu e saber a diferença entre &#34;tente Adam&#34; e &#34;seu gradiente está explodindo porque os autovalores da RNN passaram de 1&#34;.</p>
+<p>
+Se você chegou até aqui, você tem intuição sobre:</p>
+<ul>
+<li>Álgebra linear: vetores, matrizes, transformações, SVD, tensores, einsum, sistemas lineares, grafos e GNNs.</li>
+<li>Cálculo e otimização: derivadas, gradiente descendente, backpropagation, SGD/Momentum/Adam, convexidade.</li>
+<li>Probabilidade e estatística: distribuições, entropia, Bayes, Naive Bayes, testes estatísticos, bootstrap.</li>
+<li>Amostragem: CDF, rejeição, MCMC, temperature/top-k/top-p, reparameterization trick, difusão, processos estocásticos.</li>
+<li>Tópicos aplicados: estabilidade numérica (log-sum-exp, mixed precision), normas e distâncias (L1/L2/cosseno), PCA/SVD/t-SNE, Fourier/FFT, complexos e RoPE.</li>
+</ul>
+<p>Nada disso exige um doutorado. Exige sentar, escrever um <code>np.einsum</code> de atenção multi-cabeça, ver o output com shape errado, corrigir, e repetir até fazer sentido. A matemática da IA se aprende fazendo.</p>
+</div>
+</div>
+
+  </div>
+</article>
+
+    </main>
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
+</body>
+</html>

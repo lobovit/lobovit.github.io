@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Concurrency on scovl</title>
-    <link>https://scovl.github.io/tags/concurrency/</link>
-    <description>Recent content in Concurrency on scovl</description>
+    <title>Concurrency on lobovit</title>
+    <link>http://localhost:1313/tags/concurrency/</link>
+    <description>Recent content in Concurrency on lobovit</description>
     <generator>Hugo</generator>
     <language>pt-br</language>
     <lastBuildDate>Thu, 07 May 2026 10:00:00 -0300</lastBuildDate>
-    <atom:link href="https://scovl.github.io/tags/concurrency/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://localhost:1313/tags/concurrency/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Resolução de um bug silencioso em Go</title>
-      <link>https://scovl.github.io/fixgo01/</link>
+      <link>http://localhost:1313/fixgo01/</link>
       <pubDate>Thu, 07 May 2026 10:00:00 -0300</pubDate>
-      <guid>https://scovl.github.io/fixgo01/</guid>
-      <description>&lt;div id=&#34;outline-container-headline-1&#34; class=&#34;outline-2&#34;&gt;&#xA;&lt;h2 id=&#34;headline-1&#34;&gt;&#xA;Um canal que não escuta&#xA;&lt;/h2&gt;&#xA;&lt;div id=&#34;outline-text-headline-1&#34; class=&#34;outline-text-2&#34;&gt;&#xA;&lt;p&gt;&#xA;&lt;a href=&#34;https://go.dev/tour/concurrency/2&#34;&gt;Canais&lt;/a&gt; em Go é uma daquelas features que parecem simples até você precisar usá-la em produção com centenas de &lt;a href=&#34;https://go.dev/tour/concurrency/1&#34;&gt;goroutines&lt;/a&gt; concorrentes. E é aí que &amp;#34;a jiripoca começa a piar&amp;#34;.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Este artigo conta a história de um bug silencioso que encontrei durante uma revisão de código no &lt;a href=&#34;https://github.com/scovl/Ollanta&#34;&gt;Ollanta&lt;/a&gt;, um projeto pessoal de análise de código estático multi-linguagem escrito em Go. O bug não quebrava testes, não produzia &lt;a href=&#34;https://go.dev/blog/defer-panic-and-recover&#34;&gt;panic&lt;/a&gt;, não gerava erro no &lt;a href=&#34;https://golangci-lint.run&#34;&gt;linter&lt;/a&gt;. Mas, em condições específicas, impedia o &lt;a href=&#34;https://learn.microsoft.com/pt-br/dotnet/core/extensions/graceful-shutdown&#34;&gt;graceful shutdown&lt;/a&gt; do scanner por tempo indeterminado.&lt;/p&gt;</description>
+      <guid>http://localhost:1313/fixgo01/</guid>
+      <description>&lt;div id=&#34;outline-container-headline-1&#34; class=&#34;outline-2&#34;&gt;&#xA;&lt;h2 id=&#34;headline-1&#34;&gt;&#xA;Um canal que não escuta&#xA;&lt;/h2&gt;&#xA;&lt;div id=&#34;outline-text-headline-1&#34; class=&#34;outline-text-2&#34;&gt;&#xA;&lt;p&gt;&#xA;&lt;a href=&#34;https://go.dev/tour/concurrency/2&#34;&gt;Canais&lt;/a&gt; em Go é uma daquelas features que parecem simples até você precisar usá-la em produção com centenas de &lt;a href=&#34;https://go.dev/tour/concurrency/1&#34;&gt;goroutines&lt;/a&gt; concorrentes. E é aí que &amp;#34;a jiripoca começa a piar&amp;#34;.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Este artigo conta a história de um bug silencioso que encontrei durante uma revisão de código no &lt;a href=&#34;https://github.com/lobovit/Ollanta&#34;&gt;Ollanta&lt;/a&gt;, um projeto pessoal de análise de código estático multi-linguagem escrito em Go. O bug não quebrava testes, não produzia &lt;a href=&#34;https://go.dev/blog/defer-panic-and-recover&#34;&gt;panic&lt;/a&gt;, não gerava erro no &lt;a href=&#34;https://golangci-lint.run&#34;&gt;linter&lt;/a&gt;. Mas, em condições específicas, impedia o &lt;a href=&#34;https://learn.microsoft.com/pt-br/dotnet/core/extensions/graceful-shutdown&#34;&gt;graceful shutdown&lt;/a&gt; do scanner por tempo indeterminado.&lt;/p&gt;</description>
     </item>
   </channel>
 </rss>

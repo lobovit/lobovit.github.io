@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Nlp on lobovit</title>
+    <link>https://lobovit.github.io/tags/nlp/</link>
+    <description>Recent content in Nlp on lobovit</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Wed, 27 May 2026 10:00:00 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/nlp/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>05 - AI Engineering from scratch: do token ao diálogo, fundamentos e fronteira</title>
+      <link>https://lobovit.github.io/ai-nlp-foundations-to-advanced/</link>
+      <pubDate>Wed, 27 May 2026 10:00:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/ai-nlp-foundations-to-advanced/</guid>
+      <description>&lt;p&gt;&#xA;Texto é a forma mais natural de comunicação humana. E a mais difícil de processar computacionalmente. Uma imagem de 224x224 tem 150 mil números. Uma frase de 10 palavras pode ter 10 milhões de interpretações diferentes, dependendo de contexto, entonação, ironia, referências implícitas e conhecimento de mundo.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Processamento de Linguagem Natural (NLP) é o campo que constrói a ponte entre texto bruto e significado computável. Este artigo percorre 29 tópicos, dos fundamentos (tokenização, TF-IDF) até a fronteira de 2026 (RAG com chunking estratégico, avaliação de LLMs, tracking de diálogo). A stack é Python para experimentação e Go para APIs de produção.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

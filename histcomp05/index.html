@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Petzold05 - Flip Flop — lobovit</title>
+  <link rel="stylesheet" href="/css/main.css?v=3">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
+    <main>
+      
+<article>
+  <header>
+    <h1>Petzold05 - Flip Flop</h1>
+    <p class="meta"><time>2026-05-12</time> · <span class="tag">memória</span><span class="tag">RAM</span><span class="tag">ALU</span><span class="tag">arquitetura</span><span class="tag">assembly</span><span class="tag">história</span><span class="tag">computação</span></p>
+  </header>
+  <div class="content">
+    
+<p>
+Quando acordamos todas as manhãs, nossa memória preenche as lacunas. Lembramos onde estamos, o que fizemos no dia anterior e o que planejamos para hoje. Podemos levar alguns minutos para juntar as peças, mas, no geral, conseguimos remontar nossas vidas e obter continuidade suficiente para iniciar mais um dia.</p>
+<p>
+A memória humana, claro, não é muito ordenada e nem infalível. Na verdade, a escrita provavelmente foi inventada de forma específica para compensar as falhas da nossa memória. Nós escrevemos e lemos depois; salvamos e recuperamos. A função da memória é manter a informação intacta entre esses dois eventos.</p>
+<p>
+Ao abrir o Emacs para compilar um projeto em Rust ou Zig, ou ao analisar os bytes de uma DLL durante a engenharia reversa de um mecanismo de <em>anti-cheat</em>, o que estamos manipulando em sua essência mais fundamental é a memória do computador. E essa memória, em seu nível mais baixo, não passa de um intrincado arranjo de portas lógicas.</p>
+<p>
+Neste artigo, vamos descer ao nível do silício e entender como saímos de um simples interruptor para formar a memória RAM, a Unidade Lógica e Aritmética (ALU) e, por fim, a arquitetura fundamental de uma CPU.</p>
+<hr>
+<div id="outline-container-headline-1" class="outline-3">
+<h3 id="headline-1">
+1. O Bloco Fundacional: O Flip-Flop
+</h3>
+<div id="outline-text-headline-1" class="outline-text-3">
+<p>
+Tudo começa com o armazenamento de <em>1 bit</em>. Como vimos no estudo de portas lógicas, um <em><a href="https://pt.wikipedia.org/wiki/Flip-flop">flip-flop</a></em> tipo D (acionado por nível) é construído com um inversor, duas portas AND e duas portas NOR.</p>
+<p>
+Para o nosso propósito, vamos simplificar a nomenclatura de suas entradas e saídas:</p>
+<p>
+/ /Data In (DI):* O bit que queremos salvar.
+/ /Write (W):* O sinal de controle (antes chamado de Clock).
+/ /Data Out (DO):* O bit armazenado.</p>
+<p>
+Normalmente, o sinal <code>Write</code> é <code>0</code>, e qualquer mudança no <code>Data In</code> não afeta a saída. Mas, quando queremos armazenar um bit, nós elevamos o <code>Write</code> para <code>1</code> e depois de volta para <code>0</code>. O circuito &#34;captura&#34; (ou <em>latches</em>, por isso também é chamado de <em>latch</em>) aquele bit de dados.</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">flowchart LR
+  DI(Data In) --&gt; LATCH{Flip-Flop\nMemory Cell}
+  W(Write) --&gt; LATCH
+  LATCH --&gt; DO(Data Out)
+  
+  style LATCH fill:#2d3436,stroke:#74b9ff,stroke-width:2px,color:#fff</code></pre>
+</div>
+<p>
+Isso é <em>1 bit de memória</em>. Isolado, não faz muito. Mas se conectarmos oito desses flip-flops lado a lado e unirmos todos os seus sinais <code>Write</code>, teremos um armazenamento de <em>1 byte</em>.</p>
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-3">
+<h3 id="headline-2">
+2. Construindo a RAM (Random Access Memory)
+</h3>
+<div id="outline-text-headline-2" class="outline-text-3">
+<p>
+Imagine que queremos armazenar não apenas 1 byte, mas oito valores separados de 1 bit. Poderíamos ter oito sinais <code>Write</code> separados, mas isso seria ineficiente. Em vez disso, usamos um componente chamado <em>Decodificador 3-para-8</em>.</p>
+<p>
+Com três sinais (que chamaremos de S0, S1 e S2), podemos representar em binário os números de 0 a 7. O decodificador pega esses três sinais e garante que apenas <em>uma</em> de suas oito saídas seja acionada por vez.</p>
+<p>
+Se aplicarmos esses mesmos sinais para selecionar qual bit queremos <em>ler</em>, criamos o conceito de <em>Endereço (Address)</em>. É como um endereço postal: as combinações <code>000</code>, <code>001</code>, <code>010</code>, etc., apontam para &#34;caixas&#34; específicas onde nosso bit mora.</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph TD
+  subgraph RAM de 8x1 (8 endereços de 1 bit)
+    A[Address 3-bits] --&gt; DEC[Decodificador 3-para-8]
+    W[Write Signal] --&gt; DEC
+    
+    DEC --&gt;|000| C0[Cell 0]
+    DEC --&gt;|001| C1[Cell 1]
+    DEC --&gt;|...| Cdots[...]
+    DEC --&gt;|111| C7[Cell 7]
+    
+    DI[Data In] --&gt; C0 &amp; C1 &amp; Cdots &amp; C7
+    
+    C0 &amp; C1 &amp; Cdots &amp; C7 --&gt; SEL[Seletor 8-para-1]
+    A --&gt; SEL
+    SEL --&gt; DO[Data Out]
+  end</code></pre>
+</div>
+<p>
+Quando você pode alterar os sinais de endereço à vontade para ler ou escrever em qualquer local instantaneamente, você tem uma <em><a href="https://pt.wikipedia.org/wiki/RAM">RAM</a></em> (Random Access Memory).</p>
+<div id="outline-container-headline-3" class="outline-4">
+<h4 id="headline-3">
+Expandindo a Memória e o Problema do Curto-Circuito
+</h4>
+<div id="outline-text-headline-3" class="outline-text-4">
+<p>
+Para escalar essa memória (de 16 bytes para 64 Kilobytes), encontramos um obstáculo elétrico. Se tentarmos juntar as saídas de várias células de memória em um único fio de <code>Data Out</code>, criaremos curtos-circuitos (voltagens ligadas diretamente ao terra).</p>
+<p>
+A solução mágica da eletrônica para isso é o <em><a href="https://en.wikipedia.org/wiki/Three-state_logic">Buffer Tri-State</a></em> (Três Estados).</p>
+<p>
+Um buffer tri-state tem três saídas possíveis:</p>
+<ol>
+<li>Voltagem (1 lógico)</li>
+<li>Terra (0 lógico)</li>
+<li><em>Nada (Flutuante)</em> - como se o fio estivesse cortado.</li>
+</ol>
+<p>Isso nos permite conectar milhares de saídas no mesmo barramento (bus). Desde que apenas <em>um</em> buffer tri-state esteja ativado (Enable = 1) em um dado momento, não haverá conflito. É essa mágica que permite que módulos de memória escalem para 64KB (e muito além, seguindo a lógica de potências de 2, onde 1 Kilobyte = 1024 bytes).</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-3">
+<h3 id="headline-4">
+3. Automatizando a Aritmética
+</h3>
+<div id="outline-text-headline-4" class="outline-text-3">
+<p>
+Os seres humanos são incrivelmente inventivos, mas também profundamente preguiçosos. Digitar números manualmente em interruptores para somá-los é tedioso.</p>
+<p>
+Se acoplarmos nossa RAM a um <em>Somador de 8 bits</em>, e usarmos um contador (acionado por um oscilador, ou <em>clock</em>) para percorrer os endereços da memória sequencialmente, podemos automatizar a soma. A cada pulso de clock, a máquina lê um byte da RAM, soma ao valor salvo em um latch (<em>o acumulador</em>) e guarda o resultado.</p>
+<div id="outline-container-headline-5" class="outline-4">
+<h4 id="headline-5">
+O Problema do Tamanho: Juntando Bytes
+</h4>
+<div id="outline-text-headline-5" class="outline-text-4">
+<p>
+Um byte só vai até 255. Para representar números maiores, a CPU combina bytes consecutivos. Um valor de 16 bits usa 2 bytes; um de 32 bits usa 4. Mas <em>em que ordem</em> os bytes são armazenados na memória? Existem duas convenções, e os fabricantes历史上 se dividem entre elas:</p>
+<p>
+/ /Big-endian:* O byte mais significativo vem primeiro. É a ordem natural para humanos, o número <code>0x1234</code> é armazenado como <code>12 34</code>.
+/ /Little-endian:* O byte menos significativo vem primeiro. O <code>0x1234</code> vira <code>34 12</code> na memória. É a ordem dos processadores Intel.</p>
+<p>
+Por que a Intel adotou little-endian? Por razões históricas de compatibilidade com o 8008 (1972). Na prática, não há vantagem técnica absoluta, o que importa é que todos os componentes do sistema concordem com a mesma convenção. Protocolos de rede (TCP/IP) usam big-endian como padrão (<em>network byte order</em>), e é por isso que programadores precisam usar funções como <code>htonl()</code> ao enviar inteiros pela rede.</p>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-4">
+<h4 id="headline-6">
+Separando Instruções de Dados
+</h4>
+<div id="outline-text-headline-6" class="outline-text-4">
+<p>
+Até agora, nossa máquina somava números fixos emendereços fixos. Para torná-la programável, precisamos que a <em>própria operação</em> (somar, subtrair, mover) seja armazenada na memória junto com os números. É aqui que nasce o conceito de <em>instrução de máquina</em>.</p>
+<p>
+Cada instrução é um número que ocupa um ou mais bytes na RAM. O primeiro byte é o <em>código de operação (opcode)</em>, ele diz ao hardware o que fazer:</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-2">
+<h2 id="headline-7">
+<code>80h</code> = somar dois números
+</h2>
+</div>
+<div id="outline-container-headline-8" class="outline-2">
+<h2 id="headline-8">
+<code>90h</code> = subtrair
+</h2>
+</div>
+<div id="outline-container-headline-9" class="outline-2">
+<h2 id="headline-9">
+<code>A0h</code> = mover dados da memória para o acumulador
+</h2>
+<div id="outline-text-headline-9" class="outline-text-2">
+<p>
+Os bytes seguintes são os <em>operandos</em>, os valores ou endereços sobre os quais a operação age:</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph LR
+  subgraph &#34;Layout de uma instrução ADD de 3 bytes&#34;
+    I1[&#34;Byte 0: 80h&lt;br&gt;OPCODE = ADD&#34;] --&gt; I2[&#34;Byte 1: 35h&lt;br&gt;Segundo operando&lt;br&gt;(valor a somar)&#34;]
+    I2 --&gt; I3[&#34;Byte 2: 00h&lt;br&gt;Extensão&lt;br&gt;(endereçamento)&#34;]
+  end</code></pre>
+</div>
+<p>
+Neste momento, a RAM deixa de ser apenas um depósito de números para se tornar algo mais poderoso: um repositório de <em>instruções</em> e <em>dados</em> indistinguíveis entre si. A CPU não sabe se um byte é código ou dado, ela simplesmente busca o próximo byte apontado pelo Program Counter e o executa. A mesma sequência de bytes pode ser uma instrução em um contexto e um número em outro. É o programador (e o compilador) que organiza a memória para que essa distinção faça sentido.</p>
+<div id="outline-container-headline-10" class="outline-3">
+<h3 id="headline-10">
+4. A Unidade Lógica e Aritmética (ALU)
+</h3>
+<div id="outline-text-headline-10" class="outline-text-3">
+<p>
+Uma CPU não faz apenas contas de padaria. Onde entra a lógica? A lógica booleana é vital. Pense na conversão de caracteres ASCII.</p>
+<p>
+O &#34;A&#34; maiúsculo é <code>41h</code> (<code>01000001</code>). O &#34;a&#34; minúsculo é <code>61h</code> (<code>01100001</code>).
+A única diferença é um único bit. Em vez de fazer adições matemáticas complexas para manipular strings, a CPU possui portas lógicas dedicadas:</p>
+<p>
+/ /OR bit-a-bit:* Força bits a 1 (ex: converter para minúsculas usando OR com <code>20h</code>).
+/ /AND bit-a-bit:* Isola bits ou força a 0 (ex: converter para maiúsculas usando AND com <code>DFh</code>).
+/ /XOR bit-a-bit:* Inverte bits específicos.</p>
+<p>
+Além disso, a ALU tem a função <em>Compare (CMP)</em>. Se queremos saber se o Jogador A tem mais vida que o Jogador B, a ALU os subtrai. Ela descarta o resultado numérico, mas salva os <em>Flags</em>:</p>
+<p>
+/ /Zero Flag (Z):* Se o resultado foi 0 (são iguais).
+/ /Carry Flag (CY):* Se houve empréstimo na subtração (um é menor que o outro).
+/ /Sign Flag (S):* Se o bit mais significativo é 1 (negativo).</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph TD
+  A[Input A 8-bit] --&gt; ADD[Add/Sub Module]
+  B[Input B 8-bit] --&gt; ADD
+  
+  A --&gt; LOGIC[Logic Module AND/OR/XOR]
+  B --&gt; LOGIC
+  
+  F[Function Bits F0-F2] --&gt; ADD
+  F --&gt; LOGIC
+  
+  ADD --&gt; TRI1[Tri-State Buffer]
+  LOGIC --&gt; TRI2[Tri-State Buffer]
+  
+  TRI1 --&gt; OUT[Saída 8-bit]
+  TRI2 --&gt; OUT
+  
+  ADD -.-&gt; FLAGS[Flags: Zero, Carry, Sign]</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-11" class="outline-3">
+<h3 id="headline-11">
+5. Registradores e Barramentos: A Arquitetura 8080
+</h3>
+<div id="outline-text-headline-11" class="outline-text-3">
+<p>
+Para alimentar a <a href="https://pt.wikipedia.org/wiki/Unidade_lógica_e_aritmética">ALU</a> rapidamente sem depender do acesso lento à RAM o tempo todo, a CPU possui &#34;bancadas de trabalho&#34; internas super-rápidas chamadas <em><a href="https://pt.wikipedia.org/wiki/Registrador_(inform%C3%A1tica">Registradores</a>)</em>.</p>
+<p>
+Baseando-nos na arquitetura histórica do <em>Intel 8080</em> (o avô da arquitetura x86 e pedra fundamental dos PCs), temos sete registradores de 8 bits: <em>A, B, C, D, E, H, L</em>.</p>
+<p>
+O registrador <em>A</em> é especial. É o <em>Acumulador</em>. Todas as operações da ALU recebem o Acumulador como entrada primária, e o resultado é inevitavelmente salvo de volta nele.</p>
+<div id="outline-container-headline-12" class="outline-4">
+<h4 id="headline-12">
+Endereçamento Indireto: A dupla HL
+</h4>
+<div id="outline-text-headline-12" class="outline-text-4">
+<p>
+Os registradores H (High) e L (Low) recebem esse nome porque frequentemente são usados juntos para formar um endereço de memória de 16 bits (<code>[HL]</code>). Se <code>H = 20h</code> e <code>L = 44h</code>, o par HL aponta para o endereço <code>2044h</code> da RAM.</p>
+<p>
+Para coordenar tudo isso, a CPU utiliza <em><a href="https://pt.wikipedia.org/wiki/Barramento_(inform%C3%A1tica">Barramentos</a>)</em> (Buses):</p>
+<ol>
+<li><em>Data Bus (Barramento de Dados):</em> Uma &#34;rodovia&#34; de 8 bits por onde trafegam os valores entre os registradores, a ALU e a RAM.</li>
+<li><em>Address Bus (Barramento de Endereço):</em> Uma rodovia paralela de 16 bits que diz à RAM <em>onde</em> o Data Bus deve atuar.</li>
+</ol>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph TD
+  subgraph CPU Internals
+    BUS_D[Data Bus 8-bit]
+    BUS_A[Address Bus 16-bit]
+    
+    REG_A[Reg A / Accumulator] &lt;--&gt; BUS_D
+    REG_B[Reg B] &lt;--&gt; BUS_D
+    REG_C[Reg C] &lt;--&gt; BUS_D
+    REG_H[Reg H] &lt;--&gt; BUS_D
+    REG_L[Reg L] &lt;--&gt; BUS_D
+    
+    REG_H --&gt; PAIR_HL{Par HL 16-bit}
+    REG_L --&gt; PAIR_HL
+    PAIR_HL --&gt; BUS_A
+    
+    PC[Program Counter 16-bit] --&gt; BUS_A
+    ALU[ALU] &lt;--&gt; BUS_D
+  end</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-13" class="outline-4">
+<h4 id="headline-13">
+O Conjunto de Instruções em Ação (Assembly)
+</h4>
+<div id="outline-text-headline-13" class="outline-text-4">
+<p>
+Em vez de decorar opcodes hexadecimais (como <code>3Eh</code>), usamos mnemônicos do <em>Assembly</em>, uma representação legível dessas portas lógicas abrindo e fechando:</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-2">
+<h2 id="headline-14">
+<code>LDA 2044h</code> (Load Accumulator): Coloca o valor do endereço 2044h no Acumulador (Reg A).
+</h2>
+</div>
+<div id="outline-container-headline-15" class="outline-2">
+<h2 id="headline-15">
+<code>MVI B, 33h</code> (Move Immediate): Coloca o valor 33h no registrador B.
+</h2>
+</div>
+<div id="outline-container-headline-16" class="outline-2">
+<h2 id="headline-16">
+<code>ADD B</code>: A ALU soma A + B, e o resultado volta para o A.
+</h2>
+</div>
+<div id="outline-container-headline-17" class="outline-2">
+<h2 id="headline-17">
+<code>STA 2044h</code> (Store Accumulator): Salva o resultado do Acumulador de volta na RAM.
+</h2>
+<div id="outline-text-headline-17" class="outline-text-2">
+<p>
+No coração dessa orquestra está o <em>Program Counter (PC)</em>, um registrador especial de 16 bits que diz qual é o endereço da próxima instrução. Ele conta inexoravelmente, incrementando a cada leitura, movendo o fluxo da execução para frente através de instruções e dados, até encontrar a instrução <code>HLT</code> (Halt), interrompendo o ciclo.</p>
+<div id="outline-container-headline-18" class="outline-4">
+<h4 id="headline-18">
+Mão na Massa: Executando um Programa
+</h4>
+<div id="outline-text-headline-18" class="outline-text-4">
+<p>
+Até aqui falamos sobre instruções em abstrato. Vamos executar um programa inteiro passo a passo. O programa abaixo soma dois números, 5 e 3, e armazena o resultado na memória:</p>
+<div class="src src-asm">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-asm" data-lang="asm"><span class="line"><span class="cl"><span class="c1">; Programa: Soma 5 + 3 e armazena na memória
+</span></span></span><span class="line"><span class="cl"><span class="err">0000:</span> <span class="nf">MVI</span> <span class="no">A</span><span class="p">,</span> <span class="mi">05</span>  <span class="c1">; Carrega 5 no Acumulador (A)
+</span></span></span><span class="line"><span class="cl"><span class="err">0002:</span> <span class="nf">MVI</span> <span class="no">B</span><span class="p">,</span> <span class="mi">03</span>  <span class="c1">; Carrega 3 no registrador B
+</span></span></span><span class="line"><span class="cl"><span class="err">0004:</span> <span class="nf">ADD</span> <span class="no">B</span>    <span class="c1">; Soma B ao A: A = A + B
+</span></span></span><span class="line"><span class="cl"><span class="err">0005:</span> <span class="nf">STA</span> <span class="mi">00</span><span class="no">FFh</span>  <span class="c1">; Armazena A no endereço 00FFh da RAM
+</span></span></span><span class="line"><span class="cl"><span class="err">0008:</span> <span class="nf">HLT</span>     <span class="err">;</span> <span class="no">Para</span> <span class="no">a</span> <span class="no">execução</span></span></span></code></pre></div>
+</div>
+<p>
+A tabela abaixo mostra o estado interno da CPU após <em>cada instrução executada</em>. Experimente acompanhar linha a linha:</p>
+<table>
+<thead>
+<tr>
+<th>Instrução executada</th>
+<th class="align-right">PC (aponta para)</th>
+<th>Acumulador A</th>
+<th>Reg B</th>
+<th>Mem[00FFh]</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>(estado inicial)</em></td>
+<td class="align-right">0000</td>
+<td><code>??</code></td>
+<td><code>??</code></td>
+<td><code>??</code></td>
+</tr>
+<tr>
+<td><code>MVI A, 05</code></td>
+<td class="align-right">0002</td>
+<td><code>05</code></td>
+<td><code>??</code></td>
+<td><code>??</code></td>
+</tr>
+<tr>
+<td><code>MVI B, 03</code></td>
+<td class="align-right">0004</td>
+<td><code>05</code></td>
+<td><code>03</code></td>
+<td><code>??</code></td>
+</tr>
+<tr>
+<td><code>ADD B</code></td>
+<td class="align-right">0005</td>
+<td><code>08</code></td>
+<td><code>03</code></td>
+<td><code>??</code></td>
+</tr>
+<tr>
+<td><code>STA 00FFh</code></td>
+<td class="align-right">0008</td>
+<td><code>08</code></td>
+<td><code>03</code></td>
+<td><code>08</code></td>
+</tr>
+<tr>
+<td><code>HLT</code></td>
+<td class="align-right">,</td>
+<td><code>08</code></td>
+<td><code>03</code></td>
+<td><code>08</code></td>
+</tr>
+</tbody>
+</table>
+<p>
+Observe alguns detalhes importantes:</p>
+<p>
+/ O /PC* é incrementado automaticamente após cada instrução. Cada instrução ocupa um número diferente de bytes: <code>MVI</code> (2 bytes), <code>ADD</code> (1 byte), <code>STA</code> (3 bytes), <code>HLT</code> (1 byte).
+/ O /Acumulador* é o centro das operações: <code>ADD B</code> sempre soma o registrador B ao Acumulador, e o resultado fica no Acumulador.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-19" class="outline-2">
+<h2 id="headline-19">
+<code>STA 00FFh</code> não modifica registrador algum, ela apenas copia o Acumulador para a memória RAM.
+</h2>
+</div>
+<div id="outline-container-headline-20" class="outline-2">
+<h2 id="headline-20">
+Após <code>HLT</code>, o processador simplesmente para. O PC não é incrementado.
+</h2>
+<div id="outline-text-headline-20" class="outline-text-2">
+<p>
+O fluxo do programa pode ser visualizado como uma máquina de estados:</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph LR
+  S0[&#34;MVI A, 5&lt;br&gt;A = 5&#34;] --&gt; S1[&#34;MVI B, 3&lt;br&gt;B = 3&#34;]
+  S1 --&gt; S2[&#34;ADD B&lt;br&gt;A = A + B = 8&#34;]
+  S2 --&gt; S3[&#34;STA 00FFh&lt;br&gt;Mem[00FF] = 8&#34;]
+  S3 --&gt; S4[&#34;HLT&#34;]</code></pre>
+</div>
+<div id="outline-container-headline-21" class="outline-4">
+<h4 id="headline-21">
+🔧 Exercícios
+</h4>
+<div id="outline-text-headline-21" class="outline-text-4">
+<p>
+<em>1. Rastreamento:</em> Qual o valor final do Acumulador ao executar este programa?</p>
+<div class="src src-asm">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-asm" data-lang="asm"><span class="line"><span class="cl"><span class="nf">MVI</span> <span class="no">A</span><span class="p">,</span> <span class="mi">10</span>
+</span></span><span class="line"><span class="cl"><span class="nf">MVI</span> <span class="no">B</span><span class="p">,</span> <span class="mi">07</span>
+</span></span><span class="line"><span class="cl"><span class="nf">ADD</span> <span class="no">B</span>
+</span></span><span class="line"><span class="cl"><span class="nf">ADD</span> <span class="no">B</span>
+</span></span><span class="line"><span class="cl"><span class="nf">HLT</span></span></span></code></pre></div>
+</div>
+<p>
+<em>2. Modificação:</em> Partindo do programa original (5 + 3), como você faria para calcular 5 + 3 + 2? Quais instruções seriam necessárias?</p>
+<p>
+<em>3. Subtração:</em> Sabendo que existe a instrução <code>SUB B</code> (subtrai o registrador B do Acumulador), escreva um programa que calcule 15 − 8 e armazene o resultado no endereço 2000h.</p>
+<p>
+<em>4. Decifrando:</em> O que o programa abaixo calcula? <em>(Dica: rastreie os valores de A a cada passo.)</em></p>
+<div class="src src-asm">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-asm" data-lang="asm"><span class="line"><span class="cl"><span class="nf">MVI</span> <span class="no">A</span><span class="p">,</span> <span class="mi">01</span>
+</span></span><span class="line"><span class="cl"><span class="nf">MVI</span> <span class="no">B</span><span class="p">,</span> <span class="mi">01</span>
+</span></span><span class="line"><span class="cl"><span class="nf">ADD</span> <span class="no">B</span>
+</span></span><span class="line"><span class="cl"><span class="nf">ADD</span> <span class="no">B</span>
+</span></span><span class="line"><span class="cl"><span class="nf">STA</span> <span class="mi">2000</span><span class="no">h</span>
+</span></span><span class="line"><span class="cl"><span class="nf">HLT</span></span></span></code></pre></div>
+</div>
+<p>
+&lt;details&gt;
+&lt;summary&gt;&lt;b&gt;Respostas&lt;/b&gt;&lt;/summary&gt;</p>
+<ol>
+<li>A começa em 10, soma 7 (17), soma 7 novamente. Resultado: <em>24</em> (hex 0x18).</li>
+<li>Adicione <code>MVI C, 02</code> e <code>ADD C</code>. O registrador C extra guarda o valor 2, e <code>ADD C</code> o soma ao Acumulador.</li>
+<li><code>MVI A, 15</code> / <code>MVI B, 8</code> / <code>SUB B</code> / <code>STA 2000h</code> / <code>HLT</code>. Resultado: 7.</li>
+<li>Calcula 1 + 1 + 1 = <em>3</em> e armazena em 2000h. (O valor inicial 1 é somado três vezes.)</li>
+</ol>
+<p>&lt;/details&gt;</p>
+<hr>
+<p>
+O que começamos como uma simples reflexão sobre a memória e um arranjo rudimentar de portas NAND se transformou em uma máquina formidável. Ao abstrair decodificadores em registradores e somadores em uma ALU, destilamos a complexidade elétrica em algo que podemos programar. E é exatamente essa ponte entre o estado dos transistores e os códigos de operação que torna a computação a disciplina fascinante que é. Mas ainda falta um ingrediente: o maestro invisível que orquestra todos esses componentes para que eles executem cada instrução no momento certo.</p>
+<hr>
+<p>
+<em>Fonte:</em> <a href="https://a.co/d/0a3DsSsn">Code: The Hidden Language of Computer Hardware and Software</a>, 2ª ed., Charles Petzold</p>
+</div>
+</div>
+</div>
+</div>
+
+  </div>
+</article>
+
+    </main>
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
+</body>
+</html>

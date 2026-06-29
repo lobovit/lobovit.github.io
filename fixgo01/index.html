@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-<head>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:,">
-  <title>Resolução de um bug silencioso em Go — scovl</title>
+  <title>Resolução de um bug silencioso em Go — lobovit</title>
   <link rel="stylesheet" href="/css/main.css?v=3">
   <link rel="stylesheet" href="/vendor/fonts/fonts.css">
   <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
@@ -13,7 +13,7 @@
   <div class="frame">
     <header>
       <nav>
-        <a class="site-title" href="https://scovl.github.io/">scovl</a>
+        <a class="site-title" href="http://localhost:1313/">lobovit</a>
         <span class="nav-links">
           <a href="/page/about/">about</a>
           <a href="/page/contact/">contact</a>
@@ -38,7 +38,7 @@ Um canal que não escuta
 <p>
 <a href="https://go.dev/tour/concurrency/2">Canais</a> em Go é uma daquelas features que parecem simples até você precisar usá-la em produção com centenas de <a href="https://go.dev/tour/concurrency/1">goroutines</a> concorrentes. E é aí que &#34;a jiripoca começa a piar&#34;.</p>
 <p>
-Este artigo conta a história de um bug silencioso que encontrei durante uma revisão de código no <a href="https://github.com/scovl/Ollanta">Ollanta</a>, um projeto pessoal de análise de código estático multi-linguagem escrito em Go. O bug não quebrava testes, não produzia <a href="https://go.dev/blog/defer-panic-and-recover">panic</a>, não gerava erro no <a href="https://golangci-lint.run">linter</a>. Mas, em condições específicas, impedia o <a href="https://learn.microsoft.com/pt-br/dotnet/core/extensions/graceful-shutdown">graceful shutdown</a> do scanner por tempo indeterminado.</p>
+Este artigo conta a história de um bug silencioso que encontrei durante uma revisão de código no <a href="https://github.com/lobovit/Ollanta">Ollanta</a>, um projeto pessoal de análise de código estático multi-linguagem escrito em Go. O bug não quebrava testes, não produzia <a href="https://go.dev/blog/defer-panic-and-recover">panic</a>, não gerava erro no <a href="https://golangci-lint.run">linter</a>. Mas, em condições específicas, impedia o <a href="https://learn.microsoft.com/pt-br/dotnet/core/extensions/graceful-shutdown">graceful shutdown</a> do scanner por tempo indeterminado.</p>
 <p>
 !<a href="/post/images/fixgo01.png">ollanta</a></p>
 <blockquote>
@@ -392,7 +392,7 @@ Antes, 184 goroutines ociosas ficavam empilhadas no semáforo; depois, elas saem
 <p>
 No Ollanta, essa correção de duas linhas eliminou 184 goroutines ociosas que sobreviviam ao <code>Ctrl+C</code> sem propósito, reduzindo o consumo de memória durante o shutdown e evitando a cascata de passagens pelo semáforo após os workers terminarem. Se você está escrevendo um worker pool em Go, lembre-se: o semáforo bloqueia. E bloqueio sem <code>select</code> não escuta o cancelamento.</p>
 <blockquote>
-<p>Este artigo foi escrito a partir de uma correção real no repositório do <a href="https://github.com/scovl/Ollanta">Ollanta</a>. O diff completo está em <a href="https://github.com/scovl/Ollanta/commit/3d95d5399b5cb0143637cce51e787ce8bb752285"><a href="https://github.com/scovl/Ollanta/blob/main/application/scan/executor.go">https://github.com/scovl/Ollanta/blob/main/application/scan/executor.go</a></a>.</p>
+<p>Este artigo foi escrito a partir de uma correção real no repositório do <a href="https://github.com/lobovit/Ollanta">Ollanta</a>. O diff completo está em <a href="https://github.com/lobovit/Ollanta/commit/3d95d5399b5cb0143637cce51e787ce8bb752285"><a href="https://github.com/lobovit/Ollanta/blob/main/application/scan/executor.go">https://github.com/lobovit/Ollanta/blob/main/application/scan/executor.go</a></a>.</p>
 </blockquote>
 </div>
 </div>

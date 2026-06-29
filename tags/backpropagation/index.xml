@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Backpropagation on lobovit</title>
+    <link>https://lobovit.github.io/tags/backpropagation/</link>
+    <description>Recent content in Backpropagation on lobovit</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Mon, 25 May 2026 17:00:00 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/backpropagation/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>03 - AI Engineering from scratch: do perceptron ao debug de rede neural</title>
+      <link>https://lobovit.github.io/ai-deep-learning/</link>
+      <pubDate>Mon, 25 May 2026 17:00:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/ai-deep-learning/</guid>
+      <description>&lt;p&gt;&#xA;Deep learning parece mágica. Você joga dados num buraco negro de matrizes, espera alguns minutos (ou dias) e sai um modelo que reconhece gatos, traduz idiomas e escreve código. Mas não é mágica. São 13 peças que se encaixam, e quando você entende cada uma, o buraco negro vira um mecanismo de relógio.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Este artigo percorre essas 13 peças. Do perceptron (um único neurônio que decide sim ou não) até um framework completo de deep learning em 500 linhas. Depois conecta com PyTorch, dá uma olhada no JAX e fecha com o capítulo mais importante e mais ignorado: como debugar uma rede neural quando ela falha sem dar erro.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Sistemas on lobovit</title>
+    <link>https://lobovit.github.io/tags/sistemas/</link>
+    <description>Recent content in Sistemas on lobovit</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Mon, 21 Jul 2025 12:00:00 +0000</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/sistemas/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Como o compilador do Zig funciona?</title>
+      <link>https://lobovit.github.io/zigcomp/</link>
+      <pubDate>Mon, 21 Jul 2025 12:00:00 +0000</pubDate>
+      <guid>https://lobovit.github.io/zigcomp/</guid>
+      <description>&lt;div id=&#34;outline-container-headline-1&#34; class=&#34;outline-2&#34;&gt;&#xA;&lt;h2 id=&#34;headline-1&#34;&gt;&#xA;Introdução&#xA;&lt;/h2&gt;&#xA;&lt;div id=&#34;outline-text-headline-1&#34; class=&#34;outline-text-2&#34;&gt;&#xA;&lt;p&gt;&#xA;A evolução das linguagens de programação de sistemas reflete uma tensão constante entre controle de baixo nível e segurança de alto nível. &lt;/p&gt;&#xA;&lt;p&gt;&#xA;Desde os anos 1970, &lt;em&gt;C estabeleceu o paradigma fundamental&lt;/em&gt; para programação de sistemas: acesso direto à memória, controle explícito de recursos e overhead mínimo. Esta filosofia moldou sistemas operacionais, compiladores e infraestrutura crítica por décadas.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Nas últimas duas décadas, emergiu uma consciência crescente sobre os &lt;em&gt;custos de segurança&lt;/em&gt; dessa abordagem. Vulnerabilidades de memória (&lt;a href=&#34;https://en.wikipedia.org/wiki/Buffer_overflow&#34;&gt;buffer overflows&lt;/a&gt;, &lt;a href=&#34;https://en.wikipedia.org/wiki/Use-after-free&#34;&gt;use-after-free&lt;/a&gt;, &lt;a href=&#34;https://en.wikipedia.org/wiki/Race_condition&#34;&gt;data races&lt;/a&gt;) tornaram-se vetores principais de ataques de segurança, levando a questionar se o controle absoluto justifica os riscos associados.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

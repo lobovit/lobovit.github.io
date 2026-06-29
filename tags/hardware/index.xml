@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Hardware on lobovit</title>
+    <link>https://lobovit.github.io/tags/hardware/</link>
+    <description>Recent content in Hardware on lobovit</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Tue, 12 May 2026 18:40:00 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/hardware/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Petzold02 - A Linguagem Oculta do Hardware</title>
+      <link>https://lobovit.github.io/histcomp02/</link>
+      <pubDate>Tue, 12 May 2026 18:40:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/histcomp02/</guid>
+      <description>&lt;p&gt;&#xA;No &lt;a href=&#34;https://lobovit.github.io/post/histcomp01&#34;&gt;artigo anterior&lt;/a&gt; vimos que informação pode ser codificada em padrões binários — pontos e traços no Morse, pontos em relevo no Braille, bits 0 e 1 no ASCII. Mas codificar é só metade da história. A pergunta agora é: como construir uma máquina que &lt;em&gt;processa&lt;/em&gt; fisicamente esses 0s e 1s?&lt;/p&gt;&#xA;&lt;p&gt;&#xA;A resposta começa com uma lanterna.&lt;/p&gt;&#xA;&lt;div id=&#34;outline-container-headline-1&#34; class=&#34;outline-3&#34;&gt;&#xA;&lt;h3 id=&#34;headline-1&#34;&gt;&#xA;A Anatomia de uma Lanterna e a Dança dos Elétrons&#xA;&lt;/h3&gt;&#xA;&lt;div id=&#34;outline-text-headline-1&#34; class=&#34;outline-text-3&#34;&gt;&#xA;&lt;p&gt;&#xA;Uma lanterna comum é um dos aparelhos elétricos mais simples que existem. Desmonte-a e você encontrará baterias, uma lâmpada, algumas peças de metal e, o mais importante, um &lt;em&gt;interruptor&lt;/em&gt;.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Petzold04 - Do Bit ao Símbolo, do Relé ao Chip</title>
+      <link>https://lobovit.github.io/histcomp04/</link>
+      <pubDate>Tue, 12 May 2026 18:40:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/histcomp04/</guid>
+      <description>&lt;p&gt;&#xA;Como desenvolvedores, passamos a maior parte do nosso tempo em abstrações elevadas, escrevendo código em Go, C#, Elixir ou Rust, e confiando que o compilador e o sistema operacional farão a mágica acontecer. Mas, sob as camadas de frameworks e interfaces, tudo se resume a uma dança perfeitamente orquestrada de elétrons, portas lógicas e convenções de bits.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Este artigo é um mergulho profundo nas fundações de duas das engrenagens mais vitais da computação: &lt;em&gt;como representamos a linguagem humana em zeros e uns&lt;/em&gt; e &lt;em&gt;como construímos o hardware capaz de processar esses dados&lt;/em&gt;. Prepare o seu café, pois vamos descer ao escovão de bits.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

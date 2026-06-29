@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Gpt on lobovit</title>
+    <link>https://lobovit.github.io/tags/gpt/</link>
+    <description>Recent content in Gpt on lobovit</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Thu, 28 May 2026 17:00:00 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/gpt/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>07 - AI Engineering from scratch: do self-attention ao speculative decoding</title>
+      <link>https://lobovit.github.io/ai-transformers-deep-dive/</link>
+      <pubDate>Thu, 28 May 2026 17:00:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/ai-transformers-deep-dive/</guid>
+      <description>&lt;p&gt;&#xA;Todo modelo que você usa em 2026, do GPT ao Claude, do Whisper ao Stable Diffusion, é um transformer. A arquitetura não mudou fundamentalmente desde 2017. O que mudou foi escala, dados e truques de engenharia que transformaram O(N²) de &amp;#34;impraticável&amp;#34; em &amp;#34;roda no celular&amp;#34;.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Este artigo vai do zero ao speculative decoding em 16 tópicos. Você vai implementar self-attention em Python puro, entender por que RoPE substituiu embeddings posicionais, ver como Mixture of Experts empacota 671 bilhões de parâmetros em 37 bilhões ativos, e aprender o truque matemático que faz speculative decoding acelerar inferência 4x sem perder qualidade. Stack: Python pra treino, Go pra servir.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

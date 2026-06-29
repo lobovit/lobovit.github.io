@@ -1,19 +1,26 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>C&#43;&#43; on scovl</title>
-    <link>https://scovl.github.io/tags/c&#43;&#43;/</link>
-    <description>Recent content in C&#43;&#43; on scovl</description>
+    <title>C&#43;&#43; on lobovit</title>
+    <link>https://lobovit.github.io/tags/c&#43;&#43;/</link>
+    <description>Recent content in C&#43;&#43; on lobovit</description>
     <generator>Hugo</generator>
     <language>pt-br</language>
-    <lastBuildDate>Fri, 23 May 2025 19:41:45 -0300</lastBuildDate>
-    <atom:link href="https://scovl.github.io/tags/c++/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Fri, 18 Jul 2025 23:18:18 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/c++/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Inferência de Tipos em Rust e C&#43;&#43;</title>
+      <link>https://lobovit.github.io/type01/</link>
+      <pubDate>Fri, 18 Jul 2025 23:18:18 -0300</pubDate>
+      <guid>https://lobovit.github.io/type01/</guid>
+      <description>&lt;div id=&#34;outline-container-headline-1&#34; class=&#34;outline-3&#34;&gt;&#xA;&lt;h3 id=&#34;headline-1&#34;&gt;&#xA;Introdução&#xA;&lt;/h3&gt;&#xA;&lt;div id=&#34;outline-text-headline-1&#34; class=&#34;outline-text-3&#34;&gt;&#xA;&lt;p&gt;&#xA;Inferência de tipos é o mecanismo pelo qual o compilador descobre automaticamente o tipo de uma variável ou expressão em uma linguagem de programação. Esse recurso permite que o programador omita anotações de tipo em muitas situações sem comprometer a segurança de tipos do programa.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Neste artigo, discutimos como as linguagens &lt;em&gt;&lt;a href=&#34;https://www.rust-lang.org/&#34;&gt;Rust&lt;/a&gt;&lt;/em&gt; e &lt;em&gt;&lt;a href=&#34;https://en.wikipedia.org/wiki/C%2B%2B&#34;&gt;C++&lt;/a&gt;&lt;/em&gt; implementam inferência de tipos de formas fundamentalmente diferentes, analisando as consequências práticas de cada abordagem.&lt;/p&gt;</description>
+    </item>
     <item>
       <title>Try/Catch: Origem, Propósito e o Erro de Usá-lo como Fluxo Lógico</title>
-      <link>https://scovl.github.io/trycatch/</link>
+      <link>https://lobovit.github.io/trycatch/</link>
       <pubDate>Fri, 23 May 2025 19:41:45 -0300</pubDate>
-      <guid>https://scovl.github.io/trycatch/</guid>
-      <description>&lt;p&gt;&#xA;O tratamento de exceções surgiu para separar o fluxo normal do programa do tratamento de situações inesperadas, como falhas de hardware ou erros de entrada/saída. Inicialmente, programas usavam códigos de retorno para lidar com erros, mas isso era propenso a falhas e difícil de manter. &lt;/p&gt;&#xA;&lt;p&gt;&#xA;O modelo de tratamento estruturado de exceções evoluiu desde os anos 60, ganhando formas mais concretas em linguagens como &lt;a href=&#34;https://en.wikipedia.org/wiki/PL/I&#34;&gt;PL/I&lt;/a&gt;, &lt;a href=&#34;https://en.wikipedia.org/wiki/Ada_(programming_language)&#34;&gt;Ada&lt;/a&gt;), &lt;a href=&#34;https://en.wikipedia.org/wiki/C%2B%2B&#34;&gt;C++&lt;/a&gt; e &lt;a href=&#34;https://en.wikipedia.org/wiki/Java_(programming_language)&#34;&gt;Java&lt;/a&gt;), e depois sendo adotado por outras como &lt;a href=&#34;https://en.wikipedia.org/wiki/JavaScript&#34;&gt;JavaScript&lt;/a&gt;. &lt;/p&gt;</description>
+      <guid>https://lobovit.github.io/trycatch/</guid>
+      <description>&lt;p&gt;&#xA;O tratamento de exceções surgiu para separar o fluxo normal do programa do tratamento de situações inesperadas, como falhas de hardware ou erros de entrada/saída. Inicialmente, programas usavam códigos de retorno para lidar com erros, mas isso era propenso a falhas e difícil de manter.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;O modelo de tratamento estruturado de exceções evoluiu desde os anos 60, ganhando formas mais concretas em linguagens como &lt;a href=&#34;https://en.wikipedia.org/wiki/PL/I&#34;&gt;PL/I&lt;/a&gt;, &lt;a href=&#34;https://en.wikipedia.org/wiki/Ada_(programming_language)&#34;&gt;Ada&lt;/a&gt;), &lt;a href=&#34;https://en.wikipedia.org/wiki/C%2B%2B&#34;&gt;C++&lt;/a&gt; e &lt;a href=&#34;https://en.wikipedia.org/wiki/Java_(programming_language)&#34;&gt;Java&lt;/a&gt;), e depois sendo adotado por outras como &lt;a href=&#34;https://en.wikipedia.org/wiki/JavaScript&#34;&gt;JavaScript&lt;/a&gt;.&lt;/p&gt;</description>
     </item>
   </channel>
 </rss>

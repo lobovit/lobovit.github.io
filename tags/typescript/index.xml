@@ -1,19 +1,33 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Typescript on scovl</title>
-    <link>https://scovl.github.io/tags/typescript/</link>
-    <description>Recent content in Typescript on scovl</description>
+    <title>Typescript on lobovit</title>
+    <link>https://lobovit.github.io/tags/typescript/</link>
+    <description>Recent content in Typescript on lobovit</description>
     <generator>Hugo</generator>
     <language>pt-br</language>
     <lastBuildDate>Fri, 23 May 2025 19:41:45 -0300</lastBuildDate>
-    <atom:link href="https://scovl.github.io/tags/typescript/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://lobovit.github.io/tags/typescript/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Try/Catch: Origem, Propósito e o Erro de Usá-lo como Fluxo Lógico</title>
-      <link>https://scovl.github.io/trycatch/</link>
+      <link>https://lobovit.github.io/trycatch/</link>
       <pubDate>Fri, 23 May 2025 19:41:45 -0300</pubDate>
-      <guid>https://scovl.github.io/trycatch/</guid>
-      <description>&lt;p&gt;&#xA;O tratamento de exceções surgiu para separar o fluxo normal do programa do tratamento de situações inesperadas, como falhas de hardware ou erros de entrada/saída. Inicialmente, programas usavam códigos de retorno para lidar com erros, mas isso era propenso a falhas e difícil de manter. &lt;/p&gt;&#xA;&lt;p&gt;&#xA;O modelo de tratamento estruturado de exceções evoluiu desde os anos 60, ganhando formas mais concretas em linguagens como &lt;a href=&#34;https://en.wikipedia.org/wiki/PL/I&#34;&gt;PL/I&lt;/a&gt;, &lt;a href=&#34;https://en.wikipedia.org/wiki/Ada_(programming_language)&#34;&gt;Ada&lt;/a&gt;), &lt;a href=&#34;https://en.wikipedia.org/wiki/C%2B%2B&#34;&gt;C++&lt;/a&gt; e &lt;a href=&#34;https://en.wikipedia.org/wiki/Java_(programming_language)&#34;&gt;Java&lt;/a&gt;), e depois sendo adotado por outras como &lt;a href=&#34;https://en.wikipedia.org/wiki/JavaScript&#34;&gt;JavaScript&lt;/a&gt;. &lt;/p&gt;</description>
+      <guid>https://lobovit.github.io/trycatch/</guid>
+      <description>&lt;p&gt;&#xA;O tratamento de exceções surgiu para separar o fluxo normal do programa do tratamento de situações inesperadas, como falhas de hardware ou erros de entrada/saída. Inicialmente, programas usavam códigos de retorno para lidar com erros, mas isso era propenso a falhas e difícil de manter.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;O modelo de tratamento estruturado de exceções evoluiu desde os anos 60, ganhando formas mais concretas em linguagens como &lt;a href=&#34;https://en.wikipedia.org/wiki/PL/I&#34;&gt;PL/I&lt;/a&gt;, &lt;a href=&#34;https://en.wikipedia.org/wiki/Ada_(programming_language)&#34;&gt;Ada&lt;/a&gt;), &lt;a href=&#34;https://en.wikipedia.org/wiki/C%2B%2B&#34;&gt;C++&lt;/a&gt; e &lt;a href=&#34;https://en.wikipedia.org/wiki/Java_(programming_language)&#34;&gt;Java&lt;/a&gt;), e depois sendo adotado por outras como &lt;a href=&#34;https://en.wikipedia.org/wiki/JavaScript&#34;&gt;JavaScript&lt;/a&gt;.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Tratamento Funcional de Erros em TypeScript</title>
+      <link>https://lobovit.github.io/tserr/</link>
+      <pubDate>Mon, 12 May 2025 18:31:45 -0300</pubDate>
+      <guid>https://lobovit.github.io/tserr/</guid>
+      <description>&lt;p&gt;&#xA;Neste artigo, vamos explorar uma abordagem mais estruturada para o tratamento de erros em TypeScript usando conceitos de programação funcional. A biblioteca &lt;a href=&#34;https://gcanti.github.io/fp-ts/&#34;&gt;fp-ts&lt;/a&gt; (Functional Programming em TypeScript) oferece ferramentas que permitem lidar com falhas de forma explícita e type-safe, melhorando a robustez e legibilidade do código. Existem também outras bibliotecas com abordagens semelhantes ou complementares no ecossistema TypeScript:&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;a href=&#34;https://github.com/purify-ts/purify-ts&#34;&gt;&lt;em&gt;Purify-ts&lt;/em&gt;&lt;/a&gt;: Uma alternativa mais leve ao fp-ts, focada em tipos como Maybe e Either&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;https://github.com/microsoft/neverthrow&#34;&gt;&lt;em&gt;Neverthrow&lt;/em&gt;&lt;/a&gt;: Biblioteca especializada em tratamento de erros com Result/Either&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;https://effect.website/&#34;&gt;&lt;em&gt;Effect&lt;/em&gt;&lt;/a&gt;: O sucessor oficial e linha evolutiva do ecossistema fp-ts, oferecendo uma abordagem mais moderna para programação funcional com foco em concorrência, streaming e gerenciamento de recursos&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;https://github.com/zio/zio-ts&#34;&gt;&lt;em&gt;Zio-ts&lt;/em&gt;&lt;/a&gt;: Inspirada na biblioteca ZIO de Scala (atualmente com desenvolvimento menos ativo)&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;p&gt;Cada uma dessas bibliotecas tem seus pontos fortes. O &lt;a href=&#34;https://gcanti.github.io/fp-ts/&#34;&gt;fp-ts&lt;/a&gt; continua sendo uma escolha sólida pela sua maturidade e estabilidade, enquanto o &lt;a href=&#34;https://effect.website/&#34;&gt;Effect&lt;/a&gt; representa a evolução natural desses conceitos. Neste artigo, focaremos no fp-ts e em como ele aborda o tratamento de erros de forma funcional.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>AST e CST: Análise Estrutural de Código</title>
+      <link>https://lobovit.github.io/tsast/</link>
+      <pubDate>Sun, 19 Mar 2023 17:31:45 -0300</pubDate>
+      <guid>https://lobovit.github.io/tsast/</guid>
+      <description>&lt;div id=&#34;outline-container-headline-1&#34; class=&#34;outline-3&#34;&gt;&#xA;&lt;h3 id=&#34;headline-1&#34;&gt;&#xA;AST/CST ao invés de Regex para Análise de Código&#xA;&lt;/h3&gt;&#xA;&lt;div id=&#34;outline-text-headline-1&#34; class=&#34;outline-text-3&#34;&gt;&#xA;&lt;p&gt;&#xA;E aí, devs! Beleza? 😄&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Quantas vezes você já precisou &amp;#34;entender&amp;#34; um código JavaScript ou TypeScript? Seja pra validar um padrão, extrair informações específicas (tipo nomes de funções, variáveis usadas), para parsear um arquivo de configuração, ou até mesmo para criar aquela ferramenta de &lt;em&gt;lint&lt;/em&gt; customizada pro seu time? Aposto que a primeira ideia que veio na cabeça foi: &amp;#34;&lt;a href=&#34;https://pt.wikipedia.org/wiki/Express%C3%A3o_regular&#34;&gt;Regex&lt;/a&gt;!&amp;#34;.&lt;/p&gt;</description>
     </item>
   </channel>
 </rss>

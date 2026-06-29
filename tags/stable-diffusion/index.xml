@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Stable-Diffusion on lobovit</title>
+    <link>https://lobovit.github.io/tags/stable-diffusion/</link>
+    <description>Recent content in Stable-Diffusion on lobovit</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Thu, 28 May 2026 19:00:00 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/stable-diffusion/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>08 - AI Engineering from scratch: do autoencoder ao fluxo retificado</title>
+      <link>https://lobovit.github.io/ai-generative/</link>
+      <pubDate>Thu, 28 May 2026 19:00:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/ai-generative/</guid>
+      <description>&lt;p&gt;&#xA;Gerar é diferente de classificar. Classificar é colapsar uma imagem de 150 mil números em um rótulo (&amp;#34;gato&amp;#34;). Gerar é inflar 512 números de ruído em 150 mil números que parecem um gato que nunca existiu. É um problema mais difícil, com mais modos de falha e uma história mais tortuosa. E em 2026, é o campo mais quente da IA.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Este artigo percorre 15 tópicos de IA generativa. Da taxonomia das cinco famílias de modelos até o Visual Autoregressive Modeling (VAR) que prevê escalas em vez de tokens. Você vai entender por que VAEs são o compressor universal, por que GANs perderam a guerra mas ganharam a paz, como difusão transformou ruído em arte, e por que flow matching é o padrão de 2026. Stack: Python pra experimentação, Go pra servir modelos em produção.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

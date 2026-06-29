@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>GNU Emacs — lobovit</title>
+  <link rel="stylesheet" href="/css/main.css?v=3">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
+    <main>
+      
+<article>
+  <header>
+    <h1>GNU Emacs</h1>
+    <p class="meta"><time>2025-08-08</time> · <span class="tag">OOP</span><span class="tag">software</span><span class="tag">engineering</span><span class="tag">Clojure</span></p>
+  </header>
+  <div class="content">
+    
+<p>
+Após anos experimentando diversos editores de texto para escrita e programação, comecei a me frustrar com a dependência excessiva de plugins que tornavam a experiência cada vez mais pesada, instável e lenta. </p>
+<blockquote>
+<p>O que deveria ser uma ferramenta simples de escrita se transformava em um ambiente sobrecarregado e pouco confiável.</p>
+</blockquote>
+<p>
+A migração dessas configurações complexas entre diferentes ambientes — especialmente ao alternar entre sistemas operacionais — tornou-se um obstáculo significativo que me levou a questionar fundamentalmente minha abordagem na escolha de editores. Se você enfrenta desafios similares, este artigo oferece uma perspectiva alternativa.</p>
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+Por que considerar o Emacs
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
+<p>
+O GNU Emacs é um editor <em>extensível, customizável e auto-documentado</em>, com décadas de estabilidade e uma comunidade enorme. Ele é “programável” em Emacs Lisp, o que permite que você molde o editor ao seu fluxo de trabalho em vez de se adaptar ao editor. ([gnu.org][1])</p>
+<p>
+Nos últimos lançamentos, o Emacs evoluiu muito para desenvolvimento moderno: <em><a href="https://en.wikipedia.org/wiki/Tree_sitter">suporte a tree-sitter</a></em> (análise sintática incremental) e um <em><a href="https://www.gnu.org/software/emacs/manual/html_node/eglot/index.html">cliente LSP nativo (Eglot)</a></em> simplificam autocompletar, navegação e refatoração em várias linguagens, sem depender de plugins externos pesados.</p>
+<p>
+Ao instalar e abrir o Emacs pela primeira vez, você será surpreendido por uma interface estranha (feia, bem feia), com uma barra de menus e uma barra de ferramentas e um bocado de texto. Observe a imagem abaixo:</p>
+<p>
+!<a href="/post/images/emacs/emacs01.png">Emacs</a></p>
+<blockquote>
+<p><em>NOTA</em>: Não se preocupe com a estética do Emacs no início. Você poderá customiza-lo para se adequar à estética de sua preferência.</p>
+</blockquote>
+<p>
+Aqui temos muitas informações importantes que valem a pena serem observadas:</p>
+<ul>
+<li><em>A barra de menus</em> - [File, Edit, Options, Buffers, Tools e Help] - Aqui você encontra os botões e menus principais do Emacs. O mais importante aqui, na minha opinião, é você estabelecer quais as opções que mais utiliza em seu dia-a-dia e observar que o Emacs mostra logo de início as hotkeys (teclas de atalho) para cada opção. </li>
+</ul>
+<blockquote>
+<p>Essas hotkeys vão lhe auxiliar em sua experiência com o Emacs. Uma dica interessante, é a criação do seu próprio cheatsheet com as hotkeys que mais fazem sentido para você.</p>
+</blockquote>
+<ul>
+<li><em>A barra de ferramentas</em> - Aqui você encontra os botões e menus principais do Emacs (não muito importante para o dia-a-dia), pois, como disse acima, mais importante do que botões, são as hotkeys.</li>
+<li><em>Texto de startup</em> - Aqui você encontra o texto de startup do Emacs que é exibido quando o Emacs é iniciado. Aqui tem vários guias para você começar a usar o Emacs. </li>
+<li><em>Barra de status</em> - Aqui estão as informações do status do Emacs. Este é um campo muito importante para você, pois ele mostra informações importantes como o modo de edição, o buffer atual, o cursor, etc.</li>
+</ul>
+<p>A recomendação da qual considero a mais importante, é que você use o Emacs puro, sem plugins, com as funções nativas dele. Experimente escrever textos, artigos, etc. Esta é, na minha opinião, a melhor forma de começar a usar o Emacs. Desta forma você irá se familiarizar com o Emacs e poderá começar a usar plugins depois. Vamos pelo simples.</p>
+<hr>
+<div id="outline-container-headline-2" class="outline-3">
+<h3 id="headline-2">
+Teclas que você precisa saber
+</h3>
+<div id="outline-text-headline-2" class="outline-text-3">
+<p>
+O Emacs assim como o <a href="https://www.vim.org/">Vim</a>, tem uma sintaxe de atalhos muito parecida, mas com algumas diferenças. Aqui estão as teclas que você precisa saber:</p>
+<p>
+!<a href="/post/images/emacs/emacs02.png">Emacs</a></p>
+<blockquote>
+<p><em>Curiosidade</em>: RET é a notação histórica do Emacs para a tecla Return (carriage return). Emacs adotou esses nomes de controle (RET, LFD, etc.) muito antes de “Enter” virar o rótulo comum nos teclados modernos. Como a maioria dos teclados atuais manda o mesmo sinal para “Enter/Return”, o Emacs continua usando a abreviação clássica RET.</p>
+</blockquote>
+<p>
+Bastante coisa, né? Mas não se preocupe, você não precisa saber todas elas. Nem mesmo nos editores mais famosos, como o <a href="https://code.visualstudio.com/">VSCode</a>, você precisa saber todas as teclas. Você pode aprender as que mais fazem sentido para você (ou que você achar que é mais útil). </p>
+<p>
+Não tenha pressa, leia e entenda o que cada tecla faz. Dê um tempo pra isso. Não fique tentando aprender tudo de uma vez. </p>
+<p>
+Crie um cheatsheet como este que fiz acima com as hotkeys que mais fazem sentido para você. Utilize o Emacs puro por um tempo considerável antes de seguir para o próximo passo. 
+Algo em torno de uma a duas semanas (será que compensa? vai vendo…). A propósito, criei este cheatsheet acima usando o <a href="https://excalidraw.com/">Excalidraw</a>.</p>
+<hr>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-2">
+<h2 id="headline-3">
+Buffer
+</h2>
+<div id="outline-text-headline-3" class="outline-text-2">
+<p>
+No Emacs, o que você vê e edita na tela é um <em>buffer</em>. Ele pode estar ligado a um arquivo do disco — mas <em>nem todo buffer é um arquivo</em>. Você pode criar um buffer vazio só para rascunhar, colar trechos de log, testar ideias… sem precisar dar um nome ou salvar. <em>Só vira arquivo quando você quiser salvar</em>; até lá, ele existe apenas dentro do Emacs.</p>
+<p>
+Buffers não servem só para texto “comum”: o Emacs também usa buffers para conversar com outros programas (como um shell Bash ou Python) e para muitas das suas próprias telas.</p>
+<p>
+Quase todos os comandos do Emacs agem <em>sobre o buffer ativo</em>: buscar/substituir, mover, apagar, tudo acontece nesse “documento” aberto. Pensar assim simplifica: aprenda a usar os comandos no dia a dia e estará, sem perceber, usando o mesmo modelo que o Emacs usa por dentro.</p>
+<p>
+<em>Dicas rápidas</em></p>
+<p>
+/ /Abrir arquivo (cria um buffer ligado a ele):* <code>C-x C-f</code>
+/ /Criar/ir para um buffer pelo nome:* <code>C-x b</code> (digite um nome novo para um buffer vazio)
+/ /Salvar o buffer:* <code>C-x C-s</code> (ou <code>C-x C-w</code> para “Salvar como…”)
+/ /Fechar o buffer atual:* <code>C-x k</code></p>
+<blockquote>
+<p><em>Nota</em>: pense no buffer como uma <em>folha de trabalho viva</em>. Às vezes ela tem um arquivo por trás; às vezes é só um espaço temporário para você trabalhar com liberdade. Quando fizer sentido, você salva.</p>
+</blockquote>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-2">
+<h2 id="headline-4">
+Org Mode 
+</h2>
+<div id="outline-text-headline-4" class="outline-text-2">
+<p>
+Vamos supor que você queira escrever um artigo. Geralmente as pessoas escolhem escreve-lo em <a href="https://www.markdownguide.org/">Markdown</a>. O Emacs tem um modo especial para isso, chamado <a href="https://orgmode.org/">Org Mode</a>. </p>
+<p>
+Este modo transforma arquivos <code>.org</code> (isto é, em formato de texto simples) em um ambiente de escrita e organização poderoso: você captura ideias, estrutura tópicos, acompanha tarefas e exporta para <a href="https://orgmode.org/manual/Export-Formats.html">HTML, PDF, DOCX e mais</a> — tudo em texto simples. </p>
+<p>
+É ideal para quem quer escrever sem distrações e com versionamento. É o tipo de experiência que você só perceberá após o uso. Essa função é tão poderosa que prefiro que vocês vejam um vídeo de demonstração:</p>
+<p>
+<div class="video">
+  <iframe src="https://www.youtube.com/embed/6yRhWG28-84" title="Org Mode Demonstration" frameborder="0" allowfullscreen></iframe>
+</div>
+</p>
+<p>
+Além de ser ideal para escrever artigos e anotações sem distrações, o Org Mode oferece recursos práticos que vão muito além da escrita básica. Seguem alguns destaques do que você pode fazer:</p>
+<div id="outline-container-headline-5" class="outline-3">
+<h3 id="headline-5">
+Estruturação do documento
+</h3>
+<div id="outline-text-headline-5" class="outline-text-3">
+<p>
+Uma das características mais poderosas do Org Mode é sua capacidade de estruturar documentos de forma hierárquica e intuitiva. A organização do conteúdo é feita através de asteriscos <code>*</code>, onde cada nível de profundidade representa uma seção diferente do documento. </p>
+<p>
+Vamos seguir um pequeno roadmap para você entender como funciona a estruturação do documento no Org Mode. Comecemos pelo básico:</p>
+<ol>
+<li><em>Crie um arquivo <code>.org</code></em> - <code>C-x C-f</code> e digite o nome do arquivo. Exemplo: <code>artigo.org</code>.</li>
+<li><em>Edite o arquivo</em> - <code>C-x C-e</code> e digite o conteúdo do arquivo. Exemplo:</li>
+</ol>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">* Seção
+</span></span><span class="line"><span class="cl">** Subseção
+</span></span><span class="line"><span class="cl">*** Subsubseção</span></span></code></pre></div>
+</div>
+<ol>
+<li><em>Visualize o arquivo</em> - <code>C-c C-v</code> e pressione <code>l</code> para visualizar o arquivo.</li>
+<li><em>Salve o arquivo</em> - <code>C-x C-s</code> e pressione <code>s</code> para salvar o arquivo.</li>
+<li><em>Exporte o arquivo</em> - <code>C-c C-e</code> e pressione <code>l</code> para exportar o arquivo no formato HTML.</li>
+</ol>
+<p>A estrutura funciona de maneira simples: um asterisco <code>/</code> cria uma seção principal, dois asteriscos <code>/</code> criam uma subseção, três asteriscos <code>**</code> criam uma subsubseção, e assim por diante. </p>
+<p>
+Essa abordagem permite criar documentos com múltiplos níveis de organização sem a necessidade de formatação complexa. Com isso, você organiza tópicos de forma clara e expansível.</p>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-3">
+<h3 id="headline-6">
+Estilo e marcação
+</h3>
+<div id="outline-text-headline-6" class="outline-text-3">
+<p>
+Continuando com o nosso exemplo, vamos ver como podemos formatar o texto e enriquecer o documento. Ainda no mesmo arquivo, vamos adicionar o seguinte:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">* Seção
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">Lorem ipsum dolor sit amet, /consectetur adipiscing elit/. Sed <span class="k">do</span> eiusmod *tempor incididunt* ut _labore et dolore magna_ aliqua. +Ut enim ad minim+ veniam, quis nostrud <span class="nv">exercitation</span> <span class="o">=</span><span class="nv">ullamco</span><span class="o">=</span> laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum:
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">** Subseção
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">~código~
+</span></span><span class="line"><span class="cl"><span class="c1">#+BEGIN_QUOTE</span>
+</span></span><span class="line"><span class="cl">A arte deve ser como um espelho
+</span></span><span class="line"><span class="cl">Que nos mostra o nosso próprio rosto.
+</span></span><span class="line"><span class="cl"><span class="c1">#+END_QUOTE</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#+BEGIN_SRC python :results output</span>
+</span></span><span class="line"><span class="cl">print<span class="o">(</span><span class="m">6</span> * 7<span class="o">)</span></span></span></code></pre></div>
+</div>
+<div id="outline-container-headline-7" class="outline-4">
+<h4 id="headline-7">
+Subsubseção
+</h4>
+<div id="outline-text-headline-7" class="outline-text-4">
+<p>#+END_SRC</p>
+<p>
+Perceba que não precisamos usar tags HTML para formatar o texto. O Org Mode já faz isso para você. Abaixo estão alguns exemplos de formatação de estilo e marcação que usamos no exemplo acima:</p>
+<p>
+/ <code>/itálico/</code> → /itálico*
+/ <code>/negrito/</code> → /negrito*</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-8" class="outline-2">
+<h2 id="headline-8">
+<code>_sublinhado_</code> → &lt;u&gt;sublinhado&lt;/u&gt;
+</h2>
+</div>
+<div id="outline-container-headline-9" class="outline-2">
+<h2 id="headline-9">
+<code>+riscado+</code> → <code>~riscado~</code>
+</h2>
+</div>
+<div id="outline-container-headline-10" class="outline-2">
+<h2 id="headline-10">
+<code>=verbatim=</code> → <code>verbatim</code>
+</h2>
+</div>
+<div id="outline-container-headline-11" class="outline-2">
+<h2 id="headline-11">
+<code>~código~</code> → <code>código</code>
+</h2>
+<div id="outline-text-headline-11" class="outline-text-2">
+<p>
+Note que no Org Mode, você pode usar markdown, html, latex, etc. Acima usamos markdown e latex ao mesmo tempo. Todos os formatos são suportados. Veja a lista completa de formatos suportados <a href="https://orgmode.org/worg/org-syntax.html">aqui</a>.</p>
+<div id="outline-container-headline-12" class="outline-4">
+<h4 id="headline-12">
+Listas e tabelas
+</h4>
+<div id="outline-text-headline-12" class="outline-text-4">
+<p>
+Continuando com o nosso exemplo, vamos ver como podemos criar listas e tabelas. Ainda no mesmo arquivo, vamos adicionar o seguinte:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">1. item <span class="m">1</span>
+</span></span><span class="line"><span class="cl">2. <span class="o">[</span>X<span class="o">]</span> item <span class="m">2</span>
+</span></span><span class="line"><span class="cl">   - some tag :: item 2.1
+</span></span><span class="line"><span class="cl">3. <span class="o">[</span> <span class="o">]</span> item <span class="m">3</span>
+</span></span><span class="line"><span class="cl">   - some tag :: item 3.1
+</span></span><span class="line"><span class="cl">   - some tag :: item 3.2
+</span></span><span class="line"><span class="cl">4. <span class="o">[</span> <span class="o">]</span> item <span class="m">4</span>
+</span></span><span class="line"><span class="cl">   - some tag :: item 4.1
+</span></span><span class="line"><span class="cl">   - some tag :: item 4.2
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">|</span> Nome     <span class="p">|</span> Idade <span class="p">|</span>
+</span></span><span class="line"><span class="cl"><span class="p">|</span>----------+-------<span class="p">|</span>
+</span></span><span class="line"><span class="cl"><span class="p">|</span> Alice    <span class="p">|</span>  <span class="m">25</span>   <span class="p">|</span>
+</span></span><span class="line"><span class="cl"><span class="p">|</span> Roberto  <span class="p">|</span>  <span class="m">30</span>   <span class="p">|</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-13" class="outline-2">
+<h2 id="headline-13">
+Listas ordenadas, não ordenadas e descritivas são suportadas de forma intuitiva.
+</h2>
+</div>
+<div id="outline-container-headline-14" class="outline-2">
+<h2 id="headline-14">
+Tabelas são fáceis de criar: basta usar <code>|</code> para separar colunas e pressionar <code>TAB</code> para alinhar.
+</h2>
+<div id="outline-text-headline-14" class="outline-text-2">
+<div id="outline-container-headline-15" class="outline-3">
+<h3 id="headline-15">
+Imagens, links e notas de rodapé
+</h3>
+<div id="outline-text-headline-15" class="outline-text-3">
+<p>
+Olha como é fácil adicionar imagens, links e notas de rodapé. Ainda no mesmo arquivo, vamos adicionar o seguinte:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="o">[[</span>./imagem.png<span class="o">]]</span>
+</span></span><span class="line"><span class="cl"><span class="o">[[</span>https://orgmode.org<span class="o">][</span>Site oficial<span class="o">]]</span>
+</span></span><span class="line"><span class="cl"><span class="o">[</span>fn:1<span class="o">]</span> Este é um exemplo de nota de rodapé.</span></span></code></pre></div>
+</div>
+<p>
+/ /Imagens*: Use <code>[[./caminho/para/imagem.png]]</code> ou com descrição <code>[[./imagem.png][Descrição da imagem]]</code>
+/ <em>Links externos*: <code>[[https://exemplo.com][Texto do link]]</code>  
+/ /Links internos</em>: <code>[[/Título da seção][Link para seção]]</code>
+/ /Notas de rodapé*: Use <code>[fn:1]</code> no texto e defina com <code>[fn:1] Conteúdo da nota</code> em qualquer lugar do documento</p>
+<p>
+O Org Mode automaticamente numera e organiza suas referências, criando um sistema de navegação limpo e profissional. Além disso, você pode criar blocos especiais para diferentes tipos de conteúdo, como veremos a seguir.</p>
+</div>
+</div>
+<div id="outline-container-headline-16" class="outline-3">
+<h3 id="headline-16">
+Blocos especiais
+</h3>
+<div id="outline-text-headline-16" class="outline-text-3">
+<p>
+Podemos também adicionar blocos especiais como citações, versículos, código, etc. Veja um exemplo:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1">#+BEGIN_QUOTE</span>
+</span></span><span class="line"><span class="cl">A arte deve ser como um espelho
+</span></span><span class="line"><span class="cl">Que nos mostra o nosso próprio rosto.
+</span></span><span class="line"><span class="cl"><span class="c1">#+END_QUOTE</span></span></span></code></pre></div>
+</div>
+<p>
+E executar código dentro do arquivo de forma dinâmica? Veja um exemplo:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl"><span class="c1">#+BEGIN_SRC python :results output</span>
+</span></span><span class="line"><span class="cl">print<span class="o">(</span><span class="m">6</span> * 7<span class="o">)</span></span></span></code></pre></div>
+</div>
+<p>#+END_SRC</p>
+<p>
+Como resultado, você verá o seguinte:</p>
+<div class="src src-text">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">42</span></span></code></pre></div>
+</div>
+<p>
+Estes blocos especiais tornam o Org Mode extremamente versátil para documentação técnica, permitindo combinar texto explicativo com código executável e resultados em um único documento. Com toda essa flexibilidade para criar conteúdo rico, o próximo passo é compartilhar seu trabalho através das poderosas opções de exportação do Org Mode.</p>
+</div>
+</div>
+<div id="outline-container-headline-17" class="outline-3">
+<h3 id="headline-17">
+Exportação
+</h3>
+<div id="outline-text-headline-17" class="outline-text-3">
+<p>
+Com um simples atalho <code>C-c C-e</code>, você pode exportar o documento para vários fo{}rmatos:</p>
+<table>
+<thead>
+<tr>
+<th>Atalho</th>
+<th>Formato</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>C-c C-e l p</code></td>
+<td>PDF</td>
+<td>Exporta via LaTeX</td>
+</tr>
+<tr>
+<td><code>C-c C-e h o</code></td>
+<td>HTML</td>
+<td>Abre no navegador</td>
+</tr>
+<tr>
+<td><code>C-c C-e t u</code></td>
+<td>UTF-8</td>
+<td>Texto simples</td>
+</tr>
+<tr>
+<td><code>C-c C-e t o</code></td>
+<td>Org Mode</td>
+<td>Formato nativo</td>
+</tr>
+<tr>
+<td><code>C-c C-e t m</code></td>
+<td>Markdown</td>
+<td>Para blogs/docs</td>
+</tr>
+<tr>
+<td><code>C-c C-e t r</code></td>
+<td>RST</td>
+<td>reStructuredText</td>
+</tr>
+<tr>
+<td><code>C-c C-e t d</code></td>
+<td>DocBook</td>
+<td>XML estruturado</td>
+</tr>
+<tr>
+<td><code>C-c C-e t x</code></td>
+<td>XML</td>
+<td>Formato genérico</td>
+</tr>
+<tr>
+<td><code>C-c C-e t j</code></td>
+<td>JSON</td>
+<td>Dados estruturados</td>
+</tr>
+<tr>
+<td><code>C-c C-e t y</code></td>
+<td>YAML</td>
+<td>Configuração</td>
+</tr>
+<tr>
+<td><code>C-c C-e t h</code></td>
+<td>HTML</td>
+<td>Página web</td>
+</tr>
+<tr>
+<td><code>C-c C-e t b</code></td>
+<td>BibTeX</td>
+<td>Bibliografia</td>
+</tr>
+<tr>
+<td><code>C-c C-e t c</code></td>
+<td>CSV</td>
+<td>Planilha</td>
+</tr>
+</tbody>
+</table>
+<p>
+O Org Mode não é só um editor de artigos, mas uma verdadeira plataforma de <em>escrita, organização e automação</em>. Você pode começar simples, como escrever seu artigo, e evoluir para usar tabelas, gráficos, blocos de código executáveis e até mesmo geração de sites inteiros. </p>
+<p>
+Vale muito a pena investir tempo nisso. A propósito, aqui está a <a href="https://orgmode.org/org.pdf">documentação oficial do Org Mode</a> em PDF.</p>
+<hr>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-18" class="outline-2">
+<h2 id="headline-18">
+Navegador nativo
+</h2>
+<div id="outline-text-headline-18" class="outline-text-2">
+<p>
+Se a graça do Org Mode é <em>escrever e ler com foco</em>, o <a href="https://www.gnu.org/software/emacs/manual/html_node/eww/index.html">EWW</a> é o passo seguinte: <em>pesquisar e consumir conteúdo</em> sem sair do Emacs. Pense nele como um “reader mode” embutido — simples, rápido e bom o suficiente para docs, blogs e referências técnicas enquanto você codifica/escreve.</p>
+<p>
+!<a href="/post/images/emacs/eww.png">EWW</a></p>
+<div id="outline-container-headline-19" class="outline-3">
+<h3 id="headline-19">
+Comandos essenciais
+</h3>
+<div id="outline-text-headline-19" class="outline-text-3">
+<table>
+<thead>
+<tr>
+<th>Ação</th>
+<th>Atalho</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>Abrir URL/buscar</em></td>
+<td><code>M-x eww</code></td>
+<td>Se não for URL, busca no DuckDuckGo</td>
+</tr>
+<tr>
+<td><em>Recarregar</em></td>
+<td><code>g</code></td>
+<td>Atualiza a página atual</td>
+</tr>
+<tr>
+<td><em>Voltar</em></td>
+<td><code>l</code></td>
+<td>Página anterior</td>
+</tr>
+<tr>
+<td><em>Avançar</em></td>
+<td><code>r</code></td>
+<td>Próxima página</td>
+</tr>
+<tr>
+<td><em>Sair</em></td>
+<td><code>q</code></td>
+<td>Fecha o EWW</td>
+</tr>
+<tr>
+<td><em>Novo buffer</em></td>
+<td><code>M-RET</code></td>
+<td>Abre link em novo buffer</td>
+</tr>
+<tr>
+<td><em>Copiar URL</em></td>
+<td><code>w</code></td>
+<td>Copia URL do cursor ou página</td>
+</tr>
+<tr>
+<td><em>Favoritar</em></td>
+<td><code>b</code></td>
+<td>Adiciona aos bookmarks</td>
+</tr>
+<tr>
+<td><em>Ver favoritos</em></td>
+<td><code>B</code></td>
+<td>Lista todos os bookmarks</td>
+</tr>
+<tr>
+<td><em>Histórico</em></td>
+<td><code>H</code></td>
+<td>Mostra páginas visitadas</td>
+</tr>
+</tbody>
+</table>
+<div id="outline-container-headline-20" class="outline-4">
+<h4 id="headline-20">
+Aprendizado gradual
+</h4>
+<div id="outline-text-headline-20" class="outline-text-4">
+<p>
+Não precisa memorizar todos os atalhos de uma vez. Comece pelos essenciais (<code>M-x eww</code>, <code>q</code>, <code>g</code>) e vá incorporando outros conforme a necessidade. </p>
+<p>
+A personalização de atalhos pode ficar para depois — primeiro, entenda o fluxo básico do EWW. Construir uma base sólida é mais importante que customizações prematuras.</p>
+</div>
+</div>
+<div id="outline-container-headline-21" class="outline-4">
+<h4 id="headline-21">
+Deixe a leitura confortável (toggles essenciais)
+</h4>
+<div id="outline-text-headline-21" class="outline-text-4">
+<p>
+/ /Fonte variável (prosa mais legível)*: <code>F</code> (altera <code>shr-use-fonts</code>)
+/ /Respeitar/ignorar cores da página*: <code>M-C</code> (altera <code>shr-use-colors</code>)
+/ /Mostrar/Ocultar imagens*: <code>M-I</code> (altera <code>shr-inhibit-images</code>)
+/ /Modo leitura* (remove menus/ruído): <code>R</code> (toggle de “readable”)</p>
+<p>
+O EWW se integra naturalmente ao fluxo de trabalho do Emacs — você pode estar editando código, precisar consultar uma documentação, abrir rapidamente com <code>M-x eww</code>, ler o que precisa, e voltar ao seu buffer anterior com <code>C-x b</code> ou <code>C-x 4 b</code> para abrir em outra janela. </p>
+<p>
+A beleza está na <em>simplicidade funcional</em>: sem abas confusas, sem distrações visuais, apenas o conteúdo que importa. </p>
+<p>
+E quando você encontra algo relevante, pode facilmente copiar trechos para seus arquivos Org ou código, mantendo tudo dentro do mesmo ambiente. Claro, nem tudo é perfeito — sites modernos dependem muito de JavaScript, e é aí que você precisa saber quando usar cada ferramenta. </p>
+</div>
+</div>
+<div id="outline-container-headline-22" class="outline-4">
+<h4 id="headline-22">
+Quando a página “não rola”
+</h4>
+<div id="outline-text-headline-22" class="outline-text-4">
+<p>
+O EWW é um navegador <em>minimalista por design</em> — ele não executa JavaScript e tem suporte limitado ao CSS moderno. Isso é uma <em>vantagem</em> para leitura focada, mas significa que alguns sites não vão funcionar como esperado. </p>
+<p>
+Quando uma página &#34;quebrar&#34; no EWW, simplesmente digite <code>&amp;</code> e ela abrirá no seu navegador padrão. Exemplo prático:</p>
+<ol>
+<li>Você está no EWW lendo sobre uma biblioteca Python</li>
+<li>Clica num link para uma demo interativa que não carrega</li>
+<li>Aperta <code>&amp;</code> → a página abre no Firefox/Chrome</li>
+<li>Volta pro EWW com <code>C-x b</code> quando terminar</li>
+</ol>
+</div>
+</div>
+<div id="outline-container-headline-23" class="outline-4">
+<h4 id="headline-23">
+Downloads e PDFs
+</h4>
+<div id="outline-text-headline-23" class="outline-text-4">
+<p>
+/ <em>Baixar* o link sob o cursor (ou a página atual): <code>d</code> → vai para <code>eww-download-directory</code> (padrão: <code>~/Downloads/</code>).
+/ /PDFs</em> abrem inline (doc-view). Se preferir outro viewer, ajuste via /mailcap*.</p>
+<hr>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-24" class="outline-2">
+<h2 id="headline-24">
+Lisp?
+</h2>
+<div id="outline-text-headline-24" class="outline-text-2">
+<p>
+O Emacs é construído quase todo em <em>Emacs Lisp (elisp)</em>, uma variação de LISP. Isso significa que o editor pode <em>inspecionar, executar e mudar a si mesmo</em> enquanto você o usa.</p>
+<p>
+Na prática, você pode começar sem saber elisp, mas com o tempo vai querer ajustar algo (por exemplo, <em>trocar um atalho</em> ou <em>ligar um recurso</em>) e acabará esbarrando em pequenas linhas de elisp. A boa notícia: é simples, direto e há muitos exemplos prontos — você geralmente só <em>copia, adapta e testa</em>.</p>
+<p>
+Por que LISP aqui? Porque em LISP <em>código e dados têm a mesma forma</em>. Isso torna o Emacs <em>extensível</em>: você consegue adicionar funções, alterar comportamentos existentes e “colar” melhorias sem reescrever tudo. O resultado é um editor que você <em>molda ao seu jeito</em> — dos atalhos à aparência, do fluxo de trabalho do projeto a automações do dia a dia.</p>
+<p>
+<em>Dicas rápidas</em></p>
+<p>
+/ /Avaliar um trecho* agora: <code>M-:</code> (digite uma expressão) ou <code>C-x C-e</code> no fim da linha.
+/ /Entender o que é uma função/variável:* <code>C-h f</code> (describe-function), <code>C-h v</code> (describe-variable).
+/ <em>Ver o que uma tecla faz:* <code>C-h k</code> e pressione a tecla/atalho.
+/ /Aprender o básico de elisp:</em> <code>M-x info RET</code> → <em>Emacs Lisp Intro* (guia oficial).
+/ /Testar ideias sem bagunçar arquivos:</em> use o buffer <code>/scratch*</code> (modo Lisp Interaction).</p>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-25" class="outline-2">
+<h2 id="headline-25">
+Customização
+</h2>
+<div id="outline-text-headline-25" class="outline-text-2">
+<p>
+É aqui que vamos desbloquear todo o potencial do Emacs e sem usar nenhum plugin! Faço questão de mostrar tudo o que podemos fazer usando este maravilhoso Editor nativamente. </p>
+<p>
+Abra seu Emacs, pressione <code>C-x C-f</code> e em seguida digite <code>~/.emacs.d/init.el</code> e pressione ENTER. Feito isso, vamos agora customizar de verdade. Primeiro, vamos limpar o Emacs e deixa-lo clean:</p>
+<div class="src src-lisp">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-lisp" data-lang="lisp"><span class="line"><span class="cl"><span class="c1">;; Inibir items da interface</span>
+</span></span><span class="line"><span class="cl"><span class="c1">;; Inibir startup screen e message</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="k">setq</span> <span class="nv">inhibit-startup-screen</span> <span class="no">t</span>
+</span></span><span class="line"><span class="cl">			<span class="nv">inhibit-startup-message</span> <span class="no">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Desativar scrollbar e toolbar</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nb">when</span> <span class="p">(</span><span class="nv">display-graphic-p</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="nv">scroll-bar-mode</span> <span class="mi">-1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="nv">tool-bar-mode</span> <span class="mi">-1</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<p>
+Agora pressione <code>C-x C-s</code> para salvar, e em seguida <code>C-c C-e</code> para dar reload no Emacs para que você consiga ver o que ocorreu. Outra maneira de aplicar reload, é pressionando <code>M-x</code> e digitando em seguida <code>eval-buffer</code>. Seu Emacs a partir de agora ficará assim:</p>
+<p>
+![]()</p>
+<p>
+Perceba que agora temos um Emacs mais clean, sem aquelas opções que o tornam semelhante a um editor dos anos 80. Agora vamos continuar nossa configuração:</p>
+<div class="src src-lisp">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-lisp" data-lang="lisp"><span class="line"><span class="cl"><span class="c1">;; Números de linha em todos os buffers</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">global-display-line-numbers-mode</span> <span class="no">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Fonte padrão (deve estar instalada). 130 = 13pt</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">set-face-attribute</span> <span class="ss">&#39;default</span> <span class="no">nil</span> <span class="ss">:family</span> <span class="s">&#34;Fira Code&#34;</span> <span class="ss">:height</span> <span class="mi">130</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Legibilidade: espaçamento extra; tab=2; usa espaços; coluna alvo 80</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">setq-default</span> <span class="nv">line-spacing</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">              <span class="nv">tab-width</span> <span class="mi">2</span>
+</span></span><span class="line"><span class="cl">              <span class="nv">indent-tabs-mode</span> <span class="no">nil</span>
+</span></span><span class="line"><span class="cl">              <span class="nv">fill-column</span> <span class="mi">80</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Linha-guia na coluna 80 (prog-mode)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">setq-default</span> <span class="nv">display-fill-column-indicator-column</span> <span class="mi">80</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">add-hook</span> <span class="ss">&#39;prog-mode-hook</span> <span class="nf">#&#39;</span><span class="nv">display-fill-column-indicator-mode</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Syntax highlight global</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">global-font-lock-mode</span> <span class="no">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Edição: fecha pares; destaca par; digitar substitui seleção</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">electric-pair-mode</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">show-paren-mode</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">delete-selection-mode</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Recarrega buffer se o arquivo mudar no disco</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">global-auto-revert-mode</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Histórico: volta onde parou; lista “recentes”</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">save-place-mode</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">recentf-mode</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Undo/redo de layouts de janelas (C-c ← / C-c →)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">winner-mode</span> <span class="mi">1</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<p>
+Novamente, pressione <code>C-x C-s</code> para salvar, e <code>C-c C-e</code> para dar reload nas configurações do Emacs. Observe que agora temos contador de linhas e outras opções que estão descritas acima. Terminamos por aqui? Agora vamos inserir Plugins? A resposta é…não! Ainda tem bastante coisa…vai vendo:</p>
+<div class="src src-lisp">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-lisp" data-lang="lisp"><span class="line"><span class="cl"><span class="c1">;;; Tema (não pergunta ao carregar)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">load-theme</span> <span class="ss">&#39;wombat</span> <span class="no">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; &#34;yes-or-no?&#34; vira &#34;y/n?&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">fset</span> <span class="ss">&#39;yes-or-no-p</span> <span class="ss">&#39;y-or-n-p</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Cursor sem piscar; destaca a linha atual</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">blink-cursor-mode</span> <span class="mi">-1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">global-hl-line-mode</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Scrolling suave/preciso (Emacs 29+)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">pixel-scroll-precision-mode</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Relógio no mode-line (ative bateria se quiser)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">display-time-mode</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="c1">;; (display-battery-mode 1)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; UTF-8 como padrão para idioma/arquivos</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">set-language-environment</span> <span class="s">&#34;UTF-8&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">prefer-coding-system</span> <span class="ss">&#39;utf-8</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Melhor desempenho com arquivos/líneas enormes</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">global-so-long-mode</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Completação nativa Fido em lista vertical (M-x, C-x C-f, etc.)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">fido-vertical-mode</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="k">setq</span> <span class="nv">completion-styles</span> <span class="o">&#39;</span><span class="p">(</span><span class="nv">basic</span> <span class="nv">partial-completion</span> <span class="nv">flex</span><span class="p">)</span> <span class="c1">; estilos de match</span>
+</span></span><span class="line"><span class="cl">      <span class="nv">completions-format</span> <span class="ss">&#39;one-column</span>                    <span class="c1">; layout da lista</span>
+</span></span><span class="line"><span class="cl">      <span class="nv">completions-max-height</span> <span class="mi">20</span><span class="p">)</span>                        <span class="c1">; altura máxima</span></span></span></code></pre></div>
+</div>
+<p>
+O <em>Fido vertical</em> é a completação nativa do Emacs que mostra as sugestões em <em>lista vertical</em> no minibuffer. Ele acelera comandos como <code>M-x</code>, abrir arquivos (<code>C-x C-f</code>) e trocar buffers (<code>C-x b</code>) porque você vê, em tempo real, os candidatos que batem com o que digitou — tudo leve e sem plugins.</p>
+<p>
+Para usar, basta começar a digitar: navegue na lista com <em>↑/↓</em> (ou <em>C-p/C-n</em>), pressione <em>RET</em> para escolher e <em>TAB</em> para completar o trecho comum. Ele funciona “em todo lugar” que usa a API padrão de completação do Emacs. Se quiser buscas mais flexíveis, adicione o estilo <code>flex</code> aos <code>completion-styles</code>, mas o comportamento padrão já é direto e eficiente. Vamos continuar nossa customização:</p>
+<div class="src src-lisp">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-lisp" data-lang="lisp"><span class="line"><span class="cl"><span class="c1">;; Dired: recursivo p/ copiar/apagar; sugere outro painel; usa lixeira; esconde detalhes</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">with-eval-after-load</span> <span class="ss">&#39;dired</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="k">setq</span> <span class="nv">dired-recursive-deletes</span> <span class="ss">&#39;always</span>
+</span></span><span class="line"><span class="cl">        <span class="nv">dired-recursive-copies</span>  <span class="ss">&#39;always</span>
+</span></span><span class="line"><span class="cl">        <span class="nv">dired-dwim-target</span> <span class="no">t</span>            <span class="c1">; destino = outro Dired ao lado</span>
+</span></span><span class="line"><span class="cl">        <span class="nv">delete-by-moving-to-trash</span> <span class="no">t</span><span class="p">)</span>    <span class="c1">; mover p/ lixeira do SO</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="nv">add-hook</span> <span class="ss">&#39;dired-mode-hook</span> <span class="nf">#&#39;</span><span class="nv">dired-hide-details-mode</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Dired: reusar o MESMO buffer ao entrar em diretórios/arquivos</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">put</span> <span class="ss">&#39;dired-find-alternate-file</span> <span class="ss">&#39;disabled</span> <span class="no">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Abas nativas (tab-bar): ativa e atalhos simples</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">tab-bar-mode</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="k">setq</span> <span class="nv">tab-bar-new-tab-choice</span> <span class="s">&#34;*scratch*&#34;</span> <span class="c1">; buffer inicial da nova aba</span>
+</span></span><span class="line"><span class="cl">      <span class="nv">tab-bar-show</span> <span class="mi">1</span><span class="p">)</span>                    <span class="c1">; mostra barra se ≥1 aba</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">global-set-key</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-c t n&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">tab-new</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">global-set-key</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-c t k&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">tab-close</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">global-set-key</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&#34;C-c t o&#34;</span><span class="p">)</span> <span class="nf">#&#39;</span><span class="nv">tab-next</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Project.el: menu rápido ao trocar de projeto</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="k">setq</span> <span class="nv">project-switch-commands</span>
+</span></span><span class="line"><span class="cl">      <span class="o">&#39;</span><span class="p">((</span><span class="nv">project-find-file</span> <span class="s">&#34;Find file&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="p">(</span><span class="nv">project-find-regexp</span> <span class="s">&#34;Ripgrep&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="p">(</span><span class="nv">project-dired</span> <span class="s">&#34;Dired&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="p">(</span><span class="nv">project-eshell</span> <span class="s">&#34;Eshell&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="p">(</span><span class="nv">project-compile</span> <span class="s">&#34;Compile&#34;</span><span class="p">)))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Imenu: índice de símbolos no menu (prog-mode)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">add-hook</span> <span class="ss">&#39;prog-mode-hook</span> <span class="nf">#&#39;</span><span class="nv">imenu-add-menubar-index</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Mostra a função/método atual no mode-line</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">which-function-mode</span> <span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Busca: ignore maiúsc./minúsc. (ativa sensível se usar caps no padrão)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="k">setq</span> <span class="nv">case-fold-search</span> <span class="no">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Isearch: mostra contagem de ocorrências ao buscar</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="k">setq</span> <span class="nv">isearch-lazy-count</span> <span class="no">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; C-k: no início da linha, remove a linha inteira (inclui newline)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="k">setq</span> <span class="nv">kill-whole-line</span> <span class="no">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Paginação mantém o cursor na mesma posição da tela</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="k">setq</span> <span class="nv">scroll-preserve-screen-position</span> <span class="no">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">;; Seleção integra com o clipboard do sistema (Ctrl+C/Ctrl+V do SO)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="k">setq</span> <span class="nv">select-enable-clipboard</span> <span class="no">t</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<p>
+O primeiro bloco ajusta o <em>gerenciador de arquivos do Emacs</em> (chamado <em>Dired</em>). Em termos simples: ele permite <em>copiar e apagar pastas inteiras de uma vez</em>, <em>sugerir automaticamente a janela ao lado como destino</em> quando você está com duas janelas abertas, <em>mandar itens para a lixeira do sistema</em> (em vez de apagar para sempre) e <em>mostrar a lista de arquivos de forma mais limpa</em>, escondendo detalhes que distraem.</p>
+<p>
+Também faz a navegação <em>reaproveitar a mesma janela</em>, evitando abrir várias telas enquanto você entra e sai de pastas. O segundo bloco ativa <em>abas</em> (como no navegador). Assim você separa tarefas: por exemplo, uma aba para rascunhos, outra para código, outra para anotações.</p>
+<p>
+A configuração abre <em>uma nova aba pronta para escrever</em> e mostra a barra de abas apenas quando houver mais de uma, mantendo a interface simples. Há atalhos fáceis para <em>criar</em>, <em>fechar</em> e <em>pular</em> entre abas, deixando o fluxo parecido com o que você já faz na web.</p>
+<p>
+O terceiro bloco organiza um <em>menu rápido por projeto</em>. Quando você alterna de projeto, aparece um conjunto de ações úteis: <em>abrir arquivos do projeto</em>, <em>procurar texto dentro dele</em>, <em>ver a pasta do projeto</em>, <em>abrir um terminal integrado na pasta do projeto</em> e <em>rodar a compilação</em>. Em resumo, tudo o que você mais usa fica a um passo, o que acelera bastante o seu dia a dia.</p>
+<p>
+Lembra que no início do artigo citei que o Emacs tem LSP server nativo através do EGLOT? Vamos explorar isso? Bom, atualmente faço experimentos em LISP usando Clojure, trabalho com Java, Python e colaboro para projetos Rust, C, C++. Além disso, gostaria conhecer um pouco de Zig.</p>
+<p>
+É possível usar o Emacs para todas essas linguagens nativamente sem instalar plugins? A resposta é sim!! Vejamos:</p>
+<div class="src src-lisp">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-lisp" data-lang="lisp"><span class="line"><span class="cl"><span class="c1">;;; ---------------- LSP nativo (Eglot) ----------------</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">add-hook</span> <span class="ss">&#39;clojure-mode-hook</span> <span class="nf">#&#39;</span><span class="nv">eglot-ensure</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">add-hook</span> <span class="ss">&#39;java-mode-hook</span>    <span class="nf">#&#39;</span><span class="nv">eglot-ensure</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">add-hook</span> <span class="ss">&#39;python-mode-hook</span>  <span class="nf">#&#39;</span><span class="nv">eglot-ensure</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">add-hook</span> <span class="ss">&#39;c-mode-hook</span>       <span class="nf">#&#39;</span><span class="nv">eglot-ensure</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">add-hook</span> <span class="ss">&#39;c++-mode-hook</span>     <span class="nf">#&#39;</span><span class="nv">eglot-ensure</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">add-hook</span> <span class="ss">&#39;rust-mode-hook</span>    <span class="nf">#&#39;</span><span class="nv">eglot-ensure</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">add-hook</span> <span class="ss">&#39;zig-mode-hook</span>     <span class="nf">#&#39;</span><span class="nv">eglot-ensure</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nb">defun</span> <span class="nv">my/eglot-format-buffer-before-save</span> <span class="p">()</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="nb">when</span> <span class="p">(</span><span class="nv">bound-and-true-p</span> <span class="nv">eglot-managed-mode</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="nv">eglot-format-buffer</span><span class="p">)))</span>
+</span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nv">add-hook</span> <span class="ss">&#39;before-save-hook</span> <span class="nf">#&#39;</span><span class="nv">my/eglot-format-buffer-before-save</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<p>Essa configuração liga o <em>Eglot</em>, o suporte nativo do Emacs para “inteligência de linguagem”, sempre que você abrir arquivos de Clojure, Java, Python, C, C++, Rust ou Zig e muitas outras.</p>
+<p>
+Na prática, isso dá recursos de IDE: <em>autocompletar</em>, <em>ir para definição</em>, <em>mostrar erros/avisos</em> enquanto digita e <em>informações rápidas</em> sobre símbolos — tudo automaticamente, sem você precisar ligar nada manualmente.</p>
+<p>
+O segundo trecho faz o Emacs <em>formatar o código ao salvar</em>: sempre que o Eglot estiver ativo naquele arquivo, ele pede ao “servidor da linguagem” a formatação padrão do projeto (quando disponível). O resultado é um código salvo já <em>padronizado e limpo</em>, seguindo as regras do ecossistema de cada linguagem.</p>
+<hr>
+</div>
+</div>
+
+  </div>
+</article>
+
+    </main>
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
+</body>
+</html>

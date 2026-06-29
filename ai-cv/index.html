@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>04 - AI Engineering from scratch: do pixel ao modelo de mundo — lobovit</title>
+  <link rel="stylesheet" href="/css/main.css?v=3">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
+    <main>
+      
+<article>
+  <header>
+    <h1>04 - AI Engineering from scratch: do pixel ao modelo de mundo</h1>
+    <p class="meta"><time>2026-05-25</time> · <span class="tag">AI</span><span class="tag">computer-vision</span><span class="tag">cnn</span><span class="tag">diffusion</span><span class="tag">yolo</span><span class="tag">vit</span><span class="tag">pytorch</span><span class="tag">python</span></p>
+  </header>
+  <div class="content">
+    
+<p>
+Uma imagem digital é uma matriz de números. Um pixel é um valor entre 0 e 255. Três canais (RGB) por pixel, 224 linhas, 224 colunas. Isso dá 150 mil números. E em cima desses 150 mil números a gente constrói modelos que reconhecem rostos, dirigem carros, geram arte e simulam física.</p>
+<p>
+Visão computacional é o campo que ensina máquinas a extrair significado de pixels. Este artigo percorre 28 tópicos, dos fundamentos de imagem até modelos de mundo que preveem o futuro em vídeo. A stack é Python (PyTorch) pra treino e experimentação, Go pra inferência em produção.</p>
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+Como uma imagem vira tensor
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
+<p>
+Tudo começa com o pipeline de pré-processamento. Você carrega um JPEG, decodifica os pixels, converte o espaço de cor, redimensiona, recorta, normaliza e transpõe. Cada passo tem uma razão. Pular um quebra o modelo silenciosamente: acurácia cai, e você não sabe por quê.</p>
+<p>
+O formato HWC (Height-Width-Channel) é o que PIL e OpenCV usam. O formato CHW (Channel-Height-Width) é o que PyTorch e cuDNN esperam. A conversão <code>transpose(2, 0, 1)</code> é a linha mais frequente em código de visão. E a normalização do ImageNet (<code>mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]</code>) é a constante mais importante do campo: todo modelo pré-treinado espera esses valores. Se você normalizar errado, o modelo não vai dar erro, só vai performar mal.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">from</span> <span class="nn">torchvision</span> <span class="kn">import</span> <span class="n">transforms</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">pipeline</span> <span class="o">=</span> <span class="n">transforms</span><span class="o">.</span><span class="n">Compose</span><span class="p">([</span>
+</span></span><span class="line"><span class="cl">    <span class="n">transforms</span><span class="o">.</span><span class="n">Resize</span><span class="p">(</span><span class="mi">256</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">    <span class="n">transforms</span><span class="o">.</span><span class="n">CenterCrop</span><span class="p">(</span><span class="mi">224</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">    <span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span>               <span class="c1"># HWC -&gt; CHW, [0,255] -&gt; [0,1]</span>
+</span></span><span class="line"><span class="cl">    <span class="n">transforms</span><span class="o">.</span><span class="n">Normalize</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">        <span class="n">mean</span><span class="o">=</span><span class="p">[</span><span class="mf">0.485</span><span class="p">,</span> <span class="mf">0.456</span><span class="p">,</span> <span class="mf">0.406</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">        <span class="n">std</span><span class="o">=</span><span class="p">[</span><span class="mf">0.229</span><span class="p">,</span> <span class="mf">0.224</span><span class="p">,</span> <span class="mf">0.225</span><span class="p">],</span>
+</span></span><span class="line"><span class="cl">    <span class="p">),</span>
+</span></span><span class="line"><span class="cl"><span class="p">])</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-2">
+<h2 id="headline-2">
+Convoluções: o tijolo da visão
+</h2>
+<div id="outline-text-headline-2" class="outline-text-2">
+<p>
+Uma convolução é um filtro que desliza sobre a imagem. Em cada posição, multiplica elemento a elemento e soma. O resultado é um mapa de ativação que responde a um padrão específico: bordas horizontais, bordas verticais, texturas, cantos.</p>
+<p>
+O que faz a convolução ser perfeita pra visão: compartilhamento de pesos. O mesmo kernel de 3x3 (9 parâmetros) é aplicado em todas as 50 mil posições da imagem. Compare com uma camada densa que precisaria de milhões de parâmetros. E a equivariância à translação: se o objeto se move 5 pixels pra direita, o mapa de ativação também se move 5 pixels. A rede &#34;sabe&#34; onde as coisas estão.</p>
+<p>
+A fórmula do tamanho de saída: <code>(H - K + 2P) / S + 1</code>. Com kernel 3x3, padding 1 e stride 1, o tamanho se preserva. Com stride 2, reduz pela metade (downsampling). Duas convoluções 3x3 empilhadas têm o mesmo campo receptivo de uma 5x5, com menos parâmetros e uma não-linearidade extra no meio. Por isso todo mundo empilha 3x3.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">conv2d_naive</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">kernel</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">C_in</span><span class="p">,</span> <span class="n">H</span><span class="p">,</span> <span class="n">W</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+</span></span><span class="line"><span class="cl">    <span class="n">C_out</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">kernel</span><span class="o">.</span><span class="n">shape</span>
+</span></span><span class="line"><span class="cl">    <span class="n">H_out</span> <span class="o">=</span> <span class="p">(</span><span class="n">H</span> <span class="o">-</span> <span class="n">K</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">)</span> <span class="o">//</span> <span class="n">stride</span> <span class="o">+</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">    <span class="n">W_out</span> <span class="o">=</span> <span class="p">(</span><span class="n">W</span> <span class="o">-</span> <span class="n">K</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">padding</span><span class="p">)</span> <span class="o">//</span> <span class="n">stride</span> <span class="o">+</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">    <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">C_out</span><span class="p">,</span> <span class="n">H_out</span><span class="p">,</span> <span class="n">W_out</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">padding</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="n">padding</span><span class="p">,</span><span class="n">padding</span><span class="p">),</span> <span class="p">(</span><span class="n">padding</span><span class="p">,</span><span class="n">padding</span><span class="p">)))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">oc</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">C_out</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">H_out</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">            <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">W_out</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">                <span class="n">patch</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:,</span> <span class="n">h</span><span class="o">*</span><span class="n">stride</span><span class="p">:</span><span class="n">h</span><span class="o">*</span><span class="n">stride</span><span class="o">+</span><span class="n">K</span><span class="p">,</span> <span class="n">w</span><span class="o">*</span><span class="n">stride</span><span class="p">:</span><span class="n">w</span><span class="o">*</span><span class="n">stride</span><span class="o">+</span><span class="n">K</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">                <span class="n">out</span><span class="p">[</span><span class="n">oc</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">w</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">kernel</span><span class="p">[</span><span class="n">oc</span><span class="p">]</span> <span class="o">*</span> <span class="n">patch</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">out</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Filtro de Sobel: detecta bordas horizontais</span>
+</span></span><span class="line"><span class="cl"><span class="n">sobel_h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[[[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">],[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">]]]])</span></span></span></code></pre></div>
+</div>
+<p>
+O truque im2col acelera isso 100x: rearranje cada janela de convolução como uma coluna de matriz, achate o kernel como linhas, e a convolução inteira vira uma multiplicação de matrizes. É assim que o PyTorch faz por baixo (via cuDNN).</p>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-2">
+<h2 id="headline-3">
+A árvore genealógica das CNNs
+</h2>
+<div id="outline-text-headline-3" class="outline-text-2">
+<p>
+Toda CNN dos últimos 30 anos é a mesma receita (convolução, não-linearidade, downsampling) com uma ideia nova colada. Entender a árvore genealógica resolve 80% das decisões de arquitetura.</p>
+<p>
+LeNet-5 (1998, LeCun) inventou o template: conv, pool, conv, pool, fully-connected. Funcionava pra dígitos manuscritos (MNIST). AlexNet (2012, Krizhevsky) adicionou ReLU (em vez de tanh), Dropout e profundidade. Ganhou o ImageNet por 10 pontos percentuais e começou a era do deep learning.</p>
+<p>
+VGG (2014) provou que profundidade importa mais que truques: 16 camadas de convoluções 3x3 empilhadas, zero invenção. Inception (Google, 2014) rodou convoluções 1x1, 3x3 e 5x5 em paralelo e concatenou os resultados, capturando padrões em múltiplas escalas.</p>
+<p>
+ResNet (2015, He) resolveu o problema da degradação. Redes com 20 camadas treinavam melhor que redes com 56 camadas. A causa: vanishing gradients. A solução: skip connections. <code>y = F(x) + x</code>. O <code>+x</code> é um atalho de identidade que dá ao gradiente um caminho direto de volta, sem passar por nenhuma camada. Isso permite 152 camadas sem perder sinal.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">torch</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">BasicBlock</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">in_ch</span><span class="p">,</span> <span class="n">out_ch</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">conv1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">in_ch</span><span class="p">,</span> <span class="n">out_ch</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">bn1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">BatchNorm2d</span><span class="p">(</span><span class="n">out_ch</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">conv2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">out_ch</span><span class="p">,</span> <span class="n">out_ch</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">bn2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">BatchNorm2d</span><span class="p">(</span><span class="n">out_ch</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">shortcut</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="n">stride</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">in_ch</span> <span class="o">!=</span> <span class="n">out_ch</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="bp">self</span><span class="o">.</span><span class="n">shortcut</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">                <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">(</span><span class="n">in_ch</span><span class="p">,</span> <span class="n">out_ch</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">stride</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">                <span class="n">nn</span><span class="o">.</span><span class="n">BatchNorm2d</span><span class="p">(</span><span class="n">out_ch</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="n">out</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bn1</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">conv1</span><span class="p">(</span><span class="n">x</span><span class="p">)))</span>
+</span></span><span class="line"><span class="cl">        <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bn2</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">conv2</span><span class="p">(</span><span class="n">out</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">        <span class="n">out</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shortcut</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="n">out</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<p>
+A skip connection do ResNet é o padrão por trás de todo transformer moderno (o <code>x + attention(x)</code> do GPT é a mesma ideia). O que era um truque pra CNNs virou a arquitetura da linguagem.</p>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-2">
+<h2 id="headline-4">
+Classificação, fine-tuning e o que fazer com um modelo pré-treinado
+</h2>
+<div id="outline-text-headline-4" class="outline-text-2">
+<p>
+Treinar um classificador do zero exige milhões de imagens e dias de GPU. O que você faz na prática: pegue uma ResNet ou ConvNeXt pré-treinada no ImageNet (14 milhões de imagens, 1000 classes), congele o backbone e treine só uma nova cabeça de classificação. Isso é transfer learning.</p>
+<p>
+Se você tem muitos dados (10k+ por classe) e seu domínio é próximo do ImageNet (fotos naturais), descongele tudo e faça fine-tuning com learning rate 10x menor. Se tem poucos dados (&lt;1k por classe), congele tudo menos a última camada. Se o domínio é distante (imagens médicas, satélite, microscopia), o fine-tuning ajuda menos e você pode precisar treinar mais camadas.</p>
+<p>
+Taxas de aprendizado discriminativas: as primeiras camadas (que detectam bordas e texturas, genéricas) recebem atualizações pequenas (lr/100). As últimas (específicas da tarefa) recebem a taxa normal. Progressive unfreezing: descongele uma camada por época, da última pra primeira.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">torchvision.models</span> <span class="k">as</span> <span class="nn">models</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">model</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">resnet18</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">ResNet18_Weights</span><span class="o">.</span><span class="n">IMAGENET1K_V1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">model</span><span class="o">.</span><span class="n">fc</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>  <span class="c1"># nova cabeça pra 10 classes</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Feature extraction: só a cabeça treina</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">    <span class="n">param</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">False</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">fc</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">    <span class="n">param</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">True</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">AdamW</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">fc</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-2">
+<h2 id="headline-5">
+Detecção: YOLO e a arte de achar objetos
+</h2>
+<div id="outline-text-headline-5" class="outline-text-2">
+<p>
+Classificação responde &#34;o que é isso?&#34;. Detecção responde &#34;o que é e onde está?&#34;. YOLO (You Only Look Once) faz as duas coisas numa única passada, o que o torna rápido o bastante pra vídeo em tempo real.</p>
+<p>
+A imagem é dividida numa grade S×S. Cada célula prediz B caixas delimitadoras. Cada caixa tem 5 números: <code>(x, y, w, h, confiança)</code> mais as probabilidades das C classes. O <code>x</code> e <code>y</code> são relativos à célula; o <code>w</code> e <code>h</code> são relativos a âncoras pré-definidas (formas típicas de caixa: retangular horizontal, quadrada, retangular vertical). A confiança diz &#34;tem um objeto aqui?&#34;. O modelo prediz deslocamentos em relação às âncoras, não coordenadas absolutas.</p>
+<p>
+A loss tem três componentes: regressão das caixas (só nas células que contêm objetos), confiança (objeto vs fundo, em todas as células), e classificação (só nas células com objeto). Depois da predição, Non-Maximum Suppression (NMS) remove caixas redundantes: ordene por score, pegue a maior, suprima todas com IoU &gt; 0.5, repita.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">nms</span><span class="p">(</span><span class="n">boxes</span><span class="p">,</span> <span class="n">scores</span><span class="p">,</span> <span class="n">iou_threshold</span><span class="o">=</span><span class="mf">0.5</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">order</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">scores</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="n">keep</span> <span class="o">=</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">order</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">keep</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">order</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">order</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="k">break</span>
+</span></span><span class="line"><span class="cl">        <span class="n">ious</span> <span class="o">=</span> <span class="n">box_iou_matrix</span><span class="p">(</span><span class="n">boxes</span><span class="p">[</span><span class="n">order</span><span class="p">[</span><span class="mi">0</span><span class="p">]],</span> <span class="n">boxes</span><span class="p">[</span><span class="n">order</span><span class="p">[</span><span class="mi">1</span><span class="p">:]])</span>
+</span></span><span class="line"><span class="cl">        <span class="n">order</span> <span class="o">=</span> <span class="n">order</span><span class="p">[</span><span class="mi">1</span><span class="p">:][</span><span class="n">ious</span> <span class="o">&lt;</span> <span class="n">iou_threshold</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">keep</span></span></span></code></pre></div>
+</div>
+<p>
+As métricas são mAP@0.5 (PASCAL VOC) e mAP@0.5:0.95 (COCO, bem mais rigoroso). Um detector com 50 de mAP no COCO já é muito bom.</p>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-2">
+<h2 id="headline-6">
+Segmentação: classificando cada pixel
+</h2>
+<div id="outline-text-headline-6" class="outline-text-2">
+<p>
+Segmentação semântica (U-Net) rotula cada pixel com uma classe (&#34;isso é carro, isso é estrada, isso é árvore&#34;). Segmentação de instâncias (Mask R-CNN) vai além: separa &#34;carro A&#34; de &#34;carro B&#34;, mesmo sendo a mesma classe.</p>
+<p>
+A U-Net tem formato de U. O encoder (lado esquerdo) comprime a imagem progressivamente, capturando contexto global. O decoder (lado direito) restaura a resolução espacial. Entre eles, skip connections entregam features de alta resolução do encoder diretamente ao decoder, preservando bordas finas que seriam perdidas na compressão.</p>
+<p>
+A loss combina cross-entropy (estável, bons gradientes iniciais) e Dice loss (otimiza sobreposição de máscara diretamente, robusta a desbalanceamento de classes). A fórmula do Dice: <code>2 * |A ∩ B| / (|A| + |B|)</code>. É o padrão em imagem médica, onde o objeto de interesse (tumor) ocupa 1% dos pixels.</p>
+<p>
+Mask R-CNN adiciona um branch de máscara ao detector Faster R-CNN. O RoIAlign (em vez de RoIPool) é o detalhe crítico: ele amostra features em coordenadas float exatas via interpolação bilinear, sem arredondar pra inteiro. O RoIPool perdia 3-4 pontos de mAP por causa do arredondamento.</p>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-2">
+<h2 id="headline-7">
+Gerando imagens: de GANs a difusão
+</h2>
+<div id="outline-text-headline-7" class="outline-text-2">
+<p>
+Uma GAN é um jogo entre duas redes. O gerador cria imagens a partir de ruído aleatório. O discriminador tenta distinguir imagens reais de falsas. Os dois treinam em competição: o gerador melhora pra enganar o discriminador, o discriminador melhora pra não ser enganado.</p>
+<p>
+Funciona bem pra geração rápida (milissegundos) e transferência de estilo. Mas é instável: mode collapse (o gerador produz uma única imagem convincente e para de explorar), discriminator-wins (o discriminador fica bom demais e o gradiente do gerador some), oscilação. A DCGAN estabeleceu cinco regras pra estabilizar: convoluções com stride (nada de pooling), BatchNorm nos dois lados, nada de fully-connected, ReLU no gerador, LeakyReLU no discriminador.</p>
+<p>
+Modelos de difusão vieram depois e resolveram o problema de estabilidade. A ideia: pegue uma imagem, adicione ruído gaussiano em 1000 passos até virar ruído puro. Depois treine uma rede (U-Net) pra reverter um passo de cada vez. A rede aprende a prever o ruído adicionado, não a imagem final. O treino é uma única linha: <code>loss = MSE(ruído_real, ruído_previsto)</code>. Sem adversarial, sem colapso de modo, sem oscilação. Só regressão.</p>
+<p>
+O insight que torna isso viável: você não precisa rodar 1000 passos pra treinar. A fórmula <code>x_t = √(ᾱ_t)·x_0 + √(1-ᾱ_t)·ε</code> te dá qualquer passo intermediário diretamente da imagem limpa. Você amostra um <code>t</code> aleatório, aplica a fórmula, e treina a rede pra prever <code>ε</code> a partir de <code>x_t</code> e <code>t</code>. O sampling (gerar imagem) roda os 1000 passos de trás pra frente, partindo do ruído puro. DDIM acelera isso 20-50x reformulando como EDO determinística.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">q_sample</span><span class="p">(</span><span class="n">x_0</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">sqrt_alpha_cumprod</span><span class="p">,</span> <span class="n">sqrt_one_minus_alpha_cumprod</span><span class="p">,</span> <span class="n">noise</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">noise</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">noise</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn_like</span><span class="p">(</span><span class="n">x_0</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">sqrt_alpha_cumprod</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">*</span> <span class="n">x_0</span> <span class="o">+</span> <span class="n">sqrt_one_minus_alpha_cumprod</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">*</span> <span class="n">noise</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Treino: uma linha</span>
+</span></span><span class="line"><span class="cl"><span class="n">noise_pred</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">x_t</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">loss</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">mse_loss</span><span class="p">(</span><span class="n">noise_pred</span><span class="p">,</span> <span class="n">noise</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<p>
+Stable Diffusion roda esse processo no espaço latente de um VAE, não no espaço de pixels. A imagem 512x512x3 vira 64x64x4 (48x menos dimensões). Um encoder de texto (CLIP) condiciona a geração via cross-attention em cada camada da U-Net. E o Classifier-Free Guidance (CFG) mistura predição condicional e incondicional: <code>ε = ε_uncond + w*(ε_cond - ε_uncond)</code>, com w=7.5 típico. LoRA (Low-Rank Adaptation) permite fine-tuning com adaptadores de 10-50 MB que cabem em GPU de consumidor.</p>
+</div>
+</div>
+<div id="outline-container-headline-8" class="outline-2">
+<h2 id="headline-8">
+Vídeo, 3D e o mundo além das fotos
+</h2>
+<div id="outline-text-headline-8" class="outline-text-2">
+<p>
+Vídeo é uma sequência de imagens mais a física que as conecta. Três abordagens: 2D+pool (CNN por frame, média dos embeddings, rápido mas cego a movimento), 3D convolutions (kernel com profundidade temporal, modela movimento diretamente, I3D infla pesos 2D do ImageNet), e spatio-temporal transformers (atenção dividida no tempo e no espaço, estado da arte).</p>
+<p>
+Nuvens de pontos são a saída bruta de sensores 3D (LiDAR). O PointNet processa cada ponto com o mesmo MLP e faz max-pooling global, garantindo invariância à permutação (a ordem dos pontos não importa). NeRF (Neural Radiance Fields) aprende um campo volumétrico contínuo: dado um ponto no espaço (x,y,z) e uma direção de visão (θ,φ), uma MLP prevê densidade e cor. O rendering integra amostras ao longo de raios com a equação de composição alfa.</p>
+<p>
+3D Gaussian Splatting substituiu NeRFs na prática. Em vez de uma MLP implícita, a cena é uma nuvem de milhões de gaussianas 3D explícitas, cada uma com posição, rotação, escala, opacidade e cor. O rendering projeta cada gaussiana 3D numa elipse 2D na tela e faz alpha compositing de trás pra frente. Treina em minutos, renderiza a 100+ fps. A extensão glTF da Khronos tornou portável.</p>
+<p>
+Vision Transformers (ViT) aplicam a arquitetura do &#34;Attention is All You Need&#34; a imagens. A imagem é cortada em patches 16x16, cada patch vira um token (como uma palavra), e um transformer padrão processa tudo. Um token [CLS] no início agrega a informação global. ViT precisa de mais dados que CNNs pra funcionar bem, mas com pré-treinamento auto-supervisionado (MAE: mascare 75% dos patches, reconstrua os pixels faltantes), bate CNNs com folga.</p>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-2">
+<h2 id="headline-9">
+Visão além do visível: CLIP, VLMs e segmentação aberta
+</h2>
+<div id="outline-text-headline-9" class="outline-text-2">
+<p>
+CLIP (Contrastive Language-Image Pre-training) treina um encoder de imagem e um encoder de texto juntos. O objetivo: pares (imagem, legenda) correspondentes devem ficar próximos no espaço de embedding; pares não correspondentes, distantes. O resultado é um modelo que entende linguagem e visão no mesmo espaço.</p>
+<p>
+Isso permite classificação zero-shot: &#34;uma foto de um {gato}&#34; vs &#34;uma foto de um {cachorro}&#34;. Codifique os prompts de texto, codifique a imagem, argmax da similaridade de cosseno. Sem uma única imagem de treino daquelas classes. O prompt importa: usar 80 templates diferentes (&#34;uma foto de um {}&#34;, &#34;uma imagem borrada de um {}&#34;, &#34;um close-up de um {}&#34;) e tirar a média adiciona 1-3% de acurácia.</p>
+<p>
+Vision-Language Models (VLMs) como Qwen-VL e LLaVA conectam o encoder de visão a um LLM. A imagem vira tokens via ViT, um projetor MLP mapeia pro espaço do LLM, e o modelo de linguagem processa texto e imagem entrelaçados. O resultado é um chat que &#34;vê&#34;: você manda uma foto de uma planta e pergunta &#34;que espécie é essa?&#34;, e ele responde com texto.</p>
+<p>
+SAM 3 (Segment Anything Model 3) leva isso pra segmentação. Você dá um prompt de texto (&#34;ônibus escolar amarelo&#34;) e uma imagem. O modelo retorna máscaras pra todos os objetos que casam com o conceito, em uma única passada. A arquitetura junta detector de imagem, tracker baseado em memória e um &#34;presence head&#34; que separa &#34;esse conceito está aqui?&#34; de &#34;onde exatamente?&#34;, reduzindo falsos positivos.</p>
+</div>
+</div>
+<div id="outline-container-headline-10" class="outline-2">
+<h2 id="headline-10">
+De volta ao mundo real: deployment, OCR e tracking
+</h2>
+<div id="outline-text-headline-10" class="outline-text-2">
+<p>
+Modelos de visão em produção enfrentam restrições de latência e memória. MobileNetV3 e ConvNeXt-Tiny são as escolhas pra edge. Quantização INT8 reduz o modelo em 4x e acelera 2-4x com perda mínima de acurácia. O pipeline de deployment: PyTorch, ONNX, ONNX Runtime/TensorRT. Meça latência com warmup, sincronização de CUDA e percentis (p50, p95, p99), nunca com média.</p>
+<p>
+OCR é um pipeline de três estágios: detectar caixas de texto, reconhecer caracteres em cada caixa, ordenar o layout. O reconhecimento usa CRNN (CNN + BiLSTM + CTC loss). CTC (Connectionist Temporal Classification) alinha sequências de comprimentos diferentes sem precisar de anotação por caractere: ele marginaliza sobre todos os alinhamentos possíveis que colapsam no texto alvo. Modelos modernos (Donut, TrOCR) usam transformers ponta a ponta.</p>
+<p>
+Multi-object tracking associa detecções frame a frame. O SORT (2016) usa Filtro de Kalman pra prever posição + Hungarian algorithm pra matching ótimo. DeepSORT adiciona features de re-identificação. ByteTrack faz um segundo matching com detecções de baixa confiança, recuperando oclusões. A métrica HOTA (Higher Order Tracking Accuracy) decompõe detecção e associação, substituindo MOTA como padrão da comunidade.</p>
+</div>
+</div>
+<div id="outline-container-headline-11" class="outline-2">
+<h2 id="headline-11">
+O estado da arte em 2026: DiT, profundidade e modelos de mundo
+</h2>
+<div id="outline-text-headline-11" class="outline-text-2">
+<p>
+Diffusion Transformers (DiT) substituem a U-Net por um transformer. Os patches latentes (do VAE) viram tokens, e blocos transformer com AdaLN-Zero (conditioning via adaptative layer norm com pesos inicializados em zero) processam tudo. Rectified flow reformula a trajetória de difusão como uma linha reta (<code>x_t = (1-t)*x_0 + t*ε</code>) em vez da curva do DDPM, permitindo amostragem em 20 passos deterministicos em vez de 1000. SD3, FLUX e Sora usam isso.</p>
+<p>
+Monocular depth estimation prevê profundidade a partir de uma única imagem RGB, algo que era considerado impossível sem estereoscopia ou LiDAR. Funciona porque um ViT treinado em bilhões de imagens internaliza pistas de perspectiva, oclusão, gradiente de textura e perspectiva atmosférica como priors estatísticos. Depth Anything V3 é o padrão de 2026.</p>
+<p>
+World models são o Santo Graal: um modelo de vídeo que prevê os próximos segundos de uma cena, condicionado em ações. É um simulador aprendido. A arquitetura: Video DiT com 3D patch embedding (patches no espaço-tempo) e atenção dividida (temporal e espacial separadas pra evitar complexidade O((THW)²)). Sora 2 gera vídeo com áudio a partir de texto. Modelos de mundo robóticos simulam rollouts pra planejamento: o VLM planeja, o modelo de vídeo simula, a dinâmica inversa emite comandos de motor.</p>
+</div>
+</div>
+<div id="outline-container-headline-12" class="outline-2">
+<h2 id="headline-12">
+O que levar disso
+</h2>
+<div id="outline-text-headline-12" class="outline-text-2">
+<p>
+Visão computacional em 2026 é um campo maduro com um arco claro:</p>
+<ul>
+<li>Toda imagem vira tensor com um pipeline de pré-processamento que você não pode errar.</li>
+<li>Convoluções 3x3 empilhadas são o tijolo; skip connections (ResNet) são a argamassa que deixa empilhar 152 camadas.</li>
+<li>Transfer learning com backbone pré-treinado é o padrão de produção pra qualquer tarefa.</li>
+<li>YOLO detecta, U-Net segmenta, Mask R-CNN segmenta instâncias.</li>
+<li>GANs geram rápido, difusão gera bonito, Stable Diffusion gera bonito e rápido no espaço latente.</li>
+<li>ViT trata patches como palavras; CLIP alinha visão e linguagem; VLMs conversam sobre imagens.</li>
+<li>DiT + rectified flow é a arquitetura de geração de 2026.</li>
+<li>SAM 3 segmenta qualquer coisa com prompt de texto.</li>
+<li>Depth Anything estima profundidade de uma foto só.</li>
+<li>World models prevem o futuro em vídeo.</li>
+</ul>
+<p>Do pixel ao modelo de mundo, o caminho passa por cada uma dessas ideias. E cada uma delas é, no fundo, um tensor passando por uma rede neural.</p>
+</div>
+</div>
+
+  </div>
+</article>
+
+    </main>
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
+</body>
+</html>

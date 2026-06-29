@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Tree-Sitter on scovl</title>
-    <link>https://scovl.github.io/tags/tree-sitter/</link>
-    <description>Recent content in Tree-Sitter on scovl</description>
+    <title>Tree-Sitter on lobovit</title>
+    <link>http://localhost:1313/tags/tree-sitter/</link>
+    <description>Recent content in Tree-Sitter on lobovit</description>
     <generator>Hugo</generator>
     <language>pt-br</language>
     <lastBuildDate>Fri, 08 May 2026 18:40:00 -0300</lastBuildDate>
-    <atom:link href="https://scovl.github.io/tags/tree-sitter/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://localhost:1313/tags/tree-sitter/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>O predicado que ninguém chamou</title>
-      <link>https://scovl.github.io/fixgo02/</link>
+      <link>http://localhost:1313/fixgo02/</link>
       <pubDate>Fri, 08 May 2026 18:40:00 -0300</pubDate>
-      <guid>https://scovl.github.io/fixgo02/</guid>
-      <description>&lt;p&gt;&#xA;O &lt;a href=&#34;https://tree-sitter.github.io/tree-sitter/&#34;&gt;Tree-sitter&lt;/a&gt; é uma biblioteca que produz árvores sintáticas concretas para dezenas de linguagens. Diferente de um parser tradicional que produz AST, tree-sitter foi projetado para editores de código e ele é incremental, tolerante a erros e capaz de reanalisar um arquivo em milissegundos após uma edição. O &lt;a href=&#34;https://neovim.io/&#34;&gt;Neovim&lt;/a&gt;, &lt;a href=&#34;https://atom.io/&#34;&gt;Atom&lt;/a&gt; (RIP), &lt;a href=&#34;https://zed.dev/&#34;&gt;Zed&lt;/a&gt; e o próprio &lt;a href=&#34;https://github.blog/engineering/user-experience/remodeling-the-github-code-editor/&#34;&gt;GitHub&lt;/a&gt; usam tree-sitter para syntax highlighting, folding e code navigation.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;O &lt;a href=&#34;https://github.com/scovl/ollanta&#34;&gt;Ollanta&lt;/a&gt; usa tree-sitter de uma forma diferente: para &lt;em&gt;análise estática&lt;/em&gt;. Em vez de realçar sintaxe, ele usa S-expressions para detectar padrões problemáticos no código-fonte:&lt;/p&gt;</description>
+      <guid>http://localhost:1313/fixgo02/</guid>
+      <description>&lt;p&gt;&#xA;O &lt;a href=&#34;https://tree-sitter.github.io/tree-sitter/&#34;&gt;Tree-sitter&lt;/a&gt; é uma biblioteca que produz árvores sintáticas concretas para dezenas de linguagens. Diferente de um parser tradicional que produz AST, tree-sitter foi projetado para editores de código e ele é incremental, tolerante a erros e capaz de reanalisar um arquivo em milissegundos após uma edição. O &lt;a href=&#34;https://neovim.io/&#34;&gt;Neovim&lt;/a&gt;, &lt;a href=&#34;https://atom.io/&#34;&gt;Atom&lt;/a&gt; (RIP), &lt;a href=&#34;https://zed.dev/&#34;&gt;Zed&lt;/a&gt; e o próprio &lt;a href=&#34;https://github.blog/engineering/user-experience/remodeling-the-github-code-editor/&#34;&gt;GitHub&lt;/a&gt; usam tree-sitter para syntax highlighting, folding e code navigation.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;O &lt;a href=&#34;https://github.com/lobovit/ollanta&#34;&gt;Ollanta&lt;/a&gt; usa tree-sitter de uma forma diferente: para &lt;em&gt;análise estática&lt;/em&gt;. Em vez de realçar sintaxe, ele usa S-expressions para detectar padrões problemáticos no código-fonte:&lt;/p&gt;</description>
     </item>
   </channel>
 </rss>

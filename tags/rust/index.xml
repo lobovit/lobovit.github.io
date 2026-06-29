@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Rust on scovl</title>
-    <link>https://scovl.github.io/tags/rust/</link>
-    <description>Recent content in Rust on scovl</description>
+    <title>Rust on lobovit</title>
+    <link>http://localhost:1313/tags/rust/</link>
+    <description>Recent content in Rust on lobovit</description>
     <generator>Hugo</generator>
     <language>pt-br</language>
     <lastBuildDate>Mon, 21 Jul 2025 12:00:00 +0000</lastBuildDate>
-    <atom:link href="https://scovl.github.io/tags/rust/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://localhost:1313/tags/rust/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Como o compilador do Rust funciona?</title>
-      <link>https://scovl.github.io/rustcomp/</link>
+      <link>http://localhost:1313/rustcomp/</link>
       <pubDate>Mon, 21 Jul 2025 12:00:00 +0000</pubDate>
-      <guid>https://scovl.github.io/rustcomp/</guid>
+      <guid>http://localhost:1313/rustcomp/</guid>
       <description>&lt;div id=&#34;outline-container-headline-1&#34; class=&#34;outline-2&#34;&gt;&#xA;&lt;h2 id=&#34;headline-1&#34;&gt;&#xA;Introdução&#xA;&lt;/h2&gt;&#xA;&lt;div id=&#34;outline-text-headline-1&#34; class=&#34;outline-text-2&#34;&gt;&#xA;&lt;p&gt;&#xA;O Rust é famoso por ser uma linguagem que evita muitos erros de memória sem precisar de um coletor de lixo rodando em segundo plano. Mas como ele faz isso? O segredo está no compilador, que passa seu código por várias etapas até virar um programa que o computador entende.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Neste artigo, explicarei de forma simples cada fase desse processo: desde a leitura do código &lt;em&gt;&lt;a href=&#34;https://en.wikipedia.org/wiki/Lexical_analysis&#34;&gt;lexing&lt;/a&gt;&lt;/em&gt;, passando pela análise da estrutura &lt;em&gt;&lt;a href=&#34;https://en.wikipedia.org/wiki/Parsing&#34;&gt;parsing&lt;/a&gt;&lt;/em&gt;, até a geração do código final pelo &lt;em&gt;&lt;a href=&#34;https://llvm.org/&#34;&gt;LLVM&lt;/a&gt;&lt;/em&gt;.&lt;/p&gt;</description>
     </item>
   </channel>

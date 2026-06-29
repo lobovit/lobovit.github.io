@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Petzold04 - Do Bit ao Símbolo, do Relé ao Chip — lobovit</title>
+  <link rel="stylesheet" href="/css/main.css?v=3">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
+    <main>
+      
+<article>
+  <header>
+    <h1>Petzold04 - Do Bit ao Símbolo, do Relé ao Chip</h1>
+    <p class="meta"><time>2026-05-12</time> · <span class="tag">hardware</span><span class="tag">portas lógicas</span><span class="tag">álgebra booleana</span><span class="tag">história</span><span class="tag">computação</span></p>
+  </header>
+  <div class="content">
+    
+<p>
+Como desenvolvedores, passamos a maior parte do nosso tempo em abstrações elevadas, escrevendo código em Go, C#, Elixir ou Rust, e confiando que o compilador e o sistema operacional farão a mágica acontecer. Mas, sob as camadas de frameworks e interfaces, tudo se resume a uma dança perfeitamente orquestrada de elétrons, portas lógicas e convenções de bits.</p>
+<p>
+Este artigo é um mergulho profundo nas fundações de duas das engrenagens mais vitais da computação: <em>como representamos a linguagem humana em zeros e uns</em> e <em>como construímos o hardware capaz de processar esses dados</em>. Prepare o seu café, pois vamos descer ao escovão de bits.</p>
+<p>
+Toda vez que você digita em um teclado ou lê um texto na tela, está confiando em um sistema padronizado de codificação de caracteres. Sem isso, a comunicação moderna entre sistemas operacionais e arquiteturas diferentes seria impossível.</p>
+<div id="outline-container-headline-1" class="outline-4">
+<h4 id="headline-1">
+A Era do Telégrafo e o Código Baudot
+</h4>
+<div id="outline-text-headline-1" class="outline-text-4">
+<p>
+Muito antes dos computadores modernos, a necessidade de transmitir texto via cabos elétricos gerou o <em><a href="https://pt.wikipedia.org/wiki/Código_Baudot">Código Baudot</a></em> (usado em teletipos). Diferente do Código Morse (que tem tamanho variável), o Baudot era um código de <em>5 bits</em>. Com 5 bits, você só consegue representar 2⁵ = 32 caracteres.</p>
+<p>
+Como encaixar o alfabeto, números e pontuação em 32 slots? A solução foi o uso de <em>Shift Codes</em> (Códigos de Mudança). Havia um código para &#34;Letter Shift&#34; e outro para &#34;Figure Shift&#34;.</p>
+<p>
+/ Se o teletipo recebesse o código de /Figure Shift*, tudo que viesse a seguir seria interpretado como números ou pontuação.
+/ Se recebesse /Letter Shift*, voltava para letras.</p>
+<p>
+O problema? Se um código de <em>Shift</em> fosse perdido ou se você começasse a ler o fluxo de dados na metade, o texto virava lixo. A frase <code>I SPENT $25 TODAY.</code> poderia sair como <code>8 &#39;03,5 $25 TODAY.</code> se a máquina não soubesse em qual &#34;estado&#34; estava. Precisávamos de algo melhor, sem a dependência de estados (stateless).</p>
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-4">
+<h4 id="headline-2">
+A Ascensão do ASCII
+</h4>
+<div id="outline-text-headline-2" class="outline-text-4">
+<p>
+Para evitar os problemáticos Shift Codes e acomodar letras maiúsculas, minúsculas, números e pontuações do inglês, a indústria chegou a um número mágico: <em>7 bits</em> (128 combinações possíveis).</p>
+<p>
+Assim nasceu o <em><a href="https://pt.wikipedia.org/wiki/ASCII">ASCII</a></em> (American Standard Code for Information Interchange).
+No ASCII, os caracteres gráficos (letras, números) convivem com caracteres de controle (como <code>Carriage Return - 0Dh</code> e <code>Line Feed - 0Ah</code>, heranças diretas das máquinas de escrever mecânicas).</p>
+<p>
+Uma sacada genial do ASCII: a diferença entre uma letra maiúscula (ex: <code>A</code> = <code>41h</code> ou <code>1000001</code>) e sua versão minúscula (<code>a</code> = <code>61h</code> ou <code>1100001</code>) é de exatos <code>20h</code> (ou apenas um bit, o sexto bit, invertido). Isso tornou a conversão entre caixas incrivelmente rápida em nível de processador: basta uma operação lógica simples, sem tabelas de conversão complexas.</p>
+<p>
+Enquanto o ASCII dominava o mundo, a IBM tentou emplacar o <em>EBCDIC</em> (um código de 8 bits derivado dos cartões perfurados), mas suas sequências de letras tinham &#34;buracos&#34; não lineares, tornando a ordenação alfabética um pesadelo computacional. O ASCII venceu essa batalha.</p>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-4">
+<h4 id="headline-3">
+O Caos das Extensões e a Solução Unicode
+</h4>
+<div id="outline-text-headline-3" class="outline-text-4">
+<p>
+O ASCII era perfeito… se você falasse apenas inglês americano. Não havia <code>£</code>, <code>ç</code>, <code>á</code> ou suporte para cirílico, árabe ou mandarim.</p>
+<p>
+Como a memória passou a ser organizada em <em>bytes</em> de 8 bits (256 valores), o bit extra que sobrava no ASCII (que usava 7) começou a ser usado para criar as <em>Code Pages</em> (Páginas de Código), como a famigerada <code>Windows-1252</code> ou <code>ISO-8859-1</code>. Os primeiros 128 caracteres eram ASCII, os 128 seguintes variavam de acordo com o país. Foi a era de ouro de abrir um site e ver <code>Weâ€™ve</code> no lugar de <code>We&#39;ve</code>.</p>
+<p>
+A verdadeira salvação foi o <em><a href="https://pt.wikipedia.org/wiki/Unicode">Unicode</a></em>. Originalmente pensado como um código fixo de 16 bits (65.536 caracteres), ele logo precisou ser expandido para 21 bits (chegando ao limite de <code>U+10FFFF</code>), permitindo mais de 1 milhão de caracteres, de hieróglifos egípcios ao emoji de gatinho chorando de rir 😹.</p>
+<p>
+Mas como salvar tudo isso sem triplicar o tamanho de todos os arquivos de texto do mundo e sem quebrar sistemas legados?</p>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-4">
+<h4 id="headline-4">
+A Mágica do UTF-8
+</h4>
+<div id="outline-text-headline-4" class="outline-text-4">
+<p>
+A solução elegante foi o <em><a href="https://pt.wikipedia.org/wiki/UTF-8">UTF-8</a></em>, um formato de transformação de tamanho variável. Ele é brilhante porque é 100% retrocompatível com o ASCII puro.</p>
+<p>
+A regra é simples e determinada pelos bits iniciais do primeiro byte:</p>
+<ol>
+<li>Se o byte começa com <code>0</code>, é um caractere ASCII de 1 byte (exatamente igual ao ASCII tradicional).</li>
+<li>Se começa com <code>110</code>, é o primeiro de <em>2 bytes</em>.</li>
+<li>Se começa com <code>1110</code>, é o primeiro de <em>3 bytes</em>.</li>
+<li>Se começa com <code>11110</code>, é o primeiro de <em>4 bytes</em>.</li>
+<li>Qualquer byte de continuação <em>sempre</em> começa com <code>10</code>.</li>
+</ol>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">flowchart TD
+  A[Ler o primeiro Byte] --&gt; B{Começa com 0?}
+  B -- Sim --&gt; C[1 Byte: Caractere ASCII Tradicional]
+  B -- Não --&gt; D{Começa com 110?}
+  D -- Sim --&gt; E[2 Bytes: Ex: Letras Latinas c/ acento, Grego]
+  D -- Não --&gt; F{Começa com 1110?}
+  F -- Sim --&gt; G[3 Bytes: Ex: Símbolos complexos, Hiragana]
+  F -- Não --&gt; H[4 Bytes: Ex: Emojis, Ideogramas raros]</code></pre>
+</div>
+<p>
+Se um programa tropeçar no meio de um arquivo UTF-8, ele consegue se sincronizar rapidamente apenas procurando um byte que não comece com <code>10</code>. É um design robusto e tolerante a falhas.</p>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-3">
+<h3 id="headline-5">
+Parte 2: A Matemática Ganhando Vida
+</h3>
+<div id="outline-text-headline-5" class="outline-text-3">
+<p>
+Saber representar a informação é apenas metade da equação. Como uma máquina realmente a manipula? Na sua essência, tudo o que um computador faz é somar. Se você sabe somar, sabe subtrair (somando o complemento), multiplicar (somando repetidamente) e, a partir daí, renderizar gráficos 3D ou treinar redes neurais.</p>
+<div id="outline-container-headline-6" class="outline-4">
+<h4 id="headline-6">
+Adição em Binário e Portas Lógicas
+</h4>
+<div id="outline-text-headline-6" class="outline-text-4">
+<p>
+A tabela de adição binária é extremamente simples:</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-2">
+<h2 id="headline-7">
+0 + 0 = 0
+</h2>
+</div>
+<div id="outline-container-headline-8" class="outline-2">
+<h2 id="headline-8">
+0 + 1 = 1
+</h2>
+</div>
+<div id="outline-container-headline-9" class="outline-2">
+<h2 id="headline-9">
+1 + 0 = 1
+</h2>
+</div>
+<div id="outline-container-headline-10" class="outline-2">
+<h2 id="headline-10">
+1 + 1 = 0 (e &#34;vai um&#34; / carry 1)
+</h2>
+<div id="outline-text-headline-10" class="outline-text-2">
+<p>
+Se mapearmos isso para lógica booleana, percebemos que o bit de <em>Soma</em> (Sum) comporta-se exatamente como uma porta lógica <em>XOR</em> (Exclusive OR), enquanto o bit de <em>Carry</em> (Vai-um) comporta-se como uma porta <em>AND</em>.</p>
+<p>
+Se juntarmos uma porta XOR e uma AND, criamos o bloco fundamental da computação: o <em>Half Adder</em> (Meio Somador).</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph LR
+  A((Input A)) --&gt; XOR{XOR}
+  B((Input B)) --&gt; XOR
+  A --&gt; AND{AND}
+  B --&gt; AND
+  XOR --&gt; Sum((Sum Bit))
+  AND --&gt; Carry((Carry Bit))</code></pre>
+</div>
+<p>
+O problema do <em>Half Adder</em> é que ele não aceita um &#34;Carry In&#34; (o &#34;vai-um&#34; da coluna anterior). Para somar números maiores, precisamos de um <em>Full Adder</em> (Somador Completo), que utiliza dois Half Adders e uma porta OR.</p>
+<p>
+Ao conectar 8 Full Adders em cascata, ligando o <code>Carry Out</code> de um no <code>Carry In</code> do próximo, temos um <em>Ripple Carry Adder de 8 bits</em>.</p>
+<div id="outline-container-headline-11" class="outline-4">
+<h4 id="headline-11">
+A Evolução: Da Mecânica ao Estado Sólido
+</h4>
+<div id="outline-text-headline-11" class="outline-text-4">
+<p>
+Como implementamos essas portas lógicas no mundo físico? A evolução do hardware é a verdadeira &#34;batalha dos milissegundos&#34; e, posteriormente, dos nanossegundos.</p>
+<p>
+<em>1. Relés Eletromecânicos:</em>
+Os primeiros computadores digitais, como o Harvard Mark I e as criações de George Stibitz na Bell Labs, usavam relés de telefonia. Eram máquinas gigantescas e barulhentas. Um relé demora cerca de 1 milissegundo para mudar de estado. E eles falhavam fisicamente (o famoso caso de Grace Hopper encontrando uma mariposa, o primeiro &#34;bug&#34; literal, presa em um relé do Mark II).</p>
+<p>
+<em>2. Válvulas a Vácuo:</em>
+Substituindo componentes mecânicos por fluxos de elétrons no vácuo, as válvulas (usadas no monstruoso ENIAC de 30 toneladas) saltaram a velocidade de comutação para a casa dos microssegundos. Foi aqui que John von Neumann ajudou a formalizar a arquitetura que usamos até hoje: a ideia de um <em>stored-program</em> (dados e instruções residindo na mesma memória). O grande gargalo? Válvulas queimavam constantemente, gastavam muita energia e geravam calor extremo.</p>
+<p>
+<em>3. Transistores:</em>
+Em 1947, <a href="https://pt.wikipedia.org/wiki/Transístor">Bardeen, Brattain e Shockley</a> (Bell Labs) mudaram a história da humanidade ao inventar o <a href="https://pt.wikipedia.org/wiki/Transístor">transistor</a>. Feitos de material semicondutor (como Germânio ou Silício) dopado com impurezas para formar áreas N (negativas) e P (positivas), eles permitiam controlar uma grande corrente usando uma pequena corrente na base. Sendo estado sólido, não queimavam como válvulas, não esquentavam quase nada e eram microscópicos em comparação.</p>
+<p>
+Na prática, o transistor funciona como um relé, mas sem partes móveis: uma pequena corrente aplicada na base (equivalente ao eletroímã do relé) abre ou fecha o caminho entre o coletor e o emissor (equivalente aos contatos do relé). Se pensarmos no transistor como um interruptor controlado por eletricidade, podemos construir as mesmas portas lógicas que vimos com relés, AND, OR, NOT, mas ocupando uma fração do espaço e consumindo uma fração da energia. Dois transistores podem formar uma porta NAND; seis podem formar um flip-flop. O relé era barulhento, lento e frágil; o transistor é silencioso, rápido e dura décadas.</p>
+</div>
+</div>
+<div id="outline-container-headline-12" class="outline-4">
+<h4 id="headline-12">
+Como se Fabrica um Transistor
+</h4>
+<div id="outline-text-headline-12" class="outline-text-4">
+<p>
+A fabricação de um transistor começa com uma pastilha (wafer) de <em>silício ultrapuro</em>, o elemento mais abundante na crosta terrestre depois do oxigênio, extraído da areia e refinado até atingir pureza de 99,9999999% (grau eletrônico). Sobre essa base de silício puro, o processo de <em>dopagem</em> introduz átomos de outros elementos (como fósforo ou boro) para criar regiões com excesso de elétrons (tipo N) ou falta deles (tipo P). A junção entre uma região N e uma região P forma uma barreira que a corrente só atravessa em uma direção, a essência do semicondutor.</p>
+<p>
+Para construir um transistor planar (o tipo usado em circuitos integrados), o processo segue estas etapas:</p>
+<ol>
+<li><em>Oxidação:</em> A pastilha de silício é aquecida em forno com oxigênio, formando uma camada de dióxido de silício (SiO₂), isolante elétrico.</li>
+<li><em>Fotolitografia:</em> A pastilha é coberta com um material fotossensível (fotorresiste). Uma máscara contendo o desenho do transistor (uma fotografia em escala microscópica) é projetada sobre a pastilha com luz ultravioleta. As áreas expostas à luz tornam-se solúveis e são removidas por um revelador químico, abrindo &#34;janelas&#34; no fotorresiste.</li>
+<li><em>Corrosão (Etch):</em> Um ácido corrói o dióxido de silício nas áreas abertas pela janela, expondo o silício puro abaixo.</li>
+<li><em>Dopagem:</em> A pastilha é exposta a um gás contendo os átomos dopantes em um forno de alta temperatura. Os átomos difundem-se no silício exposto, criando as regiões N e P.</li>
+<li><em>Metalização:</em> Uma fina camada de alumínio ou cobre é depositada sobre toda a pastilha. Uma segunda fotolitografia remove o metal onde não é necessário, deixando apenas os contatos elétricos (os &#34;fios&#34; que conectam o transistor aos seus vizinhos).</li>
+<li><em>Repetição:</em> Camadas sucessivas de óxido, polissilício e metal são depositadas e esculpidas, construindo um transistor tridimensional com dezenas de camadas sobrepostas, como um edifício de centenas de andares em escala nanométrica.</li>
+</ol>
+<p>Um transistor moderno mede entre 3 e 10 nanômetros de comprimento, cerca de 10.000 vezes mais fino que um fio de cabelo humano. Um chip de processador atual pode conter <em>dezenas de bilhões</em> desses transistores, todos fabricados por esse mesmo processo de dopagem, luz e corrosão química, repetido dezenas de vezes sobre a mesma pastilha de silício.</p>
+<p>
+<em>4. Circuitos Integrados (O Chip):</em>
+Fazer portas lógicas conectando transistores individuais com fios era viável para um somador de 4 bits, mas impraticável para um processador completo. Em 1958, <a href="https://pt.wikipedia.org/wiki/Jack_Kilby">Jack Kilby</a> (Texas Instruments) e, independentemente, <a href="https://pt.wikipedia.org/wiki/Robert_Noyce">Robert Noyce</a> (Fairchild Semiconductor) em 1959, perceberam que múltiplos transistores, resistores e conexões poderiam ser fabricados numa <em>única pastilha de silício</em>, o <em><a href="https://pt.wikipedia.org/wiki/Circuito_integrado">Circuito Integrado</a></em> (IC).</p>
+<p>
+O impacto foi imediato e profundo. O que antes exigia uma placa cheia de componentes discretos agora cabia num chip do tamanho de uma unha. A indústria rapidamente classificou os ICs por densidade:</p>
+<table>
+<thead>
+<tr>
+<th>Sigla</th>
+<th>Nome</th>
+<th>Transistores por chip</th>
+<th>Exemplo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>SSI</em></td>
+<td>Small-Scale Integration</td>
+<td>2 a 64</td>
+<td>Portas NAND 7400 (anos 60)</td>
+</tr>
+<tr>
+<td><em>MSI</em></td>
+<td>Medium-Scale Integration</td>
+<td>64 a 4.000</td>
+<td>Somador 7483 (anos 70)</td>
+</tr>
+<tr>
+<td><em>LSI</em></td>
+<td>Large-Scale Integration</td>
+<td>4.000 a 100.000</td>
+<td>Microprocessador 8080 (1974)</td>
+</tr>
+<tr>
+<td><em>VLSI</em></td>
+<td>Very Large-Scale Integration</td>
+<td>&gt; 100.000</td>
+<td>Core i7 (2008)</td>
+</tr>
+</tbody>
+</table>
+<p>
+A série <em>7400</em> da Texas Instruments tornou-se a linguagem franca da engenharia digital. Com o catálogo <em>TTL Data Book</em> em mãos, um engenheiro podia projetar um computador inteiro conectando chips pré-fabricados: um <code>7400</code> para quatro portas NAND, um <code>7483</code> para somar 4 bits, um <code>7493</code> para contar. Cada chip era uma abstração, o engenheiro não precisava saber quantos transistores havia dentro, apenas o que ele fazia e quais pinos conectar.</p>
+<p>
+O tempo de propagação do sinal nesses chips era medido em <em>nanossegundos</em> (bilionésimos de segundo). Para dar contexto: a luz viaja cerca de 30 centímetros num nanossegundo, o sinal elétrico dentro de um chip de 1 cm percorre essa distância em apenas 30 picosegundos (0,03 ns).</p>
+<p>
+<em>A Hierarquia da Abstração:</em> O que torna essa progressão notável é que cada nível esconde a complexidade do anterior. O engenheiro do 7400 não precisava entender dopagem de silício; o programador em C não precisa saber que o 7483 usa portas XOR internamente; o usuário do navegador não precisa saber que a letra &#39;A&#39; na tela começou como o byte <code>01000001</code> na memória. Esta é a base de toda a computação moderna, complexidade gerenciada por camadas de abstração.</p>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-13" class="outline-3">
+<h3 id="headline-13">
+A Máquina Que Pensa e Lembra: Desmistificando a Subtração, Flip-Flops e Relógios Digitais
+</h3>
+<div id="outline-text-headline-13" class="outline-text-3">
+<p>
+Depois de se convencer de que relés, válvulas ou transistores podem ser interligados para somar números binários, uma pergunta natural e perspicaz costuma surgir: <em>&#34;E quanto à subtração?&#34;</em>.</p>
+<p>
+A adição flui elegantemente da direita para a esquerda, levando o &#34;vai-um&#34; (carry) de uma coluna para a próxima. A subtração, no entanto, possui uma mecânica intrinsecamente diferente e bagunçada. Nós não levamos um valor adiante; nós <em>pegamos emprestado</em>. E implementar esse mecanismo de &#34;vai-e-vem&#34; em portas lógicas parece, à primeira vista, um verdadeiro pesadelo.</p>
+<p>
+Como convencer um monte de transistores a fazer isso? A resposta é brilhante: <em>nós não tentamos</em>.</p>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-3">
+<h3 id="headline-14">
+1. A Ilusão da Subtração e o Complemento de Nove
+</h3>
+<div id="outline-text-headline-14" class="outline-text-3">
+<p>
+Imagine o seguinte problema em decimal:</p>
+<blockquote>
+<p>253
+− 176</p>
+<hr>
+<p>???</p>
+</blockquote>
+<p>
+Ao olhar para a coluna da direita, você vê que 6 é maior que 3. Instantaneamente, você sabe que precisa pegar emprestado da próxima coluna, que por sua vez precisará de outro empréstimo. O resultado final é 77. Em vez de criar circuitos complexos para lidar com isso, usamos um truque engenhoso para subtrair sem nunca precisar pegar emprestado.</p>
+<p>
+Sabemos que subtrair é o mesmo que somar um número negativo. Podemos reescrever o problema matemático injetando números neutros no meio da equação sem alterar o resultado. O que acontece se somarmos e subtrairmos 1000 ao mesmo tempo? E se reescrevermos 1000 como 999 + 1?</p>
+<p>
+<em>999 − 176 + 253 + 1 − 1000 =</em></p>
+<p>
+Parece uma bagunça, mas observe a primeira operação da esquerda para a direita: <em>999 − 176</em>. Subtrair qualquer número de uma sequência de noves <em>nunca exige empréstimo!</em> É incrivelmente fácil calcular que 999 − 176 = 823. Esse resultado é chamado de <em>Complemento de Nove</em>.</p>
+<p>
+Substituindo na nossa equação:</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-15" class="outline-2">
+<h2 id="headline-15">
+823 + 253 + 1 − 1000
+</h2>
+</div>
+<div id="outline-container-headline-16" class="outline-2">
+<h2 id="headline-16">
+1076 + 1 − 1000
+</h2>
+<div id="outline-text-headline-16" class="outline-text-2">
+<p>/ /1077 − 1000 = 77*</p>
+<p>
+Chegamos à mesma resposta, usando apenas uma subtração incrivelmente simples no início (sem nenhum empréstimo) seguida apenas de adições!</p>
+<hr>
+<div id="outline-container-headline-17" class="outline-3">
+<h3 id="headline-17">
+2. O Mundo Binário: Complementos e Sinais
+</h3>
+<div id="outline-text-headline-17" class="outline-text-3">
+<p>
+Nos computadores, essa técnica não só se aplica aos números binários, como é absurdamente mais fácil. O nosso problema original (253 - 176) em binário se parece com isso:</p>
+<blockquote>
+<p>11111101 (253)
+− 10110000 (176)</p>
+</blockquote>
+<p>
+Aplicando a mesma lógica do complemento, vamos adicionar 11111111 (255) no início, e depois somar 00000001 (1) e subtrair 100000000 (256):</p>
+<p>
+<em>11111111 − 10110000 + 11111101 + 00000001 − 100000000 =</em></p>
+<p>
+Subtrair um número binário de uma string de 1s é chamado de <em>Complemento de Um</em>. E a grande mágica do hardware é que não precisamos fazer conta nenhuma! Subtrair de 11111111 é exatamente o mesmo que <em>inverter todos os bits</em>. Todo 0 vira 1 e todo 1 vira 0.</p>
+<p>
+O complemento de um de 10110000 é 01001111. O hardware faz isso instantaneamente passando o sinal por portas lógicas inversoras. Se adicionarmos o &#34;+ 1&#34; final, obtemos o <em>Complemento de Dois</em>. Este é o padrão universal que os computadores usam para representar números negativos, permitindo que o processador use o <em>mesmo</em> circuito de soma para fazer subtrações.</p>
+<div id="outline-container-headline-18" class="outline-4">
+<h4 id="headline-18">
+O Contexto dos Bits
+</h4>
+<div id="outline-text-headline-18" class="outline-text-4">
+<p>
+Bits são apenas 0s e 1s. Eles não carregam etiquetas explicando o que são. Um byte como 10110110 precisa de contexto:</p>
+<p>
+/ Se for um inteiro /sem sinal (unsigned)*, ele representa 182.
+/ Se for um inteiro /com sinal (signed)* usando Complemento de Dois, o bit mais à esquerda atua como o &#34;bit de sinal&#34; (1 = negativo, 0 = positivo). Nesse caso, ele vale -74.</p>
+<hr>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-19" class="outline-3">
+<h3 id="headline-19">
+3. Feedback e Osciladores: O Coração da Máquina
+</h3>
+<div id="outline-text-headline-19" class="outline-text-3">
+<p>
+Até agora, nossos circuitos apenas reagem a interruptores que humanos pressionam. Para criar automação, o circuito precisa agir por conta própria. A chave para isso é o <em>Feedback</em>, quando a saída de um circuito alimenta a sua própria entrada.</p>
+<p>
+Se você ligar a saída de um inversor (que transforma 0 em 1, e 1 em 0) na sua própria entrada, ele tentará mudar de estado infinitamente. Ele se tornará 1, o que fará a entrada ser 1, forçando a saída a ser 0, e assim por diante.</p>
+<p>
+Isso cria um <em>Oscilador</em> (ou <em>Clock</em>).</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph LR
+  A[Porta Inversora] --&gt;|Saída| B((Sinal: 0 ou 1))
+  B --&gt;|Feedback| A
+  
+  style A fill:#e74c3c,stroke:#c0392b,color:#fff,stroke-width:2px
+  style B fill:#3498db,stroke:#2980b9,color:#fff,stroke-width:2px</code></pre>
+</div>
+<p>
+A taxa com que ele altera de estado é medida em Hertz (Hz). Este &#34;Clock&#34; é o metrônomo que dita o ritmo de todo o computador.</p>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-20" class="outline-3">
+<h3 id="headline-20">
+4. Flip-Flops: A Origem da Memória
+</h3>
+<div id="outline-text-headline-20" class="outline-text-3">
+<p>
+Se conectarmos duas portas lógicas NOR cruzadas (a saída de uma alimenta a entrada da outra), criamos um circuito com dois estados estáveis: o <em>Flip-Flop R-S (Reset-Set)</em>.</p>
+<p>
+/ Acionar a entrada /Set (1)* faz a saída principal (Q) virar 1. E assim permanece, mesmo se o Set voltar para 0.
+/ Acionar a entrada /Reset (1)* faz Q virar 0. E assim permanece.</p>
+<p>
+O Flip-Flop é mágico: <em>ele lembra qual botão foi apertado por último.</em> É o bloco fundamental de uma memória.</p>
+<div id="outline-container-headline-21" class="outline-4">
+<h4 id="headline-21">
+O Flip-Flop Tipo D (Edge-Triggered)
+</h4>
+<div id="outline-text-headline-21" class="outline-text-4">
+<p>
+Para um computador, o Flip-Flop R-S é muito rústico. Precisamos de controle exato sobre <em>quando</em> a memória deve ser gravada. Entra em cena o <em>Flip-Flop Tipo D</em> (D de <em>Data</em>). Nele, adicionamos uma porta de &#34;Clock&#34; (ou <em>Hold That Bit</em>). O circuito só lê a entrada &#34;Data&#34; quando o sinal de Clock permite.</p>
+<p>
+Para evitar que a informação fique circulando em loops infinitos, usamos uma versão refinada chamada <em>Edge-Triggered</em> (Acionado por Borda). Em vez de deixar a porta aberta enquanto o Clock for 1, ele tira uma &#34;fotografia&#34; do dado <em>exatamente no instante</em> em que o Clock transita de 0 para 1.</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph TD
+  D[Entrada: Data] --&gt; Latch1(Primeiro Estágio)
+  Clk[Entrada: Clock] --&gt; Inv[Inversor]
+  Inv --&gt; Latch1
+  
+  Latch1 --&gt; Latch2(Segundo Estágio)
+  Clk --&gt; Latch2
+  
+  Latch2 --&gt; Q[Saída: Q]
+  Latch2 --&gt; NQ[Saída: Não-Q]
+  
+  style D fill:#2ecc71,color:#fff
+  style Clk fill:#f1c40f,color:#333
+  style Q fill:#9b59b6,color:#fff
+  style NQ fill:#34495e,color:#fff</code></pre>
+</div>
+<hr>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-22" class="outline-3">
+<h3 id="headline-22">
+5. Contadores e o Relógio Digital
+</h3>
+<div id="outline-text-headline-22" class="outline-text-3">
+<p>
+Se ligarmos o Clock de um flip-flop a um Oscilador e alimentarmos sua entrada Data com sua própria saída invertida (Não-Q), o flip-flop alternará de estado exatamente na metade da velocidade do oscilador original. Ele atua como um <em>Divisor de Frequência</em>.</p>
+<p>
+Se encadearmos vários flip-flops assim (o Clock do segundo ligado à saída do primeiro), eles começarão a contar em binário de forma fluida: 0000, 0001, 0010, 0011… Isso é um <em>Ripple Counter</em>.</p>
+<div id="outline-container-headline-23" class="outline-4">
+<h4 id="headline-23">
+O Problema do Tempo Humano (BCD)
+</h4>
+<div id="outline-text-headline-23" class="outline-text-4">
+<p>
+Com um oscilador de 1 Hz, podemos contar segundos. Mas há um problema: não queremos exibir as horas convertendo enormes números binários como 101111 (47 segundos) de cabeça.</p>
+<p>
+A solução é o <em>BCD (Binary-Coded Decimal)</em>. Em vez de um grande contador binário, usamos pequenos contadores independentes para cada dígito decimal:</p>
+<p>
+/ /Dígito baixo dos segundos:* Um contador de 4 bits que vai de 0 a 9. Usamos uma porta lógica AND configurada para detectar o padrão 1010 (10). Assim que atinge 10, a porta manda um sinal de &#34;Clear&#34;, zerando esse dígito.
+/ /Dígito alto dos segundos:* O sinal de &#34;Clear&#34; do dígito baixo serve como Clock para este. Ele vai de 0 a 5. Uma porta AND detecta o 0110 (6) e o zera, incrementando os minutos.</p>
+<p>
+Esse processo se repete para os minutos. Para as horas, a lógica é levemente mais complexa, pois um relógio de 12 horas não começa no 0, mas transita de 12:59:59 para 1:00:00. Isso exige portas lógicas adicionais para detectar quando o dígito alto é 1 e o baixo é 2.</p>
+<hr>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-24" class="outline-3">
+<h3 id="headline-24">
+6. O Toque Final: Matrizes e Displays
+</h3>
+<div id="outline-text-headline-24" class="outline-text-3">
+<p>
+Como transformar nossa saída BCD de 4 bits em uma representação visual?</p>
+<p>
+No passado, usávamos o <em>Tubo Nixie</em>, onde um decodificador energizava um pino específico para acender um filamento de neon no formato do número. Hoje, usamos <em>Displays de 7 Segmentos</em> ou <em>Matrizes de Pontos (LED)</em>.</p>
+<p>
+Em uma matriz 5x7 (35 LEDs), criar circuitos lógicos manuais para acender os LEDs exatos de cada dígito exigiria milhares de componentes. A solução industrial foi a criação da <em>Memória ROM de Matriz de Diodos</em>.</p>
+<p>
+Nesta abordagem, cruzamos fios de linhas e colunas e colocamos diodos (que permitem a passagem de corrente em apenas uma direção) nas interseções específicas que formam o desenho de um número (como o &#34;3&#34;). Quando o contador seleciona o dígito 3, a corrente flui por essa matriz e acende apenas os LEDs corretos no display.</p>
+<blockquote>
+<p><em>A Ilusão da Matriz:</em> Para economizar fios, não acendemos todos os LEDs de uma vez. O circuito varre as colunas do display de LEDs de forma absurdamente rápida, sincronizando a energia nas linhas através da ROM de Diodos e conectando a coluna ao terra através de transistores (<em>Sinkers</em>). A velocidade é tão alta que o olho humano não percebe a piscada, enxergando o número completamente aceso.</p>
+</blockquote>
+<div id="outline-container-headline-25" class="outline-4">
+<h4 id="headline-25">
+🔧 Exercícios
+</h4>
+<div id="outline-text-headline-25" class="outline-text-4">
+<p>
+<em>1. Codificação UTF-8:</em> Dada a sequência de bytes em hexa <code>48 C3 A9 6C 6C 6F</code>, e sabendo que bytes começando com <code>0</code> são ASCII (1 byte), bytes começando com <code>110</code> são início de caractere de 2 bytes, e <code>10</code> são continuação, quantos caracteres Unicode formam essa string? Qual o significado dela? <em>(Dica: 0x48 = &#39;H&#39;, 0x65 = &#39;e&#39;, 0x6C = &#39;l&#39;, 0x6F = &#39;o&#39;)</em></p>
+<p>
+<em>2. Trace do Half-Adder:</em> Complete a tabela abaixo para um half-adder (XOR soma bit, AND carry):</p>
+<table>
+<thead>
+<tr>
+<th class="align-right">A</th>
+<th class="align-right">B</th>
+<th>Soma (A XOR B)</th>
+<th>Carry (A AND B)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="align-right">0</td>
+<td class="align-right">0</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="align-right">0</td>
+<td class="align-right">1</td>
+<td>?</td>
+<td>?</td>
+</tr>
+<tr>
+<td class="align-right">1</td>
+<td class="align-right">0</td>
+<td>?</td>
+<td>?</td>
+</tr>
+<tr>
+<td class="align-right">1</td>
+<td class="align-right">1</td>
+<td>?</td>
+<td>?</td>
+</tr>
+</tbody>
+</table>
+<p>
+<em>3. Somador completo:</em> Um somador completo de 1 bit recebe A, B e um CarryIn. Sua equação é S = A ⊕ B ⊕ CarryIn. Qual o valor de S quando A=1, B=1, CarryIn=1? E o CarryOut?</p>
+<p>
+<em>4. Transistor:</em> Qual a principal vantagem do transistor sobre a válvula a vácuo? <em>(Dica: pense em aquecimento e confiabilidade.)</em></p>
+<p>
+&lt;details&gt;
+&lt;summary&gt;&lt;b&gt;Respostas&lt;/b&gt;&lt;/summary&gt;</p>
+<ol>
+<li><code>48</code> = &#39;H&#39; (1 byte), <code>C3 A9</code> = &#39;é&#39; (2 bytes), <code>6C</code> = &#39;l&#39;, <code>6C</code> = &#39;l&#39;, <code>6F</code> = &#39;o&#39;. Forma a palavra <em>&#34;Héllo&#34;</em> (um &#34;Hello&#34; com acento cômico no e).</li>
+<li>Soma: 0, 1, 1, 0. Carry: 0, 0, 0, 1.</li>
+<li>S = 1 ⊕ 1 ⊕ 1 = 0 ⊕ 1 = <em>1</em>. CarryOut = (A ∧ B) ∨ (CarryIn ∧ (A ⊕ B)) = (1∧1) ∨ (1∧(1⊕1)) = 1 ∨ (1∧0) = <em>1</em>.</li>
+<li>Transistores são estado sólido: não aquecem como válvulas, não queimam, são muito menores, consomem menos energia e duram mais.</li>
+</ol>
+<p>&lt;/details&gt;</p>
+<hr>
+<p>
+Este artigo foi um mergulho em duas frentes. Na primeira, vimos como caracteres, números e símbolos são codificados em sequências de bits, do Baudot de 5 bits ao UTF-8 que seus dispositivos usam hoje. Na segunda, percorremos a evolução do hardware que processa esses bits: o half-adder que soma dois bits, o full adder que os encadeia, o complemento de dois que torna a subtração um passeio, e o flip-flop que memoriza resultados.</p>
+<p>
+O oscilador deu o ritmo; o flip-flop deu a memória. Com eles, deixamos de ter apenas circuitos que reagem a entradas para ter <em>máquinas de estado</em> que lembram o passado e decidem o futuro. É essa capacidade de armazenar e processar, bits que codificam números, números que codificam instruções, instruções que formam programas, que separa uma calculadora de um computador de propósito geral. O próximo passo é juntar todas essas peças em uma arquitetura completa de processamento.</p>
+<hr>
+<p>
+<em>Fonte:</em> <a href="https://a.co/d/0a3DsSsn">Code: The Hidden Language of Computer Hardware and Software</a>, 2ª ed., Charles Petzold</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+  </div>
+</article>
+
+    </main>
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
+</body>
+</html>

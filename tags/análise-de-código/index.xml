@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Análise De Código on lobovit</title>
+    <link>https://lobovit.github.io/tags/an%C3%A1lise-de-c%C3%B3digo/</link>
+    <description>Recent content in Análise De Código on lobovit</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Sun, 19 Mar 2023 17:31:45 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/an%C3%A1lise-de-c%C3%B3digo/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>AST e CST: Análise Estrutural de Código</title>
+      <link>https://lobovit.github.io/tsast/</link>
+      <pubDate>Sun, 19 Mar 2023 17:31:45 -0300</pubDate>
+      <guid>https://lobovit.github.io/tsast/</guid>
+      <description>&lt;div id=&#34;outline-container-headline-1&#34; class=&#34;outline-3&#34;&gt;&#xA;&lt;h3 id=&#34;headline-1&#34;&gt;&#xA;AST/CST ao invés de Regex para Análise de Código&#xA;&lt;/h3&gt;&#xA;&lt;div id=&#34;outline-text-headline-1&#34; class=&#34;outline-text-3&#34;&gt;&#xA;&lt;p&gt;&#xA;E aí, devs! Beleza? 😄&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Quantas vezes você já precisou &amp;#34;entender&amp;#34; um código JavaScript ou TypeScript? Seja pra validar um padrão, extrair informações específicas (tipo nomes de funções, variáveis usadas), para parsear um arquivo de configuração, ou até mesmo para criar aquela ferramenta de &lt;em&gt;lint&lt;/em&gt; customizada pro seu time? Aposto que a primeira ideia que veio na cabeça foi: &amp;#34;&lt;a href=&#34;https://pt.wikipedia.org/wiki/Express%C3%A3o_regular&#34;&gt;Regex&lt;/a&gt;!&amp;#34;.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

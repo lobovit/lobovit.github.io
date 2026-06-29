@@ -1,1 +1,0 @@
-self.addEventListener('install',()=>self.skipWaiting());self.addEventListener('activate',()=>{self.registration.unregister().then(()=>clients.matchAll({type:'window'}).then(wins=>wins.forEach(win=>win.navigate(win.url))))})

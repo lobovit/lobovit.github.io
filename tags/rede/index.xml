@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Rede on lobovit</title>
+    <link>https://lobovit.github.io/tags/rede/</link>
+    <description>Recent content in Rede on lobovit</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Tue, 12 May 2026 18:40:00 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/rede/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Petzold06 - Do Silício ao Software</title>
+      <link>https://lobovit.github.io/histcomp06/</link>
+      <pubDate>Tue, 12 May 2026 18:40:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/histcomp06/</guid>
+      <description>&lt;div id=&#34;outline-container-headline-1&#34; class=&#34;outline-2&#34;&gt;&#xA;&lt;h2 id=&#34;headline-1&#34;&gt;&#xA;Do Silício ao Software: Desvendando a Arquitetura dos Computadores&#xA;&lt;/h2&gt;&#xA;&lt;div id=&#34;outline-text-headline-1&#34; class=&#34;outline-text-2&#34;&gt;&#xA;&lt;p&gt;&#xA;Na engenharia, costuma-se dizer que os últimos 10% de um projeto exigem 90% do esforço. Quando olhamos para a construção de um computador a partir de portas lógicas, a Unidade Lógica e Aritmética (ALU) e os registradores parecem ser o coração de tudo. No entanto, conectar essas partes e fazê-las dançar em sincronia para executar um programa exige uma infraestrutura invisível, porém vital: os &lt;em&gt;&lt;a href=&#34;https://en.wikipedia.org/wiki/Control_unit&#34;&gt;sinais de controle&lt;/a&gt;&lt;/em&gt;.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

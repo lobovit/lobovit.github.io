@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>SIMD on lobovit</title>
+    <link>https://lobovit.github.io/tags/simd/</link>
+    <description>Recent content in SIMD on lobovit</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Thu, 14 May 2026 18:40:00 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/simd/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Petzold07 - Múltiplos Fluxos, Múltiplos Núcleos</title>
+      <link>https://lobovit.github.io/histcomp07/</link>
+      <pubDate>Thu, 14 May 2026 18:40:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/histcomp07/</guid>
+      <description>&lt;p&gt;&#xA;Imagine uma cozinha com um único chef. Ele pica os vegetais, depois prepara o molho, depois coloca a água para ferver, depois corta a carne. Tudo em sequência, uma tarefa após a outra. O jantar demora.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Agora imagine a mesma cozinha com três chefs trabalhando lado a lado. Enquanto um pica os vegetais, outro prepara o molho e o terceiro coloca a água no fogo. O jantar fica pronto muito mais rápido, desde que os chefs não disputem a mesma faca, não sujem a tábua um do outro e não esperem eternamente que o colega libere o fogão.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

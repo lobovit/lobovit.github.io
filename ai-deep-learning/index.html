@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>03 - AI Engineering from scratch: do perceptron ao debug de rede neural — lobovit</title>
+  <link rel="stylesheet" href="/css/main.css?v=3">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
+    <main>
+      
+<article>
+  <header>
+    <h1>03 - AI Engineering from scratch: do perceptron ao debug de rede neural</h1>
+    <p class="meta"><time>2026-05-25</time> · <span class="tag">AI</span><span class="tag">deep-learning</span><span class="tag">pytorch</span><span class="tag">backpropagation</span><span class="tag">neural-networks</span><span class="tag">python</span></p>
+  </header>
+  <div class="content">
+    
+<p>
+Deep learning parece mágica. Você joga dados num buraco negro de matrizes, espera alguns minutos (ou dias) e sai um modelo que reconhece gatos, traduz idiomas e escreve código. Mas não é mágica. São 13 peças que se encaixam, e quando você entende cada uma, o buraco negro vira um mecanismo de relógio.</p>
+<p>
+Este artigo percorre essas 13 peças. Do perceptron (um único neurônio que decide sim ou não) até um framework completo de deep learning em 500 linhas. Depois conecta com PyTorch, dá uma olhada no JAX e fecha com o capítulo mais importante e mais ignorado: como debugar uma rede neural quando ela falha sem dar erro.</p>
+<p>
+A stack aqui é Python + Go: Python pra treinar (PyTorch), Go pra servir (inferência em produção). O que você vai ver de código é Python, mas toda a lógica se aplica a qualquer framework.</p>
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+A anatomia de uma rede neural
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
+<p>
+Uma rede neural é uma função matemática com milhares (ou bilhões) de parâmetros ajustáveis. O treino é o processo de encontrar os valores desses parâmetros que minimizam o erro nas predições. Três ideias bastam pra entender como isso funciona.</p>
+<div id="outline-container-headline-2" class="outline-3">
+<h3 id="headline-2">
+O perceptron: o tijolo fundamental**
+</h3>
+<div id="outline-text-headline-2" class="outline-text-3">
+<p>
+O perceptron é o modelo mais simples possível. Ele recebe entradas (<code>x₁, x₂, ..., x_n</code>), multiplica cada uma por um peso (<code>wᵢ</code>), soma tudo, adiciona um viés (<code>b</code>) e passa por uma função de ativação. Se o resultado passar de um limiar, é classe A; senão, classe B.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">perceptron_predict</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="n">b</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">z</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Porta AND: só retorna 1 se ambas entradas forem 1</span>
+</span></span><span class="line"><span class="cl"><span class="n">w_and</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="n">b_and</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.5</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">perceptron_predict</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">w_and</span><span class="p">,</span> <span class="n">b_and</span><span class="p">))</span>  <span class="c1"># 1</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="n">perceptron_predict</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">w_and</span><span class="p">,</span> <span class="n">b_and</span><span class="p">))</span>  <span class="c1"># 0</span></span></span></code></pre></div>
+</div>
+<p>
+O aprendizado é igualmente simples. Pra cada exemplo de treino, compare a predição com o valor real. Se errou, ajuste os pesos na direção do erro: <code>w += lr * (y_true - y_pred) * x</code>. Esse loop converge pra qualquer problema <em>linearmente separável</em>.</p>
+<p>
+O problema: o XOR não é. Tente desenhar uma reta que separe os pontos (0,0) e (1,1) [classe 0] dos pontos (0,1) e (1,0) [classe 1]. Impossível. Essa limitação quase matou as redes neurais nos anos 60.</p>
+<p>
+A solução é empilhar perceptrons.</p>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-3">
+<h3 id="headline-3">
+Camadas escondidas e o forward pass**
+</h3>
+<div id="outline-text-headline-3" class="outline-text-3">
+<p>
+Uma rede com camada escondida resolve o XOR. A ideia: a primeira camada transforma o espaço de entrada num espaço onde os pontos <em>são</em> linearmente separáveis. A segunda camada (de saída) faz a classificação final nesse novo espaço.</p>
+<p>
+O forward pass é a computação da esquerda pra direita: <code>a¹ = σ(W¹x + b¹); a² = σ(W²a¹ + b²); ...</code>. Cada <code>W</code> é uma matriz de pesos entre camadas. Cada <code>σ</code> é uma função de ativação não-linear (sigmoid, ReLU, GELU, dependendo da arquitetura). Sem a não-linearidade, 100 camadas colapsam numa única multiplicação de matriz, porque linear de linear é linear.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">sigmoid</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">x</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># XOR com uma camada escondida de 2 neurônios</span>
+</span></span><span class="line"><span class="cl"><span class="n">W1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mi">20</span><span class="p">,</span> <span class="o">-</span><span class="mi">20</span><span class="p">]])</span>   <span class="c1"># (2,2)</span>
+</span></span><span class="line"><span class="cl"><span class="n">b1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="mi">30</span><span class="p">])</span>                 <span class="c1"># (2,)</span>
+</span></span><span class="line"><span class="cl"><span class="n">W2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">]])</span>                <span class="c1"># (1,2)</span>
+</span></span><span class="line"><span class="cl"><span class="n">b2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mi">30</span><span class="p">])</span>                     <span class="c1"># (1,)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">xor_forward</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">h</span> <span class="o">=</span> <span class="n">sigmoid</span><span class="p">(</span><span class="n">W1</span> <span class="o">@</span> <span class="n">x</span> <span class="o">+</span> <span class="n">b1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">sigmoid</span><span class="p">(</span><span class="n">W2</span> <span class="o">@</span> <span class="n">h</span> <span class="o">+</span> <span class="n">b2</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]]:</span>
+</span></span><span class="line"><span class="cl">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">xor_forward</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<p>
+O Teorema da Aproximação Universal diz que uma rede com uma única camada escondida e neurônios suficientes pode aproximar qualquer função contínua. Na prática, redes profundas (muitas camadas) são mais eficientes que redes largas (poucas camadas com muitos neurônios). O GPT-3 tem 96 camadas; o GPT-4, mais de 120.</p>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-3">
+<h3 id="headline-4">
+Backpropagation: como o modelo descobre o que ajustar**
+</h3>
+<div id="outline-text-headline-4" class="outline-text-3">
+<p>
+O forward pass computa predições. O backward pass (backpropagation) computa gradientes. É o algoritmo que tornou deep learning viável, reduzindo o que seria 2.3 milhões de ajustes manuais de peso a uma única passada de trás pra frente.</p>
+<p>
+A regra da cadeia aplicada em reverso. Pra cada camada, a partir da saída: calcule o gradiente da loss em relação aos pesos da camada, depois propague o gradiente pra camada anterior. O gradiente de uma camada depende do gradiente da camada seguinte. Isso é retropropagação.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="c1"># Derivada da sigmoid: s(x) * (1 - s(x))</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">sigmoid_derivative</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">s</span> <span class="o">=</span> <span class="n">sigmoid</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">s</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">s</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Backprop manual simplificado: loss MSE, uma saída</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">backward_pass</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">W1</span><span class="p">,</span> <span class="n">b1</span><span class="p">,</span> <span class="n">W2</span><span class="p">,</span> <span class="n">b2</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="c1"># Forward</span>
+</span></span><span class="line"><span class="cl">    <span class="n">z1</span> <span class="o">=</span> <span class="n">W1</span> <span class="o">@</span> <span class="n">x</span> <span class="o">+</span> <span class="n">b1</span>
+</span></span><span class="line"><span class="cl">    <span class="n">a1</span> <span class="o">=</span> <span class="n">sigmoid</span><span class="p">(</span><span class="n">z1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">z2</span> <span class="o">=</span> <span class="n">W2</span> <span class="o">@</span> <span class="n">a1</span> <span class="o">+</span> <span class="n">b2</span>
+</span></span><span class="line"><span class="cl">    <span class="n">a2</span> <span class="o">=</span> <span class="n">sigmoid</span><span class="p">(</span><span class="n">z2</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1"># Backward (da saída pra entrada)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">d_loss</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">a2</span> <span class="o">-</span> <span class="n">y</span><span class="p">)</span>                        <span class="c1"># gradiente da MSE</span>
+</span></span><span class="line"><span class="cl">    <span class="n">d_z2</span> <span class="o">=</span> <span class="n">d_loss</span> <span class="o">*</span> <span class="n">sigmoid_derivative</span><span class="p">(</span><span class="n">z2</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">d_W2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">d_z2</span><span class="p">,</span> <span class="n">a1</span><span class="p">)</span>                    <span class="c1"># gradiente dos pesos W2</span>
+</span></span><span class="line"><span class="cl">    <span class="n">d_b2</span> <span class="o">=</span> <span class="n">d_z2</span>
+</span></span><span class="line"><span class="cl">    <span class="n">d_a1</span> <span class="o">=</span> <span class="n">W2</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="n">d_z2</span>
+</span></span><span class="line"><span class="cl">    <span class="n">d_z1</span> <span class="o">=</span> <span class="n">d_a1</span> <span class="o">*</span> <span class="n">sigmoid_derivative</span><span class="p">(</span><span class="n">z1</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">d_W1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">d_z1</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>                     <span class="c1"># gradiente dos pesos W1</span>
+</span></span><span class="line"><span class="cl">    <span class="n">d_b1</span> <span class="o">=</span> <span class="n">d_z1</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">d_W1</span><span class="p">,</span> <span class="n">d_b1</span><span class="p">,</span> <span class="n">d_W2</span><span class="p">,</span> <span class="n">d_b2</span><span class="p">,</span> <span class="n">a2</span></span></span></code></pre></div>
+</div>
+<p>
+O problema do vanishing gradient: a derivada da sigmoid no ponto de saturação é quase zero (máximo de 0.25). Depois de 10 camadas, o gradiente que chega na primeira é no máximo <code>0.25^10 ≈ 1e-6</code>. As camadas iniciais simplesmente param de aprender. A ReLU resolve isso: gradiente é 1 pra valores positivos, sem saturação.</p>
+<p>
+No PyTorch, <code>loss.backward()</code> faz tudo isso automaticamente. Mas entender o que acontece por baixo é o que te permite debugar quando algo some.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-2">
+<h2 id="headline-5">
+As engrenagens do treino
+</h2>
+<div id="outline-text-headline-5" class="outline-text-2">
+<p>
+Uma rede neural é definida por quatro escolhas interligadas. A função de ativação decide se o sinal passa. A função de perda define o que &#34;erro&#34; significa. O otimizador decide como corrigir o erro. E o learning rate controla a velocidade da correção.</p>
+<div id="outline-container-headline-6" class="outline-3">
+<h3 id="headline-6">
+Ativações: o que faz o sinal passar (ou não)**
+</h3>
+<div id="outline-text-headline-6" class="outline-text-3">
+<p>
+Sem ativação não-linear, 100 camadas de <code>Wx + b</code> colapsam em <code>W_equivalente * x + b_equivalente</code>. A não-linearidade é o que permite à rede aprender fronteiras curvas.</p>
+<p>
+A sigmoid (<code>σ(x) = 1/(1+e^(-x))</code>) foi a primeira. Suave, derivada fácil, output entre 0 e 1. Caiu em desuso porque satura (gradiente <code>0 nos extremos). A tanh (~(e^x - e^(-x))/(e^x + e^(-x))</code>) é a sigmoid centralizada no zero: output entre -1 e 1, gradientes mais fortes.</p>
+<p>
+A ReLU (<code>max(0, x)</code>) dominou por uma década. Simples, rápida, sem saturação pra valores positivos. O problema: se um neurônio só recebe entradas negativas, ele morre (gradiente zero pra sempre, nunca mais atualiza). É o &#34;dying ReLU&#34;.</p>
+<p>
+A GELU (<code>x * Φ(x)</code>, onde Φ é a CDF da normal) é a ativação padrão dos transformers modernos (BERT, GPT). Ela suaviza a ReLU multiplicando por uma probabilidade, o que produz gradientes mais estáveis em redes profundas. A Swish (<code>x * σ(x)</code>) é similar e foi descoberta por busca de arquitetura.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">relu</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>       <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">leaky_relu</span><span class="p">(</span><span class="n">x</span><span class="p">):</span> <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="mf">0.01</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">gelu</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>       <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">x</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="mf">0.044715</span> <span class="o">*</span> <span class="n">x</span><span class="o">**</span><span class="mi">3</span><span class="p">)))</span>
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">swish</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>      <span class="k">return</span> <span class="n">x</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">x</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;ReLU:     &#34;</span><span class="p">,</span> <span class="n">relu</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>         <span class="c1"># [0, 0, 0, 1, 2]</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s2">&#34;GELU:     &#34;</span><span class="p">,</span> <span class="n">gelu</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>  <span class="c1"># [-0.045, -0.159, 0, 0.841, 1.955]</span></span></span></code></pre></div>
+</div>
+<p>
+A regra prática: transformers (NLP, LLMs) usam GELU. CNNs (visão) usam ReLU. RNNs usam tanh. Saída de classificação binária usa sigmoid; multiclasse usa softmax; regressão usa linear (sem ativação). Se neurônios estão morrendo numa ReLU, troque pra GELU, não pra LeakyReLU.</p>
+<blockquote>
+<p><em>Em miúdos:</em> <code>Saturação</code> é quando a função de ativação achata nos extremos e a derivada vai pra zero. É como tentar descer uma ladeira que virou um platô: você não sabe mais pra onde ir. <code>Neurônio morto</code> é um neurônio ReLU que nunca mais dispara porque todos os inputs são negativos e o gradiente é zero. <code>Softmax</code> transforma um vetor de scores brutos (logits) numa distribuição de probabilidade que soma 1. É a última camada de todo classificador.</p>
+</blockquote>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-3">
+<h3 id="headline-7">
+Loss functions: o que o modelo tenta minimizar**
+</h3>
+<div id="outline-text-headline-7" class="outline-text-3">
+<p>
+A loss é o único número que o modelo vê. Toda a complexidade do treino se resume a &#34;faça esse número descer&#34;. Escolher a loss errada é como dar a bússola errada pro navegador.</p>
+<p>
+MSE (<code>(pred - target)²</code>) é a loss de regressão. Suave, derivada contínua, penaliza erros grandes quadraticamente. Mas em classificação, MSE produz gradientes pequenos demais quando a predição está longe do alvo, o que significa aprendizado lento justo quando você mais precisa de correção.</p>
+<p>
+Cross-entropy resolve isso. Pra classificação binária: <code>BCE = -(y*log(p) + (1-y)*log(1-p))</code>. Quando o modelo erra feio (prevê 0.01 pra classe correta), o <code>-log(0.01) = 4.6</code> explode e o gradiente é enorme. É o equivalente matemático de &#34;acorda, você errou muito&#34;.</p>
+<p>
+Label smoothing troca o one-hot <code>[0,0,1,0]</code> por <code>[0.01, 0.01, 0.97, 0.01]</code>. Isso impede overfitting e overconfidence. O GPT usa label smoothing. Focal loss adiciona um fator <code>(1-p)^γ</code> que reduz o peso de exemplos fáceis (já classificados corretamente), focando o treino nos difíceis. Essencial pra detecção de objetos com desbalanceamento de classes.</p>
+<p>
+InfoNCE é a loss do aprendizado auto-supervisionado. Dado um par positivo (duas visões da mesma imagem) e N pares negativos (visões de imagens diferentes), minimize a distância do positivo e maximize a dos negativos. SimCLR e CLIP usam isso.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">bce_loss</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">eps</span> <span class="o">=</span> <span class="mf">1e-12</span>
+</span></span><span class="line"><span class="cl">    <span class="n">y_pred</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">eps</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">eps</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">y_true</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">y_pred</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">y_true</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">y_pred</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">label_smoothing</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">num_classes</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">one_hot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">num_classes</span><span class="p">)[</span><span class="n">y_true</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span><span class="p">)</span> <span class="o">*</span> <span class="n">one_hot</span> <span class="o">+</span> <span class="n">alpha</span> <span class="o">/</span> <span class="n">num_classes</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">y_true</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="n">y_pred</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">])</span>
+</span></span><span class="line"><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;BCE dos erros: </span><span class="si">{</span><span class="n">bce_loss</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&#34;</span><span class="p">)</span>  <span class="c1"># alto: 0.2 está muito errado</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-8" class="outline-3">
+<h3 id="headline-8">
+Otimizadores: como o modelo se corrige**
+</h3>
+<div id="outline-text-headline-8" class="outline-text-3">
+<p>
+O SGD puro (<code>w -= lr * grad</code>) é um compasso: aponta a direção mas não sabe nada sobre o terreno. Momentum (<code>v = β*v + grad; w -= lr*v</code>) adiciona inércia: continue andando na direção média, ignore oscilações.</p>
+<p>
+Adam junta momentum com adaptação por parâmetro. Mantém duas médias móveis exponenciais: <code>m</code> (primeira momento, direção) e <code>v</code> (segundo momento, magnitude). Cada peso ganha sua própria taxa de aprendizado efetiva, inversamente proporcional à raiz da média dos gradientes ao quadrado. Isso faz o Adam ser robusto a gradientes com escalas diferentes, que é exatamente o que acontece em redes profundas (pesos das primeiras camadas têm gradientes ordens de magnitude menores que os das últimas).</p>
+<p>
+AdamW é o Adam com weight decay desacoplado. No Adam original, weight decay e adaptação de learning rate se misturavam (o decay era aplicado ao gradiente, não ao peso). AdamW aplica <code>w -= lr * λ * w</code> separadamente, o que produz regularização mais forte e melhor generalização. Todo transformer moderno (BERT, GPT, LLaMA, Stable Diffusion) foi treinado com AdamW.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">AdamW</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span> <span class="n">betas</span><span class="o">=</span><span class="p">(</span><span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.999</span><span class="p">),</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">,</span> <span class="n">weight_decay</span><span class="o">=</span><span class="mf">0.01</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">lr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">b1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">b2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">wd</span> <span class="o">=</span> <span class="n">lr</span><span class="p">,</span> <span class="o">*</span><span class="n">betas</span><span class="p">,</span> <span class="n">eps</span><span class="p">,</span> <span class="n">weight_decay</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">=</span> <span class="p">{},</span> <span class="p">{},</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">grads</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">+=</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">params</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">            <span class="n">p</span><span class="p">,</span> <span class="n">g</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="n">name</span><span class="p">],</span> <span class="n">grads</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">            <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">b1</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">b1</span><span class="p">)</span> <span class="o">*</span> <span class="n">g</span>
+</span></span><span class="line"><span class="cl">            <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">b2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">b2</span><span class="p">)</span> <span class="o">*</span> <span class="n">g</span><span class="o">**</span><span class="mi">2</span>
+</span></span><span class="line"><span class="cl">            <span class="n">m_hat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">m</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">b1</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="n">v_hat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">v</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">b2</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="n">params</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">p</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">lr</span> <span class="o">*</span> <span class="p">(</span><span class="n">m_hat</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">v_hat</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">eps</span><span class="p">)</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">wd</span> <span class="o">*</span> <span class="n">p</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<blockquote>
+<p><em>Em miúdos:</em> <code>Weight decay</code> é a regularização L2: penalize pesos grandes pra evitar overfitting. <code>Bias correction</code> corrige o viés inicial do Adam: nas primeiras iterações, <code>m</code> e <code>v</code> começam em zero e demoram a aquecer; dividir por <code>(1 - β^t)</code> compensa isso. <code>Beta1=0.9</code> significa &#34;lembre 90% do momentum passado&#34;; <code>beta2=0.999</code> significa &#34;lembre 99.9% da magnitude passada&#34;. <code>Epsilon</code> (1e-8) evita divisão por zero.</p>
+</blockquote>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-2">
+<h2 id="headline-9">
+Fazendo a rede aprender melhor
+</h2>
+<div id="outline-text-headline-9" class="outline-text-2">
+<p>
+Os três ingredientes anteriores (ativação, loss, otimizador) são o motor. Os três seguintes são o volante: regularização impede overfitting, inicialização de pesos faz o motor pegar de primeira, e learning rate schedule controla a velocidade na curva.</p>
+<div id="outline-container-headline-10" class="outline-3">
+<h3 id="headline-10">
+Regularização: o freio que evita decoreba**
+</h3>
+<div id="outline-text-headline-10" class="outline-text-3">
+<p>
+Uma rede neural com parâmetros suficientes pode memorizar qualquer dataset. Literalmente: um paper famoso (Zhang et al., 2017) mostrou que redes profundas podem atingir 100% de acurácia em treino com labels aleatórios. Se seu modelo tem 100% no treino e 50% no teste, ele decorou, não aprendeu.</p>
+<p>
+Dropout desliga neurônios aleatoriamente durante o treino (cada neurônio tem probabilidade <code>p</code> de ser zerado naquela iteração). Isso força a rede a construir representações redundantes, porque nenhum neurônio pode depender de outro estar presente. Na inferência, todos os neurônios participam e a média implícita de muitos submodelos diferentes produz regularização. O dropout padrão do transformer é p=0.1.</p>
+<p>
+BatchNorm normaliza as ativações de cada camada pra média zero e variância um, calculadas sobre o batch atual. Isso acelera o treino (paisagem de loss mais suave), permite learning rates maiores e adiciona um leve ruído que regulariza. Mas depende do tamanho do batch: com batch pequeno, as estatísticas ficam instáveis.</p>
+<p>
+LayerNorm normaliza por amostra em vez de por batch. Calcula média e variância sobre as features de uma única amostra. É o padrão dos transformers porque funciona com batch size 1 e não acopla amostras do batch (importante pra inferência sequencial). RMSNorm é uma LayerNorm sem subtração da média e sem o parâmetro de viés (<code>β</code>). A LLaMA e Mistral usam RMSNorm porque é ~10% mais rápida com a mesma qualidade.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">layernorm</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">beta</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">var</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">gamma</span> <span class="o">*</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span> <span class="o">+</span> <span class="n">beta</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">rmsnorm</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">gamma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">rms</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">gamma</span> <span class="o">*</span> <span class="n">x</span> <span class="o">/</span> <span class="p">(</span><span class="n">rms</span> <span class="o">+</span> <span class="n">eps</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-11" class="outline-3">
+<h3 id="headline-11">
+Inicialização de pesos: por que o primeiro chute importa**
+</h3>
+<div id="outline-text-headline-11" class="outline-text-3">
+<p>
+Se todos os pesos começam em zero, todos os neurônios de uma camada são idênticos e produzem o mesmo gradiente. A rede nunca quebra a simetria e não aprende nada.</p>
+<p>
+Se os pesos começam com valores aleatórios na escala errada, o sinal explode (ativações vão pra infinito) ou desaparece (ativações vão pra zero) conforme atravessa as camadas. A matemática: <code>Var(z) = fan_in * Var(w) * Var(x)</code>. Pra manter a variância estável, você precisa de <code>Var(w) = 1 / fan_in</code>.</p>
+<p>
+Xavier (Glorot) inicializa com <code>Var(w) = 2 / (fan_in + fan_out)</code>, otimizada pra sigmoid/tanh. Kaiming (He) inicializa com <code>Var(w) = 2 / fan_in</code>, porque a ReLU zera metade das ativações e você precisa compensar essa perda de variância. O PyTorch usa Kaiming uniforme como padrão no <code>nn.Linear</code>.</p>
+<p>
+O GPT-2 vai além: escala a saída de cada bloco transformer por <code>1/√(2 * num_layers)</code> antes de somar ao residual. Isso evita que o sinal cresça com a profundidade da rede.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">kaiming_init</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">gain</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">fan_in</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="n">std</span> <span class="o">=</span> <span class="n">gain</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">fan_in</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="o">*</span><span class="n">shape</span><span class="p">)</span> <span class="o">*</span> <span class="n">std</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">xavier_init</span><span class="p">(</span><span class="n">shape</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="n">fan_in</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="n">fan_out</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">    <span class="n">limit</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">6</span> <span class="o">/</span> <span class="p">(</span><span class="n">fan_in</span> <span class="o">+</span> <span class="n">fan_out</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="n">limit</span><span class="p">,</span> <span class="n">limit</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-12" class="outline-3">
+<h3 id="headline-12">
+Learning rate schedules: a arte de dosar a velocidade**
+</h3>
+<div id="outline-text-headline-12" class="outline-text-3">
+<p>
+O learning rate é o hiperparâmetro mais importante. Constante raramente é ótimo: você quer passos grandes no começo (explorar) e pequenos no fim (refinar). A diferença entre o melhor e o segundo melhor schedule pode ser vários pontos percentuais de acurácia.</p>
+<p>
+Warmup resolve o problema do Adam nas primeiras iterações: como <code>m</code> e <code>v</code> começam em zero, as estimativas iniciais são ruidosas. Warmup sobe o learning rate gradualmente de <code>lr/25</code> até o valor alvo nos primeiros 3-5% dos passos. Todo transformer grande usa warmup (LLaMA 3: 2000 passos de warmup).</p>
+<p>
+Cosine decay desce suavemente do pico até quase zero: <code>lr(t) = lr_min + 0.5 * (lr_max - lr_min) * (1 + cos(π * t / T))</code>. É o padrão moderno pra transformers. Step decay (cai 10x a cada N épocas) ainda funciona bem pra CNNs com SGD.</p>
+<p>
+A política 1cycle (Smith, 2018) sobe o learning rate na primeira metade do treino e desce na segunda. A intuição: learning rates altos no meio do treino regularizam (jogam o modelo pra regiões mais planas da paisagem de loss, que generalizam melhor). Pra orçamentos fixos de compute, 1cycle frequentemente bate cosine.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">cosine_schedule</span><span class="p">(</span><span class="n">step</span><span class="p">,</span> <span class="n">total_steps</span><span class="p">,</span> <span class="n">lr_max</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span> <span class="n">lr_min</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">lr_min</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">lr_max</span> <span class="o">-</span> <span class="n">lr_min</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">step</span> <span class="o">/</span> <span class="n">total_steps</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">def</span> <span class="nf">warmup_cosine</span><span class="p">(</span><span class="n">step</span><span class="p">,</span> <span class="n">warmup_steps</span><span class="p">,</span> <span class="n">total_steps</span><span class="p">,</span> <span class="n">lr_max</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span> <span class="n">lr_min</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="n">step</span> <span class="o">&lt;</span> <span class="n">warmup_steps</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">lr_max</span> <span class="o">*</span> <span class="n">step</span> <span class="o">/</span> <span class="n">warmup_steps</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="n">cosine_schedule</span><span class="p">(</span><span class="n">step</span> <span class="o">-</span> <span class="n">warmup_steps</span><span class="p">,</span> <span class="n">total_steps</span> <span class="o">-</span> <span class="n">warmup_steps</span><span class="p">,</span> <span class="n">lr_max</span><span class="p">,</span> <span class="n">lr_min</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-13" class="outline-2">
+<h2 id="headline-13">
+Do zero ao framework
+</h2>
+<div id="outline-text-headline-13" class="outline-text-2">
+<p>
+As 9 peças anteriores formam um mecanismo completo. Juntando tudo, você consegue construir um mini-framework de deep learning em ~500 linhas.</p>
+<div id="outline-container-headline-14" class="outline-3">
+<h3 id="headline-14">
+Construindo seu próprio PyTorch**
+</h3>
+<div id="outline-text-headline-14" class="outline-text-3">
+<p>
+A abstração central é o <code>Module</code>. Ele tem <code>forward()</code> (computar predições), <code>backward()</code> (calcular gradientes), <code>parameters()</code> (devolver todos os pesos ajustáveis) e <code>train()/eval()</code> (ligar/desligar dropout e batch norm). Toda camada da rede herda de Module.</p>
+<p>
+O <code>Linear</code> é um Module que guarda uma matriz de pesos <code>W</code> e um vetor de vieses <code>b</code>. O forward é <code>W @ x + b</code>. No backward, você recebe o gradiente da camada seguinte e calcula os gradientes locais (pra atualizar W e b) e o gradiente pra propagar pra camada anterior.</p>
+<p>
+O <code>Sequential</code> é um container que empilha módulos e chama o forward de cada um em sequência. O backward percorre a lista de trás pra frente (porque gradiente flui da saída pra entrada).</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Module</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span> <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grad</span><span class="p">):</span> <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="p">[]</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">pass</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">eval</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">pass</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">Sequential</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">modules</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">modules</span> <span class="o">=</span> <span class="n">modules</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modules</span><span class="p">:</span> <span class="n">x</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">x</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">backward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grad</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modules</span><span class="p">):</span> <span class="n">grad</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grad</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">grad</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modules</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">parameters</span><span class="p">()]</span></span></span></code></pre></div>
+</div>
+<p>
+O loop de treino é sempre o mesmo, seja seu framework de 500 linhas ou o PyTorch treinando GPT-4:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">epochs</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="n">x_batch</span><span class="p">,</span> <span class="n">y_batch</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">        <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>          <span class="c1"># zera gradientes acumulados</span>
+</span></span><span class="line"><span class="cl">        <span class="n">y_pred</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">x_batch</span><span class="p">)</span> <span class="c1"># forward pass</span>
+</span></span><span class="line"><span class="cl">        <span class="n">loss</span> <span class="o">=</span> <span class="n">loss_fn</span><span class="p">(</span><span class="n">y_pred</span><span class="p">,</span> <span class="n">y_batch</span><span class="p">)</span> <span class="c1"># calcula erro</span>
+</span></span><span class="line"><span class="cl">        <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>                 <span class="c1"># backpropagation</span>
+</span></span><span class="line"><span class="cl">        <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>                <span class="c1"># atualiza pesos</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-15" class="outline-3">
+<h3 id="headline-15">
+PyTorch: o framework que ganhou**
+</h3>
+<div id="outline-text-headline-15" class="outline-text-3">
+<p>
+Seu mini-framework é 500x mais lento que o PyTorch. O PyTorch faz tudo que você construiu, mas com autograd (não precisa escrever backward manual), GPU (troque <code>cpu</code> por <code>cuda</code>), mixed precision (float16 onde pode, float32 onde precisa) e um ecossistema que vai do <code>torchvision</code> ao <code>torch.distributed</code>.</p>
+<p>
+A API do PyTorch mapeia 1:1 pro que você construiu: <code>nn.Module</code> é seu Module. <code>nn.Linear</code> é seu Linear. <code>nn.Sequential</code> é seu Sequential. <code>optim.AdamW</code> é seu AdamW. A diferença é que o PyTorch compila o grafo computacional em C++ e manda pra GPU.</p>
+<p>
+O loop canônico de 5 linhas treinou todos os modelos que você já ouviu falar:</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">torch</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">torch.nn</span> <span class="k">as</span> <span class="nn">nn</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">torch.optim</span> <span class="k">as</span> <span class="nn">optim</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">784</span><span class="p">,</span> <span class="mi">256</span><span class="p">),</span> <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">256</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="n">criterion</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">AdamW</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="n">loss</span> <span class="o">=</span> <span class="n">criterion</span><span class="p">(</span><span class="n">model</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">y</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-16" class="outline-3">
+<h3 id="headline-16">
+JAX: o primo funcional**
+</h3>
+<div id="outline-text-headline-16" class="outline-text-3">
+<p>
+JAX adota uma filosofia oposta. Em vez de objetos mutáveis com estado interno (como <code>model.parameters()</code> que são atualizados in-place), JAX exige funções puras. Você escreve <code>def loss_fn(params, x, y)</code>, e o JAX te dá <code>grad(loss_fn)</code>, <code>jit(loss_fn)</code> e <code>vmap(loss_fn)</code> de graça.</p>
+<p>
+A imutabilidade é a chave: como nada é modificado in-place, o JAX pode traçar o grafo inteiro da computação e compilar pra XLA (Acelerador Linear Algebra), que funde operações e elimina overhead de Python. O resultado é 10-100x mais rápido em hardware acelerado (TPU especialmente).</p>
+<p>
+Quem usa JAX: Google DeepMind (Gemini), Anthropic (Claude). Vale a pena se você tem TPU, precisa de gradientes por amostra (<code>per-example gradients</code>) ou treina em escala massiva com múltiplos dispositivos. Pra todo o resto, PyTorch.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="c1"># Em JAX, o treino é uma função pura que retorna novos parâmetros:</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># @jax.jit</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># def train_step(params, opt_state, x, y):</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#     loss, grads = jax.value_and_grad(loss_fn)(params, x, y)</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#     updates, opt_state = optimizer.update(grads, opt_state, params)</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#     params = optax.apply_updates(params, updates)</span>
+</span></span><span class="line"><span class="cl"><span class="c1">#     return params, opt_state, loss</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-17" class="outline-2">
+<h2 id="headline-17">
+Debugging: quando a rede não quebra, mas também não aprende
+</h2>
+<div id="outline-text-headline-17" class="outline-text-2">
+<p>
+Rede neural quebrada não dá erro. Ela treina por horas, a loss desce (ou não), você olha a acurácia no teste e descobre que seu modelo aprendeu a chutar a classe majoritária. Ou aprendeu a decorar o dataset. Ou simplesmente não converge. E não tem stack trace.</p>
+<p>
+60 a 70% do tempo de debugging em ML é gasto em bugs silenciosos. Existe um protocolo.</p>
+<div id="outline-container-headline-18" class="outline-3">
+<h3 id="headline-18">
+Overfit num batch**
+</h3>
+<div id="outline-text-headline-18" class="outline-text-3">
+<p>
+O teste mais importante de todos. Pegue um único batch de 32 exemplos. Treine por 100 iterações. Se a loss não chegar perto de zero e a acurácia não for 100%, seu modelo tem um bug estrutural (shape errado, gradiente quebrado, loss errada). Não prossiga antes de passar nesse teste.</p>
+</div>
+</div>
+<div id="outline-container-headline-19" class="outline-3">
+<h3 id="headline-19">
+Gradient checking**
+</h3>
+<div id="outline-text-headline-19" class="outline-text-3">
+<p>
+Compare o gradiente analítico (calculado pelo backprop) com o numérico (perturbe cada peso em ε, meça a diferença na loss). Se a diferença relativa for maior que 1e-5, seu backward tem um erro de implementação.</p>
+</div>
+</div>
+<div id="outline-container-headline-20" class="outline-3">
+<h3 id="headline-20">
+Estatísticas de ativação**
+</h3>
+<div id="outline-text-headline-20" class="outline-text-3">
+<p>
+Registre média, desvio padrão e fração de zeros das ativações de cada camada. Se a média está crescendo exponencialmente com a profundidade, os pesos estão mal inicializados. Se mais de 50% das ativações ReLU são zero, você tem neurônios mortos.</p>
+</div>
+</div>
+<div id="outline-container-headline-21" class="outline-3">
+<h3 id="headline-21">
+Gradiente por camada**
+</h3>
+<div id="outline-text-headline-21" class="outline-text-3">
+<p>
+Registre média e máximo do gradiente absoluto por camada. Se as primeiras camadas têm gradiente próximo de zero e as últimas têm gradiente normal, você tem vanishing gradients (troque sigmoid por ReLU/GELU ou adicione skip connections). Se os gradientes são NaN ou Inf, reduza o learning rate em 10x.</p>
+</div>
+</div>
+<div id="outline-container-headline-22" class="outline-3">
+<h3 id="headline-22">
+Learning rate finder**
+</h3>
+<div id="outline-text-headline-22" class="outline-text-3">
+<p>
+Faça um sweep do learning rate de 1e-7 a 10 em escala log, uma iteração por valor, e plote loss vs lr. O learning rate ideal está ~10x abaixo do ponto onde a loss desce mais rápido (antes de explodir).</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">torch</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">class</span> <span class="nc">NetworkDebugger</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="bp">self</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="p">{}</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_modules</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">)):</span>
+</span></span><span class="line"><span class="cl">                <span class="n">module</span><span class="o">.</span><span class="n">register_forward_hook</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_hook</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">_hook</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">def</span> <span class="nf">hook</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">inp</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">            <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="sa">f</span><span class="s2">&#34;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_act&#34;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                <span class="s2">&#34;mean&#34;</span><span class="p">:</span> <span class="n">out</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span> <span class="s2">&#34;std&#34;</span><span class="p">:</span> <span class="n">out</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span>
+</span></span><span class="line"><span class="cl">                <span class="s2">&#34;zero_frac&#34;</span><span class="p">:</span> <span class="p">(</span><span class="n">out</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">            <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="k">return</span> <span class="n">hook</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">def</span> <span class="nf">diagnose</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span></span><span class="line"><span class="cl">        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="n">s</span><span class="p">[</span><span class="s2">&#34;zero_frac&#34;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;ALERTA </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;zero_frac&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> neurônios mortos&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">s</span><span class="p">[</span><span class="s2">&#34;mean&#34;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&#34;ALERTA </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: ativação média </span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;mean&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> (explodindo)&#34;</span><span class="p">)</span></span></span></code></pre></div>
+</div>
+<blockquote>
+<p><em>Em miúdos:</em> <code>Overfit num batch</code> é o canário na mina: se o modelo não consegue decorar 32 exemplos, ele não vai aprender 50 mil. <code>Gradient checking</code> é o teste de sanidade do seu backward: compare o que você calculou com uma aproximação numérica (diferença finita). <code>Dying ReLU</code> é quando um neurônio ReLU só recebe entradas negativas e o gradiente é zero pra sempre. <code>Vanishing gradient</code> é quando o gradiente some nas camadas iniciais e elas param de aprender. <code>Exploding gradient</code> é o oposto: gradientes tão grandes que os pesos dão saltos e a loss vai pra NaN. Gradient clipping (<code>clip_grad_norm</code>) resolve exploding. Skip connections (ResNets, transformers) resolvem vanishing.</p>
+</blockquote>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-23" class="outline-2">
+<h2 id="headline-23">
+O que levar disso
+</h2>
+<div id="outline-text-headline-23" class="outline-text-2">
+<p>
+Deep learning não é mágica. São 13 peças:</p>
+<ul>
+<li>O perceptron decide sim ou não com uma soma ponderada.</li>
+<li>Camadas escondidas transformam o espaço até o problema ficar linearmente separável.</li>
+<li>Backpropagation propaga o erro de trás pra frente usando a regra da cadeia.</li>
+<li>A ativação certa (GELU pra transformers, ReLU pra CNNs) evita gradientes que somem.</li>
+<li>A loss certa (cross-entropy pra classificação, nunca MSE) dá o sinal de aprendizado correto.</li>
+<li>O otimizador certo (AdamW, com warmup e cosine decay) faz o treino convergir.</li>
+<li>Regularização (dropout, weight decay, normalização) evita decoreba.</li>
+<li>Inicialização (Kaiming, Xavier) faz o sinal atravessar dezenas de camadas sem explodir nem sumir.</li>
+<li>O learning rate schedule (warmup + cosine) controla a velocidade de aprendizado.</li>
+<li>Um mini-framework de 500 linhas ensina mais que 500 páginas de documentação.</li>
+<li>PyTorch é o padrão da indústria; JAX é o primo funcional pra escala extrema.</li>
+<li>Debugging sistemático (overfit num batch, gradient check, estatísticas de ativação) pega bugs que não dão erro.</li>
+</ul>
+<p>Se você entendeu essas 13 peças, você entende o que acontece dentro de qualquer rede neural. O resto é engenharia.</p>
+</div>
+</div>
+
+  </div>
+</article>
+
+    </main>
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
+</body>
+</html>

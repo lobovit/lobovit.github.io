@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+<head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:,">
-  <title>Rama — scovl</title>
-  <link rel="stylesheet" href="/css/main.css?v=2">
+  <title>Rama — lobovit</title>
+  <link rel="stylesheet" href="/css/main.css?v=3">
   <link rel="stylesheet" href="/vendor/fonts/fonts.css">
-  <link rel="stylesheet" href="/vendor/prism/prism-tomorrow.min.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
 </head>
 <body>
   <div class="frame">
     <header>
       <nav>
-        <a class="site-title" href="http://localhost:1313/">scovl</a>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
         <span class="nav-links">
           <a href="/page/about/">about</a>
           <a href="/page/contact/">contact</a>
@@ -67,27 +67,27 @@ Definindo o Modelo de Dados
 <p>
 No Rama, os datastores indexados são chamados de <a href="https://docs.redplanetlabs.com/concepts/pstates.html">PStates</a> (&#34;partitioned state&#34;). Ao contrário de bancos de dados tradicionais com modelos fixos, os PStates permitem infinitos modelos de dados através da composição de estruturas simples:</p>
 <div class="src src-clojure">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-clojure" data-lang="clojure"><span style="display:flex;"><span>(<span style="color:#a6e22e">declare-pstate</span>
-</span></span><span style="display:flex;"><span>  topology
-</span></span><span style="display:flex;"><span>  $$family-tree
-</span></span><span style="display:flex;"><span>  {UUID (<span style="color:#a6e22e">fixed-keys-schema</span>
-</span></span><span style="display:flex;"><span>          {<span style="color:#e6db74">:parent1</span> UUID
-</span></span><span style="display:flex;"><span>           <span style="color:#e6db74">:parent2</span> UUID
-</span></span><span style="display:flex;"><span>           <span style="color:#e6db74">:name</span> String
-</span></span><span style="display:flex;"><span>           <span style="color:#e6db74">:children</span> <span style="color:#f92672">#</span>{UUID}})})</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-clojure" data-lang="clojure"><span class="line"><span class="cl"><span class="p">(</span><span class="nf">declare-pstate</span>
+</span></span><span class="line"><span class="cl">  <span class="nv">topology</span>
+</span></span><span class="line"><span class="cl">  <span class="nv">$$family-tree</span>
+</span></span><span class="line"><span class="cl">  <span class="p">{</span><span class="nv">UUID</span> <span class="p">(</span><span class="nf">fixed-keys-schema</span>
+</span></span><span class="line"><span class="cl">          <span class="p">{</span><span class="ss">:parent1</span> <span class="nv">UUID</span>
+</span></span><span class="line"><span class="cl">           <span class="ss">:parent2</span> <span class="nv">UUID</span>
+</span></span><span class="line"><span class="cl">           <span class="ss">:name</span> <span class="nv">String</span>
+</span></span><span class="line"><span class="cl">           <span class="ss">:children</span> <span class="o">#</span><span class="p">{</span><span class="nv">UUID</span><span class="p">}})})</span></span></span></code></pre></div>
 </div>
 <p>
 Na versão Java:</p>
 <div class="src src-java">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-java" data-lang="java"><span style="display:flex;"><span>topology.<span style="color:#a6e22e">pstate</span>(
-</span></span><span style="display:flex;"><span>  <span style="color:#e6db74">&#34;$$family-tree&#34;</span>,
-</span></span><span style="display:flex;"><span>  PState.<span style="color:#a6e22e">mapSchema</span>(UUID.<span style="color:#a6e22e">class</span>,
-</span></span><span style="display:flex;"><span>                   PState.<span style="color:#a6e22e">fixedKeysSchema</span>(
-</span></span><span style="display:flex;"><span>                     <span style="color:#e6db74">&#34;parent1&#34;</span>, UUID.<span style="color:#a6e22e">class</span>,
-</span></span><span style="display:flex;"><span>                     <span style="color:#e6db74">&#34;parent2&#34;</span>, UUID.<span style="color:#a6e22e">class</span>,
-</span></span><span style="display:flex;"><span>                     <span style="color:#e6db74">&#34;name&#34;</span>, String.<span style="color:#a6e22e">class</span>,
-</span></span><span style="display:flex;"><span>                     <span style="color:#e6db74">&#34;children&#34;</span>, PState.<span style="color:#a6e22e">setSchema</span>(UUID.<span style="color:#a6e22e">class</span>)
-</span></span><span style="display:flex;"><span>                     )));</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-java" data-lang="java"><span class="line"><span class="cl"><span class="n">topology</span><span class="p">.</span><span class="na">pstate</span><span class="p">(</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="s">&#34;$$family-tree&#34;</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">  </span><span class="n">PState</span><span class="p">.</span><span class="na">mapSchema</span><span class="p">(</span><span class="n">UUID</span><span class="p">.</span><span class="na">class</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                   </span><span class="n">PState</span><span class="p">.</span><span class="na">fixedKeysSchema</span><span class="p">(</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                     </span><span class="s">&#34;parent1&#34;</span><span class="p">,</span><span class="w"> </span><span class="n">UUID</span><span class="p">.</span><span class="na">class</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                     </span><span class="s">&#34;parent2&#34;</span><span class="p">,</span><span class="w"> </span><span class="n">UUID</span><span class="p">.</span><span class="na">class</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                     </span><span class="s">&#34;name&#34;</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="p">.</span><span class="na">class</span><span class="p">,</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                     </span><span class="s">&#34;children&#34;</span><span class="p">,</span><span class="w"> </span><span class="n">PState</span><span class="p">.</span><span class="na">setSchema</span><span class="p">(</span><span class="n">UUID</span><span class="p">.</span><span class="na">class</span><span class="p">)</span><span class="w">
+</span></span></span><span class="line"><span class="cl"><span class="w">                     </span><span class="p">)));</span></span></span></code></pre></div>
 </div>
 <p>
 Este <a href="https://docs.redplanetlabs.com/concepts/pstates.html">PState</a> representa uma árvore genealógica onde cada pessoa é identificada por um UUID e possui campos para seus pais, nome e filhos.</p>
@@ -116,21 +116,21 @@ Materializando o PState
 <p>
 Primeiro, definimos o depot que receberá as informações de novas pessoas:</p>
 <div class="src src-clojure">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-clojure" data-lang="clojure"><span style="display:flex;"><span>(<span style="color:#a6e22e">declare-depot</span> setup *people-depot (<span style="color:#a6e22e">hash-by</span> <span style="color:#e6db74">:id</span>))</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-clojure" data-lang="clojure"><span class="line"><span class="cl"><span class="p">(</span><span class="nf">declare-depot</span> <span class="nv">setup</span> <span class="nv">*people-depot</span> <span class="p">(</span><span class="nf">hash-by</span> <span class="ss">:id</span><span class="p">))</span></span></span></code></pre></div>
 </div>
 <p>
 Em seguida, implementamos a topologia para consumir dados do depot e materializar o PState:</p>
 <div class="src src-clojure">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-clojure" data-lang="clojure"><span style="display:flex;"><span>(<span style="color:#a6e22e">&lt;&lt;sources</span> topology
-</span></span><span style="display:flex;"><span>  (<span style="color:#a6e22e">source&gt;</span> *people-depot <span style="color:#e6db74">:&gt;</span> {<span style="color:#e6db74">:keys</span> [*id *parent1 *parent2] <span style="color:#e6db74">:as</span> *person})
-</span></span><span style="display:flex;"><span>  (<span style="color:#a6e22e">local-transform&gt;</span>
-</span></span><span style="display:flex;"><span>    [(<span style="color:#a6e22e">keypath</span> *id) (<span style="color:#a6e22e">termval</span> (dissoc *person <span style="color:#e6db74">:id</span>))]
-</span></span><span style="display:flex;"><span>    $$family-tree)
-</span></span><span style="display:flex;"><span>  (<span style="color:#a6e22e">ops/explode</span> [*parent1 *parent2] <span style="color:#e6db74">:&gt;</span> *parent)
-</span></span><span style="display:flex;"><span>  (<span style="color:#960050;background-color:#1e0010">|</span>hash *parent)
-</span></span><span style="display:flex;"><span>  (<span style="color:#a6e22e">local-transform&gt;</span>
-</span></span><span style="display:flex;"><span>    [(<span style="color:#a6e22e">keypath</span> *parent) <span style="color:#e6db74">:children</span> NONE-ELEM (<span style="color:#a6e22e">termval</span> *id)]
-</span></span><span style="display:flex;"><span>    $$family-tree))</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-clojure" data-lang="clojure"><span class="line"><span class="cl"><span class="p">(</span><span class="nf">&lt;&lt;sources</span> <span class="nv">topology</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="nf">source&gt;</span> <span class="nv">*people-depot</span> <span class="ss">:&gt;</span> <span class="p">{</span><span class="ss">:keys</span> <span class="p">[</span><span class="nv">*id</span> <span class="nv">*parent1</span> <span class="nv">*parent2</span><span class="p">]</span> <span class="ss">:as</span> <span class="nv">*person</span><span class="p">})</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="nf">local-transform&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">[(</span><span class="nf">keypath</span> <span class="nv">*id</span><span class="p">)</span> <span class="p">(</span><span class="nf">termval</span> <span class="p">(</span><span class="nb">dissoc </span><span class="nv">*person</span> <span class="ss">:id</span><span class="p">))]</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">$$family-tree</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="nf">ops/explode</span> <span class="p">[</span><span class="nv">*parent1</span> <span class="nv">*parent2</span><span class="p">]</span> <span class="ss">:&gt;</span> <span class="nv">*parent</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="err">|</span><span class="nv">hash</span> <span class="nv">*parent</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="nf">local-transform&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">[(</span><span class="nf">keypath</span> <span class="nv">*parent</span><span class="p">)</span> <span class="ss">:children</span> <span class="nv">NONE-ELEM</span> <span class="p">(</span><span class="nf">termval</span> <span class="nv">*id</span><span class="p">)]</span>
+</span></span><span class="line"><span class="cl">    <span class="nv">$$family-tree</span><span class="p">))</span></span></span></code></pre></div>
 </div>
 <p>
 Este código:</p>
@@ -160,20 +160,20 @@ Consulta de Ancestrais
 <p>
 A implementação usa um loop que examina iterativamente os pais de um nó:</p>
 <div class="src src-clojure">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-clojure" data-lang="clojure"><span style="display:flex;"><span>(<span style="color:#a6e22e">&lt;&lt;query-topology</span> topologies <span style="color:#e6db74">&#34;ancestors&#34;</span>
-</span></span><span style="display:flex;"><span>  [*start-id *num-generations <span style="color:#e6db74">:&gt;</span> *ancestors]
-</span></span><span style="display:flex;"><span>  (<span style="color:#a6e22e">loop&lt;-</span> [*id *start-id
-</span></span><span style="display:flex;"><span>           *generation <span style="color:#ae81ff">0</span>
-</span></span><span style="display:flex;"><span>           <span style="color:#e6db74">:&gt;</span> *ancestor]
-</span></span><span style="display:flex;"><span>    (<span style="color:#a6e22e">filter&gt;</span> (&lt;= *generation *num-generations))
-</span></span><span style="display:flex;"><span>    (<span style="color:#960050;background-color:#1e0010">|</span>hash *id)
-</span></span><span style="display:flex;"><span>    (<span style="color:#a6e22e">local-select&gt;</span> [(<span style="color:#a6e22e">keypath</span> *id) (<span style="color:#a6e22e">multi-path</span> <span style="color:#e6db74">:parent1</span> <span style="color:#e6db74">:parent2</span>) some?]
-</span></span><span style="display:flex;"><span>      $$family-tree
-</span></span><span style="display:flex;"><span>      <span style="color:#e6db74">:&gt;</span> *parent)
-</span></span><span style="display:flex;"><span>    (<span style="color:#e6db74">:&gt;</span> *parent)
-</span></span><span style="display:flex;"><span>    (<span style="color:#a6e22e">continue&gt;</span> *parent (inc *generation)))
-</span></span><span style="display:flex;"><span>  (<span style="color:#960050;background-color:#1e0010">|</span>origin)
-</span></span><span style="display:flex;"><span>  (<span style="color:#a6e22e">aggs/+set-agg</span> *ancestor <span style="color:#e6db74">:&gt;</span> *ancestors))</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-clojure" data-lang="clojure"><span class="line"><span class="cl"><span class="p">(</span><span class="nf">&lt;&lt;query-topology</span> <span class="nv">topologies</span> <span class="s">&#34;ancestors&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">[</span><span class="nv">*start-id</span> <span class="nv">*num-generations</span> <span class="ss">:&gt;</span> <span class="nv">*ancestors</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="nf">loop&lt;-</span> <span class="p">[</span><span class="nv">*id</span> <span class="nv">*start-id</span>
+</span></span><span class="line"><span class="cl">           <span class="nv">*generation</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">           <span class="ss">:&gt;</span> <span class="nv">*ancestor</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="nf">filter&gt;</span> <span class="p">(</span><span class="nb">&lt;= </span><span class="nv">*generation</span> <span class="nv">*num-generations</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="err">|</span><span class="nv">hash</span> <span class="nv">*id</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="nf">local-select&gt;</span> <span class="p">[(</span><span class="nf">keypath</span> <span class="nv">*id</span><span class="p">)</span> <span class="p">(</span><span class="nf">multi-path</span> <span class="ss">:parent1</span> <span class="ss">:parent2</span><span class="p">)</span> <span class="nv">some?</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">      <span class="nv">$$family-tree</span>
+</span></span><span class="line"><span class="cl">      <span class="ss">:&gt;</span> <span class="nv">*parent</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="ss">:&gt;</span> <span class="nv">*parent</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="nf">continue&gt;</span> <span class="nv">*parent</span> <span class="p">(</span><span class="nb">inc </span><span class="nv">*generation</span><span class="p">)))</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="err">|</span><span class="nv">origin</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="nf">aggs/+set-agg</span> <span class="nv">*ancestor</span> <span class="ss">:&gt;</span> <span class="nv">*ancestors</span><span class="p">))</span></span></span></code></pre></div>
 </div>
 <p>
 Esta implementação:</p>
@@ -194,18 +194,18 @@ Consulta de Contagem de Descendentes
 <p>
 Similar à consulta anterior, mas percorre os filhos e conta por geração:</p>
 <div class="src src-clojure">
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-clojure" data-lang="clojure"><span style="display:flex;"><span>(<span style="color:#a6e22e">&lt;&lt;query-topology</span> topologies <span style="color:#e6db74">&#34;descendants-count&#34;</span>
-</span></span><span style="display:flex;"><span>  [*start-id *num-generations <span style="color:#e6db74">:&gt;</span> *result]
-</span></span><span style="display:flex;"><span>  (<span style="color:#a6e22e">loop&lt;-</span> [*id *start-id
-</span></span><span style="display:flex;"><span>           *generation <span style="color:#ae81ff">0</span> <span style="color:#e6db74">:&gt;</span> *gen *count]
-</span></span><span style="display:flex;"><span>    (<span style="color:#a6e22e">filter&gt;</span> (&lt; *generation *num-generations))
-</span></span><span style="display:flex;"><span>    (<span style="color:#960050;background-color:#1e0010">|</span>hash *id)
-</span></span><span style="display:flex;"><span>    (<span style="color:#a6e22e">local-select&gt;</span> [(<span style="color:#a6e22e">keypath</span> *id) <span style="color:#e6db74">:children</span>] $$family-tree <span style="color:#e6db74">:&gt;</span> *children)
-</span></span><span style="display:flex;"><span>    (<span style="color:#e6db74">:&gt;</span> *generation (count *children))
-</span></span><span style="display:flex;"><span>    (<span style="color:#a6e22e">ops/explode</span> *children <span style="color:#e6db74">:&gt;</span> *c)
-</span></span><span style="display:flex;"><span>    (<span style="color:#a6e22e">continue&gt;</span> *c (inc *generation)))
-</span></span><span style="display:flex;"><span>  (<span style="color:#960050;background-color:#1e0010">|</span>origin)
-</span></span><span style="display:flex;"><span>  (<span style="color:#a6e22e">+compound</span> {*gen (<span style="color:#a6e22e">aggs/+sum</span> *count)} <span style="color:#e6db74">:&gt;</span> *result))</span></span></code></pre></div>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-clojure" data-lang="clojure"><span class="line"><span class="cl"><span class="p">(</span><span class="nf">&lt;&lt;query-topology</span> <span class="nv">topologies</span> <span class="s">&#34;descendants-count&#34;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">[</span><span class="nv">*start-id</span> <span class="nv">*num-generations</span> <span class="ss">:&gt;</span> <span class="nv">*result</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="nf">loop&lt;-</span> <span class="p">[</span><span class="nv">*id</span> <span class="nv">*start-id</span>
+</span></span><span class="line"><span class="cl">           <span class="nv">*generation</span> <span class="mi">0</span> <span class="ss">:&gt;</span> <span class="nv">*gen</span> <span class="nv">*count</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="nf">filter&gt;</span> <span class="p">(</span><span class="nb">&lt; </span><span class="nv">*generation</span> <span class="nv">*num-generations</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="err">|</span><span class="nv">hash</span> <span class="nv">*id</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="nf">local-select&gt;</span> <span class="p">[(</span><span class="nf">keypath</span> <span class="nv">*id</span><span class="p">)</span> <span class="ss">:children</span><span class="p">]</span> <span class="nv">$$family-tree</span> <span class="ss">:&gt;</span> <span class="nv">*children</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="ss">:&gt;</span> <span class="nv">*generation</span> <span class="p">(</span><span class="nb">count </span><span class="nv">*children</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="nf">ops/explode</span> <span class="nv">*children</span> <span class="ss">:&gt;</span> <span class="nv">*c</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="nf">continue&gt;</span> <span class="nv">*c</span> <span class="p">(</span><span class="nb">inc </span><span class="nv">*generation</span><span class="p">)))</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="err">|</span><span class="nv">origin</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="nf">+compound</span> <span class="p">{</span><span class="nv">*gen</span> <span class="p">(</span><span class="nf">aggs/+sum</span> <span class="nv">*count</span><span class="p">)}</span> <span class="ss">:&gt;</span> <span class="nv">*result</span><span class="p">))</span></span></span></code></pre></div>
 </div>
 <p>
 O resultado é um mapa de números de geração para contagens de descendentes.</p>
@@ -229,7 +229,7 @@ A arquitetura baseada em eventos do Rama proporciona:</p>
 <li>Capacidade de recomputar PStates (útil em caso de bugs que corrompam dados)</li>
 <li>Tolerância a falhas superior a abordagens alternativas</li>
 </ul>
-<p>O Rama é gratuito para clusters de produção com até dois nós e pode ser baixado no site da Red Planet Labs. </p>
+<p>O Rama é gratuito para clusters de produção com até dois nós e pode ser baixado no site da Red Planet Labs.</p>
 </div>
 </div>
 </div>
@@ -243,6 +243,7 @@ A arquitetura baseada em eventos do Rama proporciona:</p>
     <footer>
     </footer>
   </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
 <script src="/vendor/prism/prism-core.min.js"></script>
 <script src="/vendor/prism/prism-clike.min.js"></script>
 <script src="/vendor/prism/prism-bash.min.js"></script>
@@ -259,8 +260,29 @@ A arquitetura baseada em eventos do Rama proporciona:</p>
 <script src="/vendor/prism/prism-sql.min.js"></script>
 <script src="/vendor/prism/prism-autoloader.min.js"></script>
   <script src="/vendor/mermaid/mermaid.min.js"></script>
-  <script>mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#bb86fc', primaryTextColor: '#e8e0f0', primaryBorderColor: '#6b58a0', lineColor: '#c792ea', secondaryColor: '#2d1b4e', tertiaryColor: '#362258' } });</script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
   <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
   <script>
     var btn = document.querySelector('.back-to-top');
     window.addEventListener('scroll', function() {

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-<head>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:,">
-  <title>O predicado que ninguém chamou — scovl</title>
+  <title>O predicado que ninguém chamou — lobovit</title>
   <link rel="stylesheet" href="/css/main.css?v=3">
   <link rel="stylesheet" href="/vendor/fonts/fonts.css">
   <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
@@ -13,7 +13,7 @@
   <div class="frame">
     <header>
       <nav>
-        <a class="site-title" href="https://scovl.github.io/">scovl</a>
+        <a class="site-title" href="http://localhost:1313/">lobovit</a>
         <span class="nav-links">
           <a href="/page/about/">about</a>
           <a href="/page/contact/">contact</a>
@@ -33,7 +33,7 @@
 <p>
 O <a href="https://tree-sitter.github.io/tree-sitter/">Tree-sitter</a> é uma biblioteca que produz árvores sintáticas concretas para dezenas de linguagens. Diferente de um parser tradicional que produz AST, tree-sitter foi projetado para editores de código e ele é incremental, tolerante a erros e capaz de reanalisar um arquivo em milissegundos após uma edição. O <a href="https://neovim.io/">Neovim</a>, <a href="https://atom.io/">Atom</a> (RIP), <a href="https://zed.dev/">Zed</a> e o próprio <a href="https://github.blog/engineering/user-experience/remodeling-the-github-code-editor/">GitHub</a> usam tree-sitter para syntax highlighting, folding e code navigation.</p>
 <p>
-O <a href="https://github.com/scovl/ollanta">Ollanta</a> usa tree-sitter de uma forma diferente: para <em>análise estática</em>. Em vez de realçar sintaxe, ele usa S-expressions para detectar padrões problemáticos no código-fonte:</p>
+O <a href="https://github.com/lobovit/ollanta">Ollanta</a> usa tree-sitter de uma forma diferente: para <em>análise estática</em>. Em vez de realçar sintaxe, ele usa S-expressions para detectar padrões problemáticos no código-fonte:</p>
 <div class="src src-scheme">
 <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-scheme" data-lang="scheme"><span class="line"><span class="cl"><span class="c1">;; Encontra chamadas a eval() em JavaScript</span>
 </span></span><span class="line"><span class="cl"><span class="p">(</span><span class="nf">call_expression</span>
@@ -371,7 +371,7 @@ O que aprendi com isso
 </ul>
 <p>A linha <code>m = cursor.FilterPredicates(m, f.Source)</code> não é complexa. Não envolve algoritmos, estruturas de dados ou padrões de concorrência. É uma chamada de método que faltava e que, por faltar, transformou um analisador estático em um gerador de ruídos.</p>
 <blockquote>
-<p>Este artigo foi escrito a partir de uma correção real no repositório do <a href="https://github.com/scovl/Ollanta">Ollanta</a>. O diff completo está em <a href="https://github.com/scovl/Ollanta/commit/0a73aa2ec05c1dfa7c7a0b0e750cb05c841cb4f9"><a href="https://github.com/scovl/Ollanta/commit/0a73aa2ec05c1dfa7c7a0b0e750cb05c841cb4f9">https://github.com/scovl/Ollanta/commit/0a73aa2ec05c1dfa7c7a0b0e750cb05c841cb4f9</a></a>.</p>
+<p>Este artigo foi escrito a partir de uma correção real no repositório do <a href="https://github.com/lobovit/Ollanta">Ollanta</a>. O diff completo está em <a href="https://github.com/lobovit/Ollanta/commit/0a73aa2ec05c1dfa7c7a0b0e750cb05c841cb4f9"><a href="https://github.com/lobovit/Ollanta/commit/0a73aa2ec05c1dfa7c7a0b0e750cb05c841cb4f9">https://github.com/lobovit/Ollanta/commit/0a73aa2ec05c1dfa7c7a0b0e750cb05c841cb4f9</a></a>.</p>
 </blockquote>
 </div>
 </div>

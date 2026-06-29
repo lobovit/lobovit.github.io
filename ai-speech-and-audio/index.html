@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>06 - AI Engineering from scratch: do microfone ao assistente de voz — lobovit</title>
+  <link rel="stylesheet" href="/css/main.css?v=3">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
+    <main>
+      
+<article>
+  <header>
+    <h1>06 - AI Engineering from scratch: do microfone ao assistente de voz</h1>
+    <p class="meta"><time>2026-05-27</time> · <span class="tag">AI</span><span class="tag">speech</span><span class="tag">audio</span><span class="tag">asr</span><span class="tag">tts</span><span class="tag">whisper</span><span class="tag">voice-cloning</span><span class="tag">python</span></p>
+  </header>
+  <div class="content">
+    
+<p>
+Som é vibração no ar. Um microfone converte vibração em voltagem. Um conversor analógico-digital amostra essa voltagem 16 mil vezes por segundo. Cada amostra é um float32. Um segundo de áudio são 16 mil floats. Cinco minutos, 4.8 milhões. E em cima dessa montanha de números a gente constrói modelos que transcrevem reuniões, clonam vozes, geram música e conduzem conversas em tempo real.</p>
+<p>
+Processamento de fala e áudio é o campo que fecha o ciclo da comunicação humano-máquina. Texto vai pra voz (TTS). Voz vai pra texto (ASR). E o ciclo inteiro roda em 200 milissegundos pra simular uma conversa natural. Este artigo percorre 17 tópicos, dos fundamentos de áudio digital até assistentes de voz com interrupção em tempo real. A stack é Python pra experimentação e Go pra servir modelos em produção.</p>
+<div id="outline-container-headline-1" class="outline-2">
+<h2 id="headline-1">
+Como som vira número
+</h2>
+<div id="outline-text-headline-1" class="outline-text-2">
+<p>
+Antes de qualquer rede neural, o áudio precisa virar tensor. E a conversão tem mais etapas do que parece.</p>
+<div id="outline-container-headline-2" class="outline-3">
+<h3 id="headline-2">
+Do microfone ao waveform
+</h3>
+<div id="outline-text-headline-2" class="outline-text-3">
+<p>
+O teorema de Nyquist-Shannon diz que você precisa amostrar pelo menos duas vezes a frequência máxima que quer capturar. Voz humana tem conteúdo relevante até ~8 kHz, então 16 kHz é o padrão pra ASR (Speech Recognition). Música vai até 20 kHz, então 44.1 kHz ou 48 kHz é o padrão. O erro número um em áudio: passar um arquivo de 44.1 kHz estéreo pra um modelo que espera 16 kHz mono. O modelo não reclama. Ele produz lixo silenciosamente.</p>
+<p>
+O waveform é um array 1D de floats entre -1 e 1. Cada valor é a pressão sonora naquele instante. Mas redes neurais não entendem waveform diretamente: as frequências importam mais que as amplitudes instantâneas. Você precisa revelar a estrutura de frequência.</p>
+<p>
+A Short-Time Fourier Transform (STFT) resolve isso. Fatia o áudio em janelas sobrepostas de ~25 ms (400 amostras a 16 kHz), aplica uma janela de Hann pra suavizar as bordas (evitando artefatos espectrais), e roda a FFT em cada fatia. O resultado é um espectrograma: uma matriz tempo x frequência onde cada célula é a energia naquela frequência naquele instante.</p>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-3">
+<h3 id="headline-3">
+Mel spectrogram: a representação universal de 2026
+</h3>
+<div id="outline-text-headline-3" class="outline-text-3">
+<p>
+O espectrograma bruto tem muitas frequências (201 bins pra FFT de 400 pontos). Mas o ouvido humano não percebe frequências linearmente: a diferença entre 100 Hz e 200 Hz é gritante; entre 5100 Hz e 5200 Hz é imperceptível. A escala mel modela isso: <code>m = 2595 * log10(1 + f/700)</code>. Filtros triangulares espaçados na escala mel, aplicados sobre o espectrograma, produzem 80 bandas perceptualmente relevantes. Depois, log-compressão (porque ouvido é logarítmico) e você tem um log-mel spectrogram.</p>
+<p>
+Todo modelo de fala em 2026 usa 80 log-mels a 10 ms de hop como entrada. Whisper, Parakeet, SeamlessM4T, todos. MFCCs (Discrete Cosine Transform sobre log-mels) ainda são usados pra keyword spotting em dispositivos minúsculos, mas são o passado. O futuro é log-mel.</p>
+<div class="src src-python">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">torchaudio</span>
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="nn">torchaudio.transforms</span> <span class="k">as</span> <span class="nn">T</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">waveform</span><span class="p">,</span> <span class="n">sr</span> <span class="o">=</span> <span class="n">torchaudio</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&#34;audio.wav&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="k">if</span> <span class="n">sr</span> <span class="o">!=</span> <span class="mi">16000</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">    <span class="n">waveform</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">Resample</span><span class="p">(</span><span class="n">sr</span><span class="p">,</span> <span class="mi">16000</span><span class="p">)(</span><span class="n">waveform</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="n">mel</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">MelSpectrogram</span><span class="p">(</span><span class="n">sample_rate</span><span class="o">=</span><span class="mi">16000</span><span class="p">,</span> <span class="n">n_mels</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">n_fft</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span> <span class="n">hop_length</span><span class="o">=</span><span class="mi">160</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="n">log_mel</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">mel</span><span class="p">(</span><span class="n">waveform</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-6</span><span class="p">)</span>  <span class="c1"># (80, T)</span></span></span></code></pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-2">
+<h2 id="headline-4">
+Entendendo o som
+</h2>
+<div id="outline-text-headline-4" class="outline-text-2">
+<p>
+Com o áudio convertido em tensor, as mesmas técnicas de visão e NLP se aplicam. Um espectrograma é uma imagem de 1 canal. Uma sequência de frames mel é uma sequência temporal.</p>
+<div id="outline-container-headline-5" class="outline-3">
+<h3 id="headline-5">
+Classificação de áudio
+</h3>
+<div id="outline-text-headline-5" class="outline-text-3">
+<p>
+Classificar eventos sonoros (&#34;latido de cachorro&#34;, &#34;sirene&#34;, &#34;vidro quebrando&#34;) segue o mesmo arco das CNNs pra imagem. Baseline dos anos 90: k-NN sobre estatísticas de MFCC. Depois, CNN 2D sobre log-mels (trate o espectrograma como imagem). Depois, Audio Spectrogram Transformer (ViT sobre patches do mel). E em 2026, BEATs: um backbone pré-treinado com aprendizado auto-supervisionado (Bidirectional Encoder representation from Audio Transformers), fine-tunado com 1-10% de dados rotulados.</p>
+<p>
+O SpecAugment é o data augmentation padrão: mascare faixas de tempo e faixas de frequência aleatoriamente durante o treino. O modelo aprende a ser robusto a oclusões. Mixup interpola duas amostras de áudio e seus rótulos, forçando fronteiras de decisão suaves. O problema real é desbalanceamento de classes: &#34;silêncio&#34; aparece 100x mais que &#34;vidro quebrando&#34;. Sem balanced sampling, o modelo aprende a dizer &#34;silêncio&#34; pra tudo.</p>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-3">
+<h3 id="headline-6">
+ASR: de áudio pra texto
+</h3>
+<div id="outline-text-headline-6" class="outline-text-3">
+<p>
+Automatic Speech Recognition (ASR) enfrenta um problema de alinhamento: a entrada tem T frames de áudio (milhares), a saída tem N tokens de texto (dezenas). T != N. Três paradigmas resolvem isso.</p>
+<p>
+CTC (Connectionist Temporal Classification) produz uma distribuição de probabilidade por frame sobre caracteres + um token especial &#34;blank&#34;. Todos os alinhamentos possíveis que colapsam no texto alvo são marginalizados. A decodificação greedy remove blanks e merge repetições. Beam search melhora ~2% de WER explorando múltiplos caminhos em paralelo.</p>
+<p>
+RNN-T adiciona um predictor network: além do encoder acústico, uma rede separada modela a probabilidade de transição entre tokens. Isso permite streaming (não precisa esperar o áudio inteiro) e integra um modelo de língua implícito.</p>
+<p>
+Attention encoder-decoder (Whisper, o padrão de 2026) trata ASR como tradução de áudio pra texto. O encoder comprime log-mels em hidden states. O decoder gera tokens autoregressivamente com cross-attention sobre os estados do encoder. Qualidade offline imbatível (~1.6% WER no inglês com Whisper large-v3-turbo), mas não é streamable (precisa de 30 segundos de contexto).</p>
+<p>
+Word Error Rate (WER) é a métrica universal: <code>(substituições + deleções + inserções) / palavras de referência</code>. WER de 5% é aceitável; 1-2% é estado da arte; acima de 20% é frustrante pro usuário.</p>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-3">
+<h3 id="headline-7">
+Whisper: a arquitetura que domina 2026
+</h3>
+<div id="outline-text-headline-7" class="outline-text-3">
+<p>
+Whisper é um transformer encoder-decoder treinado em 680 mil horas de áudio multilíngue fracamente supervisionado. A entrada são 80 canais log-mel em janelas de 30 segundos. Tokens especiais de prompt (<code>&lt;|en|&gt;&lt;|transcribe|&gt;</code>) controlam tarefa e idioma sem fine-tuning.</p>
+<p>
+O encoder tem 32 camadas transformer com convolução inicial pra downsampling (reduz a dimensão temporal em 2x). O decoder é causal com cross-attention. O vocabulário BPE de 51k tokens inclui tokens de timestamp pra alinhamento temporal. A variante Turbo usa 4 camadas no decoder (8x mais rápido) com perda mínima de qualidade.</p>
+<p>
+Fine-tuning com LoRA: adicione adaptadores de baixo posto (rank 8-16) nas projeções de query e value do encoder. Congele o decoder. Com menos de 10 horas de dados, congele o encoder também. Ajuste ~0.3% dos parâmetros. O resultado é adaptação de domínio (jargão médico, sotaque regional, terminologia técnica) por uma fração do custo de treino completo.</p>
+</div>
+</div>
+<div id="outline-container-headline-8" class="outline-3">
+<h3 id="headline-8">
+Reconhecimento de locutor
+</h3>
+<div id="outline-text-headline-8" class="outline-text-3">
+<p>
+&#34;Quem falou?&#34; é resolvido com embeddings. O ECAPA-TDNN (1D convolutions + squeeze-excitation + attention pooling, 15 milhões de parâmetros) produz um embedding de 192 dimensões que captura as características únicas da voz: trato vocal, pitch médio, padrão de formantes. Treinado com Additive Angular Margin softmax no VoxCeleb (7 mil celebridades, 1 milhão de utterances).</p>
+<p>
+O enrollment grava 3-5 amostras limpas do locutor-alvo e tira a média dos embeddings. A verificação compara o embedding de uma nova amostra com o embedding enrolado via similaridade de cosseno. Um threshold calibrado decide &#34;mesma pessoa&#34; ou &#34;pessoa diferente&#34;. EER (Equal Error Rate, onde falsos positivos = falsos negativos) é a métrica universal. O estado da arte em 2026 é 0.39% de EER.</p>
+<p>
+Channel mismatch mata a performance silenciosamente. Microfone do laptop vs celular vs sala de reunião produzem embeddings diferentes pra mesma pessoa. Sempre calibre thresholds no domínio-alvo. L2-normalize embeddings antes da similaridade de cosseno.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-2">
+<h2 id="headline-9">
+Gerando voz e música
+</h2>
+<div id="outline-text-headline-9" class="outline-text-2">
+<p>
+Se ASR é áudio para texto, TTS é texto para áudio. E o arco de maturidade é similar: pipelines de três estágios foram colapsando em modelos ponta a ponta.</p>
+<div id="outline-container-headline-10" class="outline-3">
+<h3 id="headline-10">
+Text-to-Speech (TTS)
+</h3>
+<div id="outline-text-headline-10" class="outline-text-3">
+<p>
+O pipeline clássico: frontend de texto (converte grafemas em fonemas: &#34;casa&#34; = <em>k</em> <em>a</em> <em>z</em> <em>a</em>), modelo acústico (texto para mel spectrogram), vocoder (mel para waveform). Tacotron 2 (2017) foi o baseline autoregressivo. FastSpeech 2 (2020) removeu a autoregressão com um duration predictor explícito, ficando 10x mais rápido. VITS (2021) unificou encoder, flow normalizador e vocoder GAN num único modelo end-to-end.</p>
+<p>
+Em 2026, dois modelos dominam. F5-TTS (flow-matching diffusion) atinge 3.95 UTMOS de naturalidade com capacidade de clonagem zero-shot. Kokoro (82 milhões de parâmetros) roda em CPU em tempo real com latência de primeira amostra de 100 ms. O vocoder padrão é HiFi-GAN: uma GAN que upsampleia o mel spectrogram pra waveform em múltiplos estágios, cada um refinando a resolução.</p>
+<p>
+Sempre normalize o texto antes de fonemizar (expanda números, abreviações, símbolos). Sempre clipe a saída do vocoder em [-1, 1]. Sempre avalie com MOS (escala 1-5 de naturalidade) + SECS (similaridade de timbre com o locutor original) + WER de round-trip (transcreva o áudio gerado e compare com o texto original).</p>
+</div>
+</div>
+<div id="outline-container-headline-11" class="outline-3">
+<h3 id="headline-11">
+Clonagem e conversão de voz
+</h3>
+<div id="outline-text-headline-11" class="outline-text-3">
+<p>
+Clonagem zero-shot: 5 segundos de áudio de referência, um speaker encoder extrai um embedding, o decoder de TTS condiciona nesse embedding + texto. O F5-TTS atinge SECS 0.72 (onde 1.0 é identidade perfeita e 0.3 é aleatório).</p>
+<p>
+Voice conversion troca o locutor mantendo o conteúdo: &#34;minhas palavras na sua voz&#34;. Três abordagens. Recognition-synthesis: um ASR extrai conteúdo fonético (PPGs, Posterior Probability Grams), um vocoder condicionado no locutor-alvo ressintetiza. KNN-VC: substituição não-paramétrica de frames por vizinhos mais próximos num banco de amostras do locutor-alvo (zero treino, qualidade surpreendente). Neural codec TTS (VALL-E): discretize áudio em tokens via EnCodec, modele a sequência com um transformer condicionado no embedding do locutor.</p>
+<p>
+Em 2026, clonagem de voz é legalmente regulada (EU AI Act, California AB 2905). É obrigatório embutir watermark em todo áudio sintético e implementar gates de consentimento. AudioSeal (Meta) é o padrão de watermarking (veja a seção de anti-spoofing).</p>
+</div>
+</div>
+<div id="outline-container-headline-12" class="outline-3">
+<h3 id="headline-12">
+Geração de música
+</h3>
+<div id="outline-text-headline-12" class="outline-text-3">
+<p>
+Música generativa explodiu entre 2023 e 2026. Modelos abertos (MusicGen, ACE-Step) lidam com instrumentais. Modelos fechados (Suno v5, Udio v4) produzem músicas completas com vocais.</p>
+<p>
+MusicGen prevê tokens de codec de áudio (EnCodec, 4 codebooks a 32 kHz) autoregressivamente, condicionado em embeddings de texto ou melodia. O condicionamento de melodia usa chromagram (intensidade das 12 notas musicais ao longo do tempo) pra preservar a melodia enquanto muda o timbre.</p>
+<p>
+ACE-Step XL (4 bilhões de parâmetros, Apache 2.0) é o modelo aberto de 2026 pra geração de música completa. O acordo Warner Music de $500M em 2025 redefiniu as restrições legais: todo modelo generativo de música precisa embarcar watermark e manifesto de proveniência.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-13" class="outline-2">
+<h2 id="headline-13">
+Áudio além da fala
+</h2>
+<div id="outline-text-headline-13" class="outline-text-2">
+<p>
+As fronteiras de 2026 expandem áudio pra domínios que vão além de transcrever e sintetizar.</p>
+<div id="outline-container-headline-14" class="outline-3">
+<h3 id="headline-14">
+Audio-Language Models (LALMs)
+</h3>
+<div id="outline-text-headline-14" class="outline-text-3">
+<p>
+Um modelo único que raciocina sobre fala, som e música e responde perguntas em texto livre. A arquitetura é um template de três componentes: encoder de áudio (Whisper, BEATs, CLAP, WavLM, frequentemente combinados) + projetor MLP pequeno + LLM congelado ou com LoRA (Llama, Qwen, Gemma).</p>
+<p>
+O treino tem três estágios: (1) alinhamento (congele encoder e LLM, treine só o projetor em ASR e captioning), (2) pré-treino (descongele tudo, dados intercalados de imagem-texto-áudio), (3) instruction tuning (pares curados de áudio + pergunta + resposta). O Qwen2.5-Omni-7B (Apache 2.0) empata com GPT-4o Audio no benchmark MMAU-Pro (~52% de acurácia). Comparação multi-áudio (dados dois sons, qual é mais agudo? qual tem mais reverberação?) permanece perto de acerto aleatório (~22%) pra todos os modelos em 2026.</p>
+</div>
+</div>
+<div id="outline-container-headline-15" class="outline-3">
+<h3 id="headline-15">
+Codecs neurais de áudio
+</h3>
+<div id="outline-text-headline-15" class="outline-text-3">
+<p>
+Discretizar áudio contínuo em tokens discretos é o que permite usar transformers (projetados pra linguagem) pra gerar fala e música. Residual Vector Quantization (RVQ) é a técnica: uma cascata de codebooks pequenos (1024 códigos cada), cada um quantizando o resíduo do anterior. O vocabulário efetivo é de bilhões com apenas 8 codebooks.</p>
+<p>
+Quatro codecs dominam. EnCodec (Meta, baseline a 75 Hz), DAC (highest fidelity a 86 Hz), SNAC (multi-escala hierárquico, 12 Hz coarse), Mimi (Kyutai, 12.5 Hz, o divisor de águas de 2026). O insight do Mimi: codebook 0 é destilado do WavLM e codifica conteúdo semântico (o que está sendo dito); codebooks 1-7 codificam timbre e prosódia (como está sendo dito). Essa separação semântico-acústica permite clonagem zero-shot: um modelo texto para semântico gera o conteúdo, um modelo semântico para acústico condicionado no locutor gera o timbre.</p>
+</div>
+</div>
+<div id="outline-container-headline-16" class="outline-3">
+<h3 id="headline-16">
+Processamento em tempo real
+</h3>
+<div id="outline-text-headline-16" class="outline-text-3">
+<p>
+O orçamento de latência pra conversa natural é 230 ms (tempo de tomada de turno humano). Cada etapa do pipeline compete por esse orçamento: microfone para VAD (30 ms), ASR (150 ms), LLM primeiro token (100 ms), TTS primeiro chunk (100 ms), alto-falante (20 ms). O total passa de 400 ms. A solução é pipeline assíncrono com resultados parciais. O ASR emite transcrições parciais conforme o áudio chega. O LLM começa a gerar antes do ASR terminar. O TTS começa a sintetizar depois de ~20 tokens do LLM. O resultado é overlapping: o assistente começa a falar enquanto ainda está &#34;pensando&#34; no resto da resposta.</p>
+<p>
+Ring buffer (fila circular lock-free a cada 20 ms / 320 amostras) é a estrutura de dados central. Silero VAD 4.0 (1 ms por frame, 87.7% TPR a 5% FPR) é o gate que decide quando começa e termina a fala. WebRTC com Opus codec + AEC3 (echo cancellation) é o transporte. O GIL do Python é o gargalo número um: threads de áudio competem com o loop de inferência. Em produção, isole captura de áudio em processos separados.</p>
+</div>
+</div>
+<div id="outline-container-headline-17" class="outline-3">
+<h3 id="headline-17">
+Pipeline de assistente de voz (capstone)
+</h3>
+<div id="outline-text-headline-17" class="outline-text-3">
+<p>
+A integração completa: microfone, VAD, STT, LLM + tools, TTS, alto-falante, com tratamento de interrupção. Sete estágios frouxamente acoplados via filas assíncronas. O VAD (Silero, threshold 0.5, fala mínima 250 ms, hangover de silêncio 500 ms) delimita os turnos do usuário. Whisper ou Parakeet transcreve. O LLM gera tokens com tool calling (timer, clima, calendário). O TTS começa após ~20 tokens do LLM.</p>
+<p>
+O target é &lt;800 ms de time-to-first-audio-byte num laptop CPU. A stack comercial de 2026: LiveKit (transporte WebRTC) + Deepgram (ASR) + GPT-4o (LLM) + Cartesia (TTS), atingindo 350-500 ms. O Moshi (veja abaixo) oferece alternativa full-duplex a 200 ms.</p>
+</div>
+</div>
+<div id="outline-container-headline-18" class="outline-3">
+<h3 id="headline-18">
+Streaming speech-to-speech (Moshi, Hibiki)
+</h3>
+<div id="outline-text-headline-18" class="outline-text-3">
+<p>
+Abandone o pipeline ASR, LLM, TTS. Um único modelo full-duplex que ouve e fala simultaneamente a 200 ms de latência. O Moshi (7 bilhões de parâmetros, Temporal Transformer) consome dois streams paralelos de codec Mimi a 12.5 Hz x 8 codebooks: o áudio do usuário e o próprio áudio que o Moshi está gerando. A cada 80 ms, o modelo emite três saídas: o próximo token de texto (&#34;inner monologue&#34;, forçando o modelo a modelar linguagem junto com acústica), depois os próximos 8 tokens de codebook de áudio via um transformer raso de depth.</p>
+<p>
+O inner monologue é o truque. Forçar o modelo a gerar texto intermediário antes do áudio melhora coerência semântica. Os dois streams de áudio paralelos permitem back-channeling (&#34;mhm&#34;, &#34;aham&#34;) e interrupções naturais em tempo real. Moshi ganha em latência e naturalidade de tomada de turno, mas perde em tool calling. Hibiki aplica a mesma arquitetura pra tradução de fala streaming. Pra enterprise (onde tools são necessárias), o pipeline ainda reina.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-19" class="outline-2">
+<h2 id="headline-19">
+Segurança e avaliação
+</h2>
+<div id="outline-text-headline-19" class="outline-text-2">
+<div id="outline-container-headline-20" class="outline-3">
+<h3 id="headline-20">
+Anti-spoofing e watermarking
+</h3>
+<div id="outline-text-headline-20" class="outline-text-3">
+<p>
+Clonagem de voz chegou antes das defesas. Em 2026, dois sistemas são obrigatórios em produção. Um detector de deepfake (AASIST, graph-attention sobre features espectrais, 7.23% EER no benchmark ASVspoof 5). E um watermark imperceptível embutido em todo áudio sintético (AudioSeal, Meta). AudioSeal usa um gerador e detector treinados conjuntamente. O gerador embute um sinal de ~-40 dB (inaudível) com payload de 16 bits (modelo ID, timestamp, user ID). O detector recupera o sinal frame a frame. Sobrevive a compressão MP3/AAC e variação de mais ou menos 10% de velocidade. Roda 485x mais rápido que tempo real.</p>
+<p>
+Pitch shift é o ataque universal que enfraquece todas as marcas d&#39;água. Combine detecção com watermarking, nunca um só. C2PA (manifestos criptográficos de proveniência) sozinho é bypassable com re-encode. Sempre combine os três: watermark + detector + C2PA.</p>
+</div>
+</div>
+<div id="outline-container-headline-21" class="outline-3">
+<h3 id="headline-21">
+VAD e tomada de turno
+</h3>
+<div id="outline-text-headline-21" class="outline-text-3">
+<p>
+Toda interação por voz depende de duas decisões a cada 20 ms: tem fala? (VAD) e o usuário terminou? (detecção de fim de turno). A cascata de três níveis: gate de energia (mais barato, threshold -40 dBFS, filtra silêncio absoluto), Silero VAD (1M parâmetros, ~1 ms por frame, decide fala/não-fala com rede neural), detector semântico de turno (MLP sobre palavras recentes + entonação, distingue pausa de meio de frase de fim de turno).</p>
+<p>
+A máquina de estados: speaking, silence (com hangover configurável de 500-800 ms), pre-roll buffer (300 ms pra evitar cortar a primeira palavra). O Kyutai flush trick: quando o VAD detecta fim de fala, envia um sinal de flush pro ASR streaming, cortando o look-ahead delay de 500 ms pra ~125 ms. Nunca deploye VAD só de energia. Calibre o hangover com usuários reais (idosos fazem pausas mais longas; crianças emendam tudo).</p>
+</div>
+</div>
+<div id="outline-container-headline-22" class="outline-3">
+<h3 id="headline-22">
+Métricas de avaliação
+</h3>
+<div id="outline-text-headline-22" class="outline-text-3">
+<p>
+Cada tarefa de áudio tem uma métrica primária canônica que precisa vir acompanhada de métricas secundárias e breakdowns por slice. ASR: WER/CER normalizado (jiwer, lowercase + remover pontuação) + RTFx (fator de tempo real: 0.5 = processa 2 segundos de áudio por segundo). TTS: UTMOS (naturalidade) + SECS (similaridade de timbre) + WER de round-trip. Speaker verification: EER + minDCF. Diarização: DER (Diarization Error Rate). Classificação de áudio: mAP + recall por classe. LALMs: MMAU-Pro com categorias reportadas separadamente (speech, sound, music, multi-audio). Streaming: latência P50, P95, P99.</p>
+<p>
+Normalize antes de pontuar (lowercase, strip pontuação). Reporte distribuições, não médias. Execute um benchmark canônico público ao lado de conjuntos internos de validação. WER agregado pode esconder 30% de WER em fala com sotaque.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-23" class="outline-2">
+<h2 id="headline-23">
+O que levar disso
+</h2>
+<div id="outline-text-headline-23" class="outline-text-2">
+<p>
+Fala e áudio em 2026 é um campo com um arco claro:</p>
+<ul>
+<li>Som vira tensor via STFT e log-mel spectrogram a 10 ms de hop. Errar o sample rate quebra tudo.</li>
+<li>ASR é CTC ou Whisper. Whisper large-v3-turbo atinge 1.6% WER em inglês. Fine-tune com LoRA em 0.3% dos parâmetros.</li>
+<li>Speaker recognition extrai embeddings de 192 dimensões com ECAPA-TDNN. EER de 0.39% é estado da arte.</li>
+<li>TTS vai de Tacotron 2 a F5-TTS (flow-matching) e Kokoro (82M, CPU real-time). Vocoder padrão é HiFi-GAN.</li>
+<li>Clonagem zero-shot com 5 segundos de referência. Regulada em 2026: watermark obrigatório.</li>
+<li>Música generativa: MusicGen (aberto) a Suno v5 (comercial). ACE-Step XL é o modelo aberto de 2026.</li>
+<li>LALMs respondem perguntas sobre áudio. Qwen2.5-Omni-7B empata com GPT-4o Audio.</li>
+<li>Codecs neurais (Mimi, 12.5 Hz) discretizam áudio pra transformers. Separação semântico-acústica permite clonagem.</li>
+<li>Tempo real exige pipeline assíncrono com resultados parciais. Orçamento: 230 ms pra soar natural.</li>
+<li>Moshi é o modelo full-duplex de 2026: ouve e fala simultaneamente a 200 ms.</li>
+<li>Anti-spoofing (AASIST) + watermarking (AudioSeal) + C2PA são obrigatórios em produção.</li>
+<li>Métricas normalizadas, distribuições, breakdowns por slice. WER agregado mente.</li>
+</ul>
+<p>Do microfone ao assistente de voz, o caminho passa por cada uma dessas ideias. E cada uma delas é, no fundo, som virando tensor, tensor virando texto, texto virando voz, voz virando conversa.</p>
+</div>
+</div>
+
+  </div>
+</article>
+
+    </main>
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
+</body>
+</html>

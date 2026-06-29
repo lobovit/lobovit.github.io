@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Probability on lobovit</title>
+    <link>https://lobovit.github.io/tags/probability/</link>
+    <description>Recent content in Probability on lobovit</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Mon, 25 May 2026 14:00:00 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/probability/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>02 - AI Engineering from scratch: a matemática que a IA realmente usa</title>
+      <link>https://lobovit.github.io/ai-math-foundations/</link>
+      <pubDate>Mon, 25 May 2026 14:00:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/ai-math-foundations/</guid>
+      <description>&lt;p&gt;&#xA;Matemática assusta. E matemática pra IA assusta mais ainda, porque você ouve termos como &amp;#34;decomposição em valores singulares&amp;#34;, &amp;#34;retropropagação via regra da cadeia&amp;#34; e &amp;#34;amostragem de Metropolis-Hastings&amp;#34; antes mesmo de ter certeza do que é um autovalor. A sensação é de que você precisa de um doutorado antes de importar o PyTorch.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Não precisa.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;A matemática que a IA usa de verdade cabe em quatro grandes blocos. Álgebra linear (tudo é tensor, tudo é multiplicação de matriz). Cálculo e otimização (como o modelo aprende, como a loss desce o morro). Probabilidade e estatística (como o modelo lida com incerteza, como você avalia se ele presta). E um quarto bloco de tópicos aplicados que conectam esses três ao mundo real: teoria da informação, redução de dimensionalidade, estabilidade numérica, Fourier.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

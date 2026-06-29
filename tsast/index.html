@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>AST e CST: Análise Estrutural de Código — lobovit</title>
+  <link rel="stylesheet" href="/css/main.css?v=3">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
+    <main>
+      
+<article>
+  <header>
+    <h1>AST e CST: Análise Estrutural de Código</h1>
+    <p class="meta"><time>2023-03-19</time> · <span class="tag">javascript</span><span class="tag">typescript</span><span class="tag">ast</span><span class="tag">cst</span><span class="tag">análise de código</span><span class="tag">desenvolvimento</span></p>
+  </header>
+  <div class="content">
+    
+<div id="outline-container-headline-1" class="outline-3">
+<h3 id="headline-1">
+AST/CST ao invés de Regex para Análise de Código
+</h3>
+<div id="outline-text-headline-1" class="outline-text-3">
+<p>
+E aí, devs! Beleza? 😄</p>
+<p>
+Quantas vezes você já precisou &#34;entender&#34; um código JavaScript ou TypeScript? Seja pra validar um padrão, extrair informações específicas (tipo nomes de funções, variáveis usadas), para parsear um arquivo de configuração, ou até mesmo para criar aquela ferramenta de <em>lint</em> customizada pro seu time? Aposto que a primeira ideia que veio na cabeça foi: &#34;<a href="https://pt.wikipedia.org/wiki/Express%C3%A3o_regular">Regex</a>!&#34;.</p>
+<p>
+<a href="https://pt.wikipedia.org/wiki/Express%C3%A3o_regular">Regex</a> é uma ferramenta poderosa, sem dúvida. Um verdadeiro canivete suíço pra buscar padrões em texto. Mas, quando o &#34;texto&#34; é <em>código fonte</em>, a história muda. Usar Regex pra parsear código é como tentar construir uma casa usando apenas uma fita métrica: você consegue medir as coisas, identificar alguns padrões, mas não tem as ferramentas adequadas para entender a estrutura completa ou lidar com todas as complexidades. A chance de perder detalhes importantes ou interpretar algo incorretamente é <em>enorme</em>.</p>
+<p>
+É aí que entram os verdadeiros super-heróis dessa história: a <em>AST (Abstract Syntax Tree)</em> e a <em>CST (Concrete Syntax Tree)</em>. Neste artigo, vamos botar a mão na massa com <a href="https://www.typescriptlang.org/">TypeScript</a> pra ver como extrair essas árvores e por que essa abordagem é muito mais <em>segura, confiável e profissional</em> do que usar expressões regulares (regex).</p>
+<div id="outline-container-headline-2" class="outline-4">
+<h4 id="headline-2">
+O Problema com Regex pra Código
+</h4>
+<div id="outline-text-headline-2" class="outline-text-4">
+<p>
+Imagina que você quer encontrar todas as chamadas da função <code>fetch</code> no seu código JS. Um Regex tipo <code>/fetch\(/g</code> parece resolver, né? Mas e se tiver: <code>// fetch()</code> (um comentário), <code>const meuFetch = fetch; meuFetch()</code> (uma chamada indireta), <code>console.log(&#34;vou chamar o fetch()&#34;);</code> (dentro de uma string), ou <code>objeto.fetch()</code> (um método com o mesmo nome)? Seu Regex simples já começa a falhar ou a precisar de tantas condições e <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions/Lookbehind_and_Lookahead">lookarounds</a> que vira um monstro ilegível e difícil de manter.</p>
+<p>
+Código tem <em>estrutura</em> e <em>semântica</em>, coisas que Regex ignora completamente. Ele só vê texto plano, sem compreender o contexto ou significado real das expressões. Por exemplo, abaixo temos um código que usa fetch de forma indireta, algo que seria extremamente difícil de capturar corretamente apenas com expressões regulares:</p>
+<div class="src src-javascript">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-javascript" data-lang="javascript"><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">meuFetch</span> <span class="o">=</span> <span class="nx">fetch</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="nx">meuFetch</span><span class="p">(</span><span class="s2">&#34;https://api.example.com/data&#34;</span><span class="p">);</span></span></span></code></pre></div>
+</div>
+<p>
+Se usarmos um Regex para encontrar todas as chamadas de <code>fetch</code>, ele vai falhar, porque o <code>meuFetch</code> é uma função e não uma string. Já com a AST, podemos encontrar todas as chamadas de <code>fetch</code> de forma precisa, independente de como elas estão escritas. Por exemplo, podemos usar a AST para encontrar todas as chamadas de <code>fetch</code> global, ignorando comentários e strings:</p>
+<div class="src src-javascript">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-javascript" data-lang="javascript"><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">fetchCalls</span> <span class="o">=</span> <span class="nx">ast</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">filter</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="nx">node</span><span class="p">)</span> <span class="p">=&gt;</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">node</span><span class="p">.</span><span class="nx">type</span> <span class="o">===</span> <span class="s1">&#39;CallExpression&#39;</span> <span class="o">&amp;&amp;</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">node</span><span class="p">.</span><span class="nx">callee</span><span class="p">.</span><span class="nx">type</span> <span class="o">===</span> <span class="s1">&#39;Identifier&#39;</span> <span class="o">&amp;&amp;</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">node</span><span class="p">.</span><span class="nx">callee</span><span class="p">.</span><span class="nx">name</span> <span class="o">===</span> <span class="s1">&#39;fetch&#39;</span>
+</span></span><span class="line"><span class="cl"><span class="p">);</span></span></span></code></pre></div>
+</div>
+<p>
+Percebe como a AST nos dá uma visão muito mais clara e precisa do código? Ela nos permite entender o significado do código, independente de como ele está escrito.</p>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-4">
+<h4 id="headline-3">
+Entendendo as Árvores: CST e AST
+</h4>
+<div id="outline-text-headline-3" class="outline-text-4">
+<p>
+Quando um compilador ou interpretador lê seu código, ele não vê só um monte de caracteres. Ele transforma isso em uma estrutura organizada que representa a lógica e a sintaxe do programa. É aqui que entram a CST e a AST.</p>
+<ol>
+<li><em>CST (Concrete Syntax Tree / Árvore de Sintaxe Concreta):</em> Pense nela como a árvore genealógica <em>completa</em> do seu código. Ela representa <em>exatamente</em> o que foi escrito, incluindo todos os detalhes sintáticos como parênteses, vírgulas, pontos e vírgulas, espaços em branco e comentários. Ela é &#34;concreta&#34; porque mapeia diretamente a gramática da linguagem. É útil pra ferramentas que precisam preservar a formatação original ou analisar detalhes muito específicos da sintaxe.</li>
+<li><em>AST (Abstract Syntax Tree / Árvore de Sintaxe Abstrata):</em> A AST é uma versão mais &#34;resumida&#34; e focada no <em>significado</em> do código. Ela abstrai os detalhes puramente sintáticos (como parênteses desnecessários ou a maioria dos delimitadores) e se concentra na estrutura lógica: quais são as declarações, expressões, operadores, chamadas de função, etc. É a estrutura mais usada pra análise estática, <em>linting</em>, transpilação (como o próprio TypeScript faz com JS) e refatoração.</li>
+</ol>
+<p><em>Analogia Rápida:</em> Pense numa frase: &#34;O gato (preto) sentou no tapete.&#34;.
+/   A <em>CST* seria como a análise sintática completa da escola: Sujeito (&#34;O gato (preto)&#34;), Predicado (&#34;sentou no tapete&#34;), com detalhes sobre o artigo &#34;O&#34;, o substantivo &#34;gato&#34;, o adjetivo entre parênteses &#34;(preto)&#34;, o verbo &#34;sentou&#34;, a preposição &#34;no&#34;, o artigo &#34;o&#34; (contraído) e o substantivo &#34;tapete&#34;. Inclui os parênteses!
+/   A /AST</em> focaria na ação principal: Quem? (&#34;gato&#34;, talvez com um atributo &#34;cor: preto&#34;). Fez o quê? (&#34;sentou&#34;). Onde? (&#34;tapete&#34;). Ela captura a essência sem se prender /exatamente* a como foi escrito (os parênteses poderiam sumir se não mudassem o significado essencial).</p>
+<blockquote>
+<p><em>Nota:</em> Na prática, muitas ferramentas que dizem gerar &#34;AST&#34; podem, na verdade, gerar árvores que contêm alguns detalhes da CST, dependendo da implementação e do objetivo. A distinção é importante conceitualmente, mas no dia a dia, você provavelmente vai interagir mais diretamente com a AST.</p>
+</blockquote>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-4">
+<h4 id="headline-4">
+Mão na Massa: Extraindo a AST com TypeScript
+</h4>
+<div id="outline-text-headline-4" class="outline-text-4">
+<p>
+Vamos usar uma biblioteca popular e robusta pra parsear código JavaScript/TypeScript e gerar uma AST compatível com o padrão <a href="https://github.com/estree/estree">ESTree</a>, que é amplamente usado no ecossistema JavaScript (ESLint, Babel, Prettier, etc.). A <code>@typescript-eslint/typescript-estree</code> é perfeita pra isso, pois usa o próprio compilador do TypeScript por baixo dos panos.</p>
+<p>
+<em>1. Preparando o Ambiente:</em></p>
+<p>
+Primeiro, crie um projetinho <a href="https://nodejs.org/">Node.js</a> básico (se ainda não tiver um) e instale as dependências:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">mkdir meu-analisador-ast
+</span></span><span class="line"><span class="cl"><span class="nb">cd</span> meu-analisador-ast
+</span></span><span class="line"><span class="cl">npm init -y
+</span></span><span class="line"><span class="cl">npm install typescript @types/node @typescript-eslint/typescript-estree --save-dev
+</span></span><span class="line"><span class="cl"><span class="c1"># Ou usando yarn:</span>
+</span></span><span class="line"><span class="cl"><span class="c1"># yarn add typescript @types/node @typescript-eslint/typescript-estree --dev</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1"># Crie um arquivo tsconfig.json básico (se não tiver)</span>
+</span></span><span class="line"><span class="cl">npx tsc --init</span></span></code></pre></div>
+</div>
+<p>
+<em>2. O Código que Vamos Analisar:</em></p>
+<p>
+Crie um arquivo <code>exemplo.js</code> (sim, podemos analisar JS puro também!) com o seguinte conteúdo:</p>
+<div class="src src-javascript">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-javascript" data-lang="javascript"><span class="line"><span class="cl"><span class="c1">// exemplo.js
+</span></span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">MENSAGEM</span> <span class="o">=</span> <span class="s2">&#34;Olá, AST!&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">function</span> <span class="nx">saudacao</span><span class="p">(</span><span class="nx">nome</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`</span><span class="si">${</span><span class="nx">MENSAGEM</span><span class="si">}</span><span class="sb"> Bem-vindo, </span><span class="si">${</span><span class="nx">nome</span><span class="si">}</span><span class="sb">!`</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="kr">const</span> <span class="nx">valor</span> <span class="o">=</span> <span class="nx">calcula</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="nx">valor</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">function</span> <span class="nx">calcula</span><span class="p">(</span><span class="nx">a</span><span class="p">,</span> <span class="nx">b</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// Uma função simples
+</span></span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="nx">a</span> <span class="o">+</span> <span class="nx">b</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nx">saudacao</span><span class="p">(</span><span class="s2">&#34;Mundo&#34;</span><span class="p">);</span></span></span></code></pre></div>
+</div>
+<p>
+<em>3. O Script TypeScript para Extrair a AST:</em></p>
+<p>
+Crie um arquivo <code>analisador.ts</code>:</p>
+<div class="src src-typescript">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-typescript" data-lang="typescript"><span class="line"><span class="cl"><span class="kr">import</span> <span class="o">*</span> <span class="kr">as</span> <span class="nx">parser</span> <span class="kr">from</span> <span class="s1">&#39;@typescript-eslint/typescript-estree&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="kr">import</span> <span class="o">*</span> <span class="kr">as</span> <span class="nx">fs</span> <span class="kr">from</span> <span class="s1">&#39;fs&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="kr">import</span> <span class="o">*</span> <span class="kr">as</span> <span class="nx">path</span> <span class="kr">from</span> <span class="s1">&#39;path&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Caminho para o arquivo que queremos analisar
+</span></span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">filePath</span> <span class="o">=</span> <span class="nx">path</span><span class="p">.</span><span class="nx">join</span><span class="p">(</span><span class="nx">__dirname</span><span class="p">,</span> <span class="s1">&#39;exemplo.js&#39;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">code</span> <span class="o">=</span> <span class="nx">fs</span><span class="p">.</span><span class="nx">readFileSync</span><span class="p">(</span><span class="nx">filePath</span><span class="p">,</span> <span class="s1">&#39;utf-8&#39;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;Código a ser analisado:&#39;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;-----------------------&#39;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">code</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;-----------------------\n&#39;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="k">try</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// O pulo do gato: parsear o código!
+</span></span></span><span class="line"><span class="cl">  <span class="kr">const</span> <span class="nx">ast</span> <span class="o">=</span> <span class="nx">parser</span><span class="p">.</span><span class="nx">parse</span><span class="p">(</span><span class="nx">code</span><span class="p">,</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Opções importantes:
+</span></span></span><span class="line"><span class="cl">    <span class="nx">loc</span>: <span class="kt">true</span><span class="p">,</span> <span class="c1">// Pega informações de linha/coluna (location)
+</span></span></span><span class="line"><span class="cl">    <span class="nx">range</span>: <span class="kt">true</span><span class="p">,</span> <span class="c1">// Pega o índice de início/fim de cada nó no código fonte
+</span></span></span><span class="line"><span class="cl">    <span class="nx">comment</span>: <span class="kt">true</span><span class="p">,</span> <span class="c1">// Inclui comentários na árvore (útil!)
+</span></span></span><span class="line"><span class="cl">    <span class="nx">tokens</span>: <span class="kt">true</span><span class="p">,</span> <span class="c1">// Inclui a lista de tokens (às vezes útil, mais próximo da CST)
+</span></span></span><span class="line"><span class="cl">    <span class="nx">jsx</span>: <span class="kt">false</span><span class="p">,</span> <span class="c1">// Se seu código tivesse JSX, mude pra true
+</span></span></span><span class="line"><span class="cl">    <span class="nx">ecmaVersion</span><span class="o">:</span> <span class="s1">&#39;latest&#39;</span><span class="p">,</span> <span class="c1">// Use a versão mais recente do ECMAScript
+</span></span></span><span class="line"><span class="cl">    <span class="nx">sourceType</span><span class="o">:</span> <span class="s1">&#39;module&#39;</span><span class="p">,</span> <span class="c1">// Ou &#39;script&#39;, dependendo do seu código
+</span></span></span><span class="line"><span class="cl">  <span class="p">});</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;AST (Abstract Syntax Tree) gerada:&#39;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// Usamos JSON.stringify para visualizar a estrutura da árvore.
+</span></span></span><span class="line"><span class="cl">  <span class="c1">// O segundo argumento (null) é o &#39;replacer&#39;, e o terceiro (2) é a indentação.
+</span></span></span><span class="line"><span class="cl">  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">ast</span><span class="p">,</span> <span class="kc">null</span><span class="p">,</span> <span class="mi">2</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="c1">// --- Exemplo de como usar a AST ---
+</span></span></span><span class="line"><span class="cl">  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;\n--- Análise Simples da AST ---&#39;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="c1">// Encontrar todas as declarações de função
+</span></span></span><span class="line"><span class="cl">  <span class="kr">const</span> <span class="nx">funcoesDeclaradas</span> <span class="o">=</span> <span class="nx">ast</span><span class="p">.</span><span class="nx">body</span><span class="p">.</span><span class="nx">filter</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="p">(</span><span class="nx">node</span><span class="p">)</span><span class="o">:</span> <span class="nx">node</span> <span class="k">is</span> <span class="nx">parser</span><span class="p">.</span><span class="nx">AST</span><span class="p">.</span><span class="nx">FunctionDeclaration</span> <span class="o">=&gt;</span>
+</span></span><span class="line"><span class="cl">      <span class="nx">node</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="s1">&#39;FunctionDeclaration&#39;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`Funções declaradas (</span><span class="si">${</span><span class="nx">funcoesDeclaradas</span><span class="p">.</span><span class="nx">length</span><span class="si">}</span><span class="sb">):`</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">funcoesDeclaradas</span><span class="p">.</span><span class="nx">forEach</span><span class="p">(</span><span class="nx">func</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`- Nome: </span><span class="si">${</span><span class="nx">func</span><span class="p">.</span><span class="nx">id</span><span class="o">?</span><span class="p">.</span><span class="nx">name</span><span class="si">}</span><span class="sb">`</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`  - Parâmetros: </span><span class="si">${</span><span class="nx">func</span><span class="p">.</span><span class="nx">params</span><span class="p">.</span><span class="nx">map</span><span class="p">((</span><span class="nx">p</span>: <span class="kt">any</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="nx">p</span><span class="p">.</span><span class="nx">name</span><span class="p">).</span><span class="nx">join</span><span class="p">(</span><span class="s1">&#39;, &#39;</span><span class="p">)</span><span class="si">}</span><span class="sb">`</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Poderíamos analisar o corpo (func.body) aqui dentro recursivamente!
+</span></span></span><span class="line"><span class="cl">  <span class="p">});</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="c1">// Encontrar todas as chamadas de console.log
+</span></span></span><span class="line"><span class="cl">  <span class="kd">let</span> <span class="nx">chamadasConsoleLog</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">parser</span><span class="p">.</span><span class="nx">AST_NODE_TYPES</span><span class="p">.</span><span class="nx">CallExpression</span>
+</span></span><span class="line"><span class="cl">  <span class="kd">function</span> <span class="nx">encontrarChamadasConsole</span><span class="p">(</span><span class="nx">node</span>: <span class="kt">parser.AST.Node</span> <span class="o">|</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">node</span><span class="p">)</span> <span class="k">return</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">      <span class="k">if</span> <span class="p">(</span><span class="nx">node</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">parser</span><span class="p">.</span><span class="nx">AST_NODE_TYPES</span><span class="p">.</span><span class="nx">CallExpression</span> <span class="o">&amp;&amp;</span>
+</span></span><span class="line"><span class="cl">          <span class="nx">node</span><span class="p">.</span><span class="nx">callee</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">parser</span><span class="p">.</span><span class="nx">AST_NODE_TYPES</span><span class="p">.</span><span class="nx">MemberExpression</span> <span class="o">&amp;&amp;</span>
+</span></span><span class="line"><span class="cl">          <span class="nx">node</span><span class="p">.</span><span class="nx">callee</span><span class="p">.</span><span class="kt">object</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">parser</span><span class="p">.</span><span class="nx">AST_NODE_TYPES</span><span class="p">.</span><span class="nx">Identifier</span> <span class="o">&amp;&amp;</span>
+</span></span><span class="line"><span class="cl">          <span class="nx">node</span><span class="p">.</span><span class="nx">callee</span><span class="p">.</span><span class="kt">object</span><span class="p">.</span><span class="nx">name</span> <span class="o">===</span> <span class="s1">&#39;console&#39;</span> <span class="o">&amp;&amp;</span>
+</span></span><span class="line"><span class="cl">          <span class="nx">node</span><span class="p">.</span><span class="nx">callee</span><span class="p">.</span><span class="nx">property</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="nx">parser</span><span class="p">.</span><span class="nx">AST_NODE_TYPES</span><span class="p">.</span><span class="nx">Identifier</span> <span class="o">&amp;&amp;</span>
+</span></span><span class="line"><span class="cl">          <span class="nx">node</span><span class="p">.</span><span class="nx">callee</span><span class="p">.</span><span class="nx">property</span><span class="p">.</span><span class="nx">name</span> <span class="o">===</span> <span class="s1">&#39;log&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">      <span class="p">{</span>
+</span></span><span class="line"><span class="cl">          <span class="nx">chamadasConsoleLog</span><span class="o">++</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">          <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`</span><span class="err">\</span><span class="sb">nEncontrada chamada console.log na linha </span><span class="si">${</span><span class="nx">node</span><span class="p">.</span><span class="nx">loc</span><span class="p">.</span><span class="nx">start</span><span class="p">.</span><span class="nx">line</span><span class="si">}</span><span class="sb">:`</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">          <span class="c1">// Poderia extrair os argumentos: node.arguments
+</span></span></span><span class="line"><span class="cl">      <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">      <span class="c1">// Navega recursivamente pelos filhos do nó atual
+</span></span></span><span class="line"><span class="cl">      <span class="k">for</span> <span class="p">(</span><span class="kr">const</span> <span class="nx">key</span> <span class="k">in</span> <span class="nx">node</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">          <span class="k">if</span> <span class="p">(</span><span class="nx">node</span><span class="p">.</span><span class="nx">hasOwnProperty</span><span class="p">(</span><span class="nx">key</span><span class="p">))</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">              <span class="kr">const</span> <span class="nx">child</span> <span class="o">=</span> <span class="p">(</span><span class="nx">node</span> <span class="kr">as</span> <span class="kt">any</span><span class="p">)[</span><span class="nx">key</span><span class="p">];</span>
+</span></span><span class="line"><span class="cl">              <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">child</span> <span class="o">===</span> <span class="s1">&#39;object&#39;</span> <span class="o">&amp;&amp;</span> <span class="nx">child</span> <span class="o">!==</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                  <span class="k">if</span> <span class="p">(</span><span class="nb">Array</span><span class="p">.</span><span class="nx">isArray</span><span class="p">(</span><span class="nx">child</span><span class="p">))</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                      <span class="nx">child</span><span class="p">.</span><span class="nx">forEach</span><span class="p">(</span><span class="nx">item</span> <span class="o">=&gt;</span> <span class="nx">encontrarChamadasConsole</span><span class="p">(</span><span class="nx">item</span><span class="p">));</span>
+</span></span><span class="line"><span class="cl">                  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                      <span class="nx">encontrarChamadasConsole</span><span class="p">(</span><span class="nx">child</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">                  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">              <span class="p">}</span>
+</span></span><span class="line"><span class="cl">          <span class="p">}</span>
+</span></span><span class="line"><span class="cl">      <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="c1">// Inicia a busca a partir da raiz da AST
+</span></span></span><span class="line"><span class="cl">  <span class="nx">encontrarChamadasConsole</span><span class="p">(</span><span class="nx">ast</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`</span><span class="err">\</span><span class="sb">nTotal de chamadas a console.log encontradas: </span><span class="si">${</span><span class="nx">chamadasConsoleLog</span><span class="si">}</span><span class="sb">`</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="p">}</span> <span class="k">catch</span> <span class="p">(</span><span class="nx">error</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">console</span><span class="p">.</span><span class="nx">error</span><span class="p">(</span><span class="s1">&#39;Erro ao parsear o código:&#39;</span><span class="p">,</span> <span class="nx">error</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
+</div>
+<p>
+<em>4. Executando:</em></p>
+<p>
+Compile e execute o script:</p>
+<div class="src src-bash">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">npx tsc <span class="c1"># Compila analisador.ts para analisador.js</span>
+</span></span><span class="line"><span class="cl">node analisador.js</span></span></code></pre></div>
+</div>
+<p>
+<em>Saída Esperada:</em></p>
+<p>
+Você verá o código original, seguido por um JSON <em>gigante</em> representando a AST. Pode parecer assustador no começo, mas explore a estrutura! Você verá nós como:</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-2">
+<h2 id="headline-5">
+<code>Program</code>: O nó raiz.
+</h2>
+</div>
+<div id="outline-container-headline-6" class="outline-2">
+<h2 id="headline-6">
+<code>VariableDeclaration</code>: Para <code>const MENSAGEM = ...</code>
+</h2>
+<div id="outline-text-headline-6" class="outline-text-2">
+<ul>
+<li><code>kind</code>: &#34;const&#34;</li>
+<li><code>declarations</code>: Um array com os detalhes da variável (<code>id</code> com nome &#34;MENSAGEM&#34;, <code>init</code> com o valor &#34;Olá, AST!&#34;).</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-2">
+<h2 id="headline-7">
+<code>FunctionDeclaration</code>: Para as funções <code>saudacao</code> e <code>calcula</code>.
+</h2>
+<div id="outline-text-headline-7" class="outline-text-2">
+<ul>
+<li><code>id</code>: Com o nome da função.</li>
+<li><code>params</code>: Array com os parâmetros.</li>
+<li><code>body</code>: Um <code>BlockStatement</code> contendo o corpo da função.</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-headline-8" class="outline-2">
+<h2 id="headline-8">
+<code>ExpressionStatement</code>: Para a chamada <code>saudacao(&#34;Mundo&#34;);</code>.
+</h2>
+<div id="outline-text-headline-8" class="outline-text-2">
+<ul>
+<li>
+<p><code>expression</code>: Um <code>CallExpression</code> representando a chamada da função.</p>
+<ul>
+<li><code>callee</code>: O <code>Identifier</code> &#34;saudacao&#34;.</li>
+<li><code>arguments</code>: Array com os argumentos passados (&#34;Mundo&#34;).</li>
+</ul>
+</li>
+</ul>
+<p>Depois do JSON da AST, você verá a análise simples que fizemos, mostrando os nomes das funções declaradas e a contagem de chamadas a <code>console.log</code>. Percebeu como conseguimos informações precisas e estruturadas? Poderíamos facilmente:</p>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-2">
+<h2 id="headline-9">
+Verificar se <code>MENSAGEM</code> é realmente uma constante (<code>kind === &#39;const&#39;</code>).
+</h2>
+</div>
+<div id="outline-container-headline-10" class="outline-2">
+<h2 id="headline-10">
+Listar todos os parâmetros de <code>saudacao</code>.
+</h2>
+</div>
+<div id="outline-container-headline-11" class="outline-2">
+<h2 id="headline-11">
+Analisar o corpo de <code>calcula</code> pra ver quais operações ela faz (<code>BinaryExpression</code> com operador <code>+</code>).
+</h2>
+</div>
+<div id="outline-container-headline-12" class="outline-2">
+<h2 id="headline-12">
+Verificar se <code>calcula</code> está sendo chamada dentro de <code>saudacao</code>.
+</h2>
+<div id="outline-text-headline-12" class="outline-text-2">
+<p>
+Tentar fazer isso com Regex seria… uma aventura dolorosa e muitas vezes insegura.</p>
+<hr>
+<p>
+<em>O Cenário: Extraindo Configurações Simples de uma AST</em></p>
+<p>
+Imagine que temos um arquivo de configuração em TypeScript e queremos usar a AST para <em>extrair todas as propriedades de nível superior que tenham valores literais simples</em> (string, número, booleano, null). Queremos ignorar propriedades com valores complexos (objetos, arrays, chamadas de função, etc.) ou chaves que não sejam identificadores simples.</p>
+<p>
+<em>Nosso Código de Exemplo (<code>config.ts</code>):</em></p>
+<div class="src src-typescript">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-typescript" data-lang="typescript"><span class="line"><span class="cl"><span class="c1">// config.ts
+</span></span></span><span class="line"><span class="cl"><span class="kr">export</span> <span class="kr">const</span> <span class="nx">settings</span> <span class="o">=</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">apiKey</span><span class="o">:</span> <span class="s2">&#34;xyz123abc&#34;</span><span class="p">,</span> <span class="c1">// Queremos: { apiKey: &#34;xyz123abc&#34; }
+</span></span></span><span class="line"><span class="cl">  <span class="nx">timeout</span>: <span class="kt">5000</span><span class="p">,</span>       <span class="c1">// Queremos: { timeout: 5000 }
+</span></span></span><span class="line"><span class="cl">  <span class="nx">isEnabled</span>: <span class="kt">true</span><span class="p">,</span>    <span class="c1">// Queremos: { isEnabled: true }
+</span></span></span><span class="line"><span class="cl">  <span class="nx">retryCount</span>: <span class="kt">null</span><span class="p">,</span>    <span class="c1">// Queremos: { retryCount: null }
+</span></span></span><span class="line"><span class="cl">  <span class="s2">&#34;complex-key&#34;</span><span class="o">:</span> <span class="s2">&#34;value&#34;</span><span class="p">,</span> <span class="c1">// Ignorar: Chave não é identificador simples
+</span></span></span><span class="line"><span class="cl">  <span class="nx">nested</span><span class="o">:</span> <span class="p">{</span>           <span class="c1">// Ignorar: Valor é um objeto (não literal simples)
+</span></span></span><span class="line"><span class="cl">    <span class="nx">level</span>: <span class="kt">2</span>
+</span></span><span class="line"><span class="cl">  <span class="p">},</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">features</span><span class="o">:</span> <span class="p">[</span><span class="s2">&#34;A&#34;</span><span class="p">,</span> <span class="s2">&#34;B&#34;</span><span class="p">],</span> <span class="c1">// Ignorar: Valor é um array
+</span></span></span><span class="line"><span class="cl">  <span class="nx">getEndpoint</span><span class="o">:</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="nx">process</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">ENDPOINT</span><span class="p">,</span> <span class="c1">// Ignorar: Valor é uma função
+</span></span></span><span class="line"><span class="cl"><span class="p">};</span></span></span></code></pre></div>
+</div>
+<p>
+<em>O Objetivo:</em> A partir da AST gerada para o objeto <code>settings</code>, queremos obter o seguinte resultado:</p>
+<div class="src src-javascript">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-javascript" data-lang="javascript"><span class="line"><span class="cl"><span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">apiKey</span><span class="o">:</span> <span class="s2">&#34;xyz123abc&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">timeout</span><span class="o">:</span> <span class="mi">5000</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">isEnabled</span><span class="o">:</span> <span class="kc">true</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">retryCount</span><span class="o">:</span> <span class="kc">null</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
+</div>
+<p>
+<em>Ferramentas (Simuladas):</em></p>
+<p>
+Para focar na lógica FP vs. OO, vamos <em>simular</em> que já temos a AST. Usaremos interfaces TypeScript simplificadas para representar os nós relevantes. Na prática, você usaria uma biblioteca como <code>@typescript-eslint/typescript-estree</code>, <code>@babel/parser</code> ou a API do compilador TypeScript.</p>
+<p>
+<em>Interfaces da AST (Simplificadas):</em></p>
+<div class="src src-typescript">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-typescript" data-lang="typescript"><span class="line"><span class="cl"><span class="c1">// Tipos base para nós da AST
+</span></span></span><span class="line"><span class="cl"><span class="kr">type</span> <span class="nx">NodeType</span> <span class="o">=</span> <span class="s2">&#34;ObjectExpression&#34;</span> <span class="o">|</span> <span class="s2">&#34;Property&#34;</span> <span class="o">|</span> <span class="s2">&#34;Identifier&#34;</span> <span class="o">|</span> <span class="s2">&#34;Literal&#34;</span> <span class="o">|</span> <span class="s2">&#34;ArrayExpression&#34;</span> <span class="o">|</span> <span class="s2">&#34;ArrowFunctionExpression&#34;</span> <span class="o">|</span> <span class="s2">&#34;ObjectExpressionNode&#34;</span><span class="p">;</span> <span class="c1">// Adicionado ObjectExpressionNode para clareza
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kr">interface</span> <span class="nx">Node</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="kr">type</span><span class="o">:</span> <span class="nx">NodeType</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// Em uma AST real, teríamos loc, range, etc.
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Representa um nome, como a chave de uma propriedade ou nome de variável
+</span></span></span><span class="line"><span class="cl"><span class="kr">interface</span> <span class="nx">Identifier</span> <span class="kr">extends</span> <span class="nx">Node</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Identifier&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">name</span>: <span class="kt">string</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Representa um valor literal (string, número, booleano, null)
+</span></span></span><span class="line"><span class="cl"><span class="kr">interface</span> <span class="nx">Literal</span> <span class="kr">extends</span> <span class="nx">Node</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Literal&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">value</span>: <span class="kt">string</span> <span class="o">|</span> <span class="kt">number</span> <span class="o">|</span> <span class="kr">boolean</span> <span class="o">|</span> <span class="kc">null</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">raw?</span>: <span class="kt">string</span><span class="p">;</span> <span class="c1">// O texto original do literal
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Representa uma chave de propriedade que é uma string literal (ex: &#34;complex-key&#34;)
+</span></span></span><span class="line"><span class="cl"><span class="kr">interface</span> <span class="nx">StringLiteralKey</span> <span class="kr">extends</span> <span class="nx">Node</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Literal&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">value</span>: <span class="kt">string</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Representa outros tipos de nós que podem ser valores (vamos ignorá-los)
+</span></span></span><span class="line"><span class="cl"><span class="kr">interface</span> <span class="nx">ObjectExpressionNode</span> <span class="kr">extends</span> <span class="nx">Node</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;ObjectExpressionNode&#34;</span><span class="p">;</span> <span class="nx">properties</span>: <span class="kt">Property</span><span class="p">[];</span> <span class="p">}</span> <span class="c1">// Exemplo para aninhado
+</span></span></span><span class="line"><span class="cl"><span class="kr">interface</span> <span class="nx">ArrayExpression</span> <span class="kr">extends</span> <span class="nx">Node</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;ArrayExpression&#34;</span><span class="p">;</span> <span class="nx">elements</span>: <span class="kt">Node</span><span class="p">[];</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="kr">interface</span> <span class="nx">ArrowFunctionExpression</span> <span class="kr">extends</span> <span class="nx">Node</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;ArrowFunctionExpression&#34;</span><span class="p">;</span> <span class="nx">params</span>: <span class="kt">any</span><span class="p">[];</span> <span class="nx">body</span>: <span class="kt">any</span><span class="p">;</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Representa uma propriedade dentro de um objeto literal (chave: valor)
+</span></span></span><span class="line"><span class="cl"><span class="kr">interface</span> <span class="nx">Property</span> <span class="kr">extends</span> <span class="nx">Node</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Property&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">key</span>: <span class="kt">Identifier</span> <span class="o">|</span> <span class="nx">StringLiteralKey</span><span class="p">;</span> <span class="c1">// A chave pode ser um nome ou uma string literal
+</span></span></span><span class="line"><span class="cl">  <span class="nx">value</span>: <span class="kt">Node</span><span class="p">;</span> <span class="c1">// O valor pode ser qualquer tipo de nó
+</span></span></span><span class="line"><span class="cl">  <span class="nx">kind</span><span class="o">:</span> <span class="s1">&#39;init&#39;</span><span class="p">;</span> <span class="c1">// Geralmente &#39;init&#39; para propriedades normais
+</span></span></span><span class="line"><span class="cl">  <span class="nx">method</span>: <span class="kt">boolean</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">shorthand</span>: <span class="kt">boolean</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">computed</span>: <span class="kt">boolean</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Representa um objeto literal { ... }
+</span></span></span><span class="line"><span class="cl"><span class="kr">interface</span> <span class="nx">ObjectExpression</span> <span class="kr">extends</span> <span class="nx">Node</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;ObjectExpression&#34;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">properties</span>: <span class="kt">Property</span><span class="p">[];</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// --- Simulação da AST para o objeto &#39;settings&#39; ---
+</span></span></span><span class="line"><span class="cl"><span class="c1">// (Isto viria de um parser na vida real)
+</span></span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">settingsObjectAST</span>: <span class="kt">ObjectExpression</span> <span class="o">=</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;ObjectExpression&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">properties</span><span class="o">:</span> <span class="p">[</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// apiKey: &#34;xyz123abc&#34;
+</span></span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Property&#34;</span><span class="p">,</span> <span class="nx">key</span><span class="o">:</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Identifier&#34;</span><span class="p">,</span> <span class="nx">name</span><span class="o">:</span> <span class="s2">&#34;apiKey&#34;</span> <span class="p">},</span> <span class="nx">value</span><span class="o">:</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Literal&#34;</span><span class="p">,</span> <span class="nx">value</span><span class="o">:</span> <span class="s2">&#34;xyz123abc&#34;</span> <span class="p">},</span> <span class="nx">kind</span><span class="o">:</span> <span class="s1">&#39;init&#39;</span><span class="p">,</span> <span class="nx">method</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">shorthand</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">computed</span>: <span class="kt">false</span> <span class="p">},</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// timeout: 5000
+</span></span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Property&#34;</span><span class="p">,</span> <span class="nx">key</span><span class="o">:</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Identifier&#34;</span><span class="p">,</span> <span class="nx">name</span><span class="o">:</span> <span class="s2">&#34;timeout&#34;</span> <span class="p">},</span> <span class="nx">value</span><span class="o">:</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Literal&#34;</span><span class="p">,</span> <span class="nx">value</span>: <span class="kt">5000</span> <span class="p">},</span> <span class="nx">kind</span><span class="o">:</span> <span class="s1">&#39;init&#39;</span><span class="p">,</span> <span class="nx">method</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">shorthand</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">computed</span>: <span class="kt">false</span> <span class="p">},</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// isEnabled: true
+</span></span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Property&#34;</span><span class="p">,</span> <span class="nx">key</span><span class="o">:</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Identifier&#34;</span><span class="p">,</span> <span class="nx">name</span><span class="o">:</span> <span class="s2">&#34;isEnabled&#34;</span> <span class="p">},</span> <span class="nx">value</span><span class="o">:</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Literal&#34;</span><span class="p">,</span> <span class="nx">value</span>: <span class="kt">true</span> <span class="p">},</span> <span class="nx">kind</span><span class="o">:</span> <span class="s1">&#39;init&#39;</span><span class="p">,</span> <span class="nx">method</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">shorthand</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">computed</span>: <span class="kt">false</span> <span class="p">},</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// retryCount: null
+</span></span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Property&#34;</span><span class="p">,</span> <span class="nx">key</span><span class="o">:</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Identifier&#34;</span><span class="p">,</span> <span class="nx">name</span><span class="o">:</span> <span class="s2">&#34;retryCount&#34;</span> <span class="p">},</span> <span class="nx">value</span><span class="o">:</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Literal&#34;</span><span class="p">,</span> <span class="nx">value</span>: <span class="kt">null</span> <span class="p">},</span> <span class="nx">kind</span><span class="o">:</span> <span class="s1">&#39;init&#39;</span><span class="p">,</span> <span class="nx">method</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">shorthand</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">computed</span>: <span class="kt">false</span> <span class="p">},</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// &#34;complex-key&#34;: &#34;value&#34;
+</span></span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Property&#34;</span><span class="p">,</span> <span class="nx">key</span><span class="o">:</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Literal&#34;</span><span class="p">,</span> <span class="nx">value</span><span class="o">:</span> <span class="s2">&#34;complex-key&#34;</span> <span class="p">},</span> <span class="nx">value</span><span class="o">:</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Literal&#34;</span><span class="p">,</span> <span class="nx">value</span><span class="o">:</span> <span class="s2">&#34;value&#34;</span> <span class="p">},</span> <span class="nx">kind</span><span class="o">:</span> <span class="s1">&#39;init&#39;</span><span class="p">,</span> <span class="nx">method</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">shorthand</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">computed</span>: <span class="kt">false</span> <span class="p">},</span> <span class="c1">// Chave é Literal, não Identifier
+</span></span></span><span class="line"><span class="cl">    <span class="c1">// nested: { ... }
+</span></span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Property&#34;</span><span class="p">,</span> <span class="nx">key</span><span class="o">:</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Identifier&#34;</span><span class="p">,</span> <span class="nx">name</span><span class="o">:</span> <span class="s2">&#34;nested&#34;</span> <span class="p">},</span> <span class="nx">value</span><span class="o">:</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;ObjectExpressionNode&#34;</span><span class="p">,</span> <span class="nx">properties</span><span class="o">:</span> <span class="p">[</span><span class="cm">/*...*/</span><span class="p">]</span> <span class="p">}</span> <span class="kr">as</span> <span class="nx">ObjectExpressionNode</span><span class="p">,</span> <span class="nx">kind</span><span class="o">:</span> <span class="s1">&#39;init&#39;</span><span class="p">,</span> <span class="nx">method</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">shorthand</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">computed</span>: <span class="kt">false</span> <span class="p">},</span> <span class="c1">// Valor é ObjectExpressionNode
+</span></span></span><span class="line"><span class="cl">    <span class="c1">// features: [&#34;A&#34;, &#34;B&#34;]
+</span></span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Property&#34;</span><span class="p">,</span> <span class="nx">key</span><span class="o">:</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Identifier&#34;</span><span class="p">,</span> <span class="nx">name</span><span class="o">:</span> <span class="s2">&#34;features&#34;</span> <span class="p">},</span> <span class="nx">value</span><span class="o">:</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;ArrayExpression&#34;</span><span class="p">,</span> <span class="nx">elements</span><span class="o">:</span> <span class="p">[</span><span class="cm">/*...*/</span><span class="p">]</span> <span class="p">}</span> <span class="kr">as</span> <span class="nx">ArrayExpression</span><span class="p">,</span> <span class="nx">kind</span><span class="o">:</span> <span class="s1">&#39;init&#39;</span><span class="p">,</span> <span class="nx">method</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">shorthand</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">computed</span>: <span class="kt">false</span> <span class="p">},</span> <span class="c1">// Valor é ArrayExpression
+</span></span></span><span class="line"><span class="cl">    <span class="c1">// getEndpoint: () =&gt; ...
+</span></span></span><span class="line"><span class="cl">    <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Property&#34;</span><span class="p">,</span> <span class="nx">key</span><span class="o">:</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;Identifier&#34;</span><span class="p">,</span> <span class="nx">name</span><span class="o">:</span> <span class="s2">&#34;getEndpoint&#34;</span> <span class="p">},</span> <span class="nx">value</span><span class="o">:</span> <span class="p">{</span> <span class="kr">type</span><span class="o">:</span> <span class="s2">&#34;ArrowFunctionExpression&#34;</span><span class="p">,</span> <span class="nx">params</span><span class="o">:</span><span class="p">[],</span> <span class="nx">body</span><span class="o">:</span> <span class="p">{}</span> <span class="p">}</span> <span class="kr">as</span> <span class="nx">ArrowFunctionExpression</span><span class="p">,</span> <span class="nx">kind</span><span class="o">:</span> <span class="s1">&#39;init&#39;</span><span class="p">,</span> <span class="nx">method</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">shorthand</span>: <span class="kt">false</span><span class="p">,</span> <span class="nx">computed</span>: <span class="kt">false</span> <span class="p">}</span> <span class="c1">// Valor é ArrowFunctionExpression
+</span></span></span><span class="line"><span class="cl">  <span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span></span></span></code></pre></div>
+</div>
+<hr>
+<div id="outline-container-headline-13" class="outline-4">
+<h4 id="headline-13">
+Abordagem 1: Orientação a Objetos (OO)
+</h4>
+<div id="outline-text-headline-13" class="outline-text-4">
+<p>
+Criamos uma classe para encapsular a lógica de extração.</p>
+<div class="src src-typescript">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-typescript" data-lang="typescript"><span class="line"><span class="cl"><span class="c1">// --- Abordagem OO ---
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kr">interface</span> <span class="nx">SimpleSettings</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="p">[</span><span class="nx">key</span>: <span class="kt">string</span><span class="p">]</span><span class="o">:</span> <span class="kt">string</span> <span class="o">|</span> <span class="kt">number</span> <span class="o">|</span> <span class="kr">boolean</span> <span class="o">|</span> <span class="kc">null</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kr">class</span> <span class="nx">SimpleSettingsExtractor</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="kr">private</span> <span class="nx">extractedSettings</span>: <span class="kt">SimpleSettings</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="kr">constructor</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">this</span><span class="p">.</span><span class="nx">extractedSettings</span> <span class="o">=</span> <span class="p">{};</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="c1">// Método público para iniciar a extração
+</span></span></span><span class="line"><span class="cl">  <span class="kr">public</span> <span class="nx">extractFrom</span><span class="p">(</span><span class="nx">node</span>: <span class="kt">Node</span><span class="p">)</span><span class="o">:</span> <span class="nx">SimpleSettings</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Resetar o estado para garantir que a instância seja reutilizável
+</span></span></span><span class="line"><span class="cl">    <span class="c1">// ou criar uma nova instância a cada chamada seria outra opção OO.
+</span></span></span><span class="line"><span class="cl">    <span class="k">this</span><span class="p">.</span><span class="nx">extractedSettings</span> <span class="o">=</span> <span class="p">{};</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// Verifica se o nó inicial é o que esperamos
+</span></span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="nx">node</span><span class="p">.</span><span class="kr">type</span> <span class="o">!==</span> <span class="s1">&#39;ObjectExpression&#39;</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="nx">console</span><span class="p">.</span><span class="nx">warn</span><span class="p">(</span><span class="s2">&#34;Nó inicial não é um ObjectExpression.&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">      <span class="k">return</span> <span class="p">{};</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="c1">// Chama um método privado para processar as propriedades
+</span></span></span><span class="line"><span class="cl">    <span class="k">this</span><span class="p">.</span><span class="nx">processProperties</span><span class="p">(</span><span class="nx">node</span><span class="p">.</span><span class="nx">properties</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">extractedSettings</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="c1">// Método privado para iterar e processar cada propriedade
+</span></span></span><span class="line"><span class="cl">  <span class="kr">private</span> <span class="nx">processProperties</span><span class="p">(</span><span class="nx">properties</span>: <span class="kt">Property</span><span class="p">[])</span><span class="o">:</span> <span class="k">void</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Loop imperativo: percorre cada propriedade
+</span></span></span><span class="line"><span class="cl">    <span class="k">for</span> <span class="p">(</span><span class="kr">const</span> <span class="nx">prop</span> <span class="k">of</span> <span class="nx">properties</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="c1">// Verifica se a propriedade tem o formato desejado
+</span></span></span><span class="line"><span class="cl">      <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">isValidSimpleProperty</span><span class="p">(</span><span class="nx">prop</span><span class="p">))</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// Se for válida, extrai e armazena o valor
+</span></span></span><span class="line"><span class="cl">        <span class="c1">// Note: O type cast aqui é seguro devido à validação anterior
+</span></span></span><span class="line"><span class="cl">        <span class="kr">const</span> <span class="nx">keyName</span> <span class="o">=</span> <span class="p">(</span><span class="nx">prop</span><span class="p">.</span><span class="nx">key</span> <span class="kr">as</span> <span class="nx">Identifier</span><span class="p">).</span><span class="nx">name</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="kr">const</span> <span class="nx">value</span> <span class="o">=</span> <span class="p">(</span><span class="nx">prop</span><span class="p">.</span><span class="nx">value</span> <span class="kr">as</span> <span class="nx">Literal</span><span class="p">).</span><span class="nx">value</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">        <span class="k">this</span><span class="p">.</span><span class="nx">extractedSettings</span><span class="p">[</span><span class="nx">keyName</span><span class="p">]</span> <span class="o">=</span> <span class="nx">value</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">      <span class="p">}</span>
+</span></span><span class="line"><span class="cl">      <span class="c1">// Se não for válida, simplesmente a ignoramos (poderia ter lógica &#39;else&#39; aqui)
+</span></span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="c1">// Método privado para validar uma única propriedade
+</span></span></span><span class="line"><span class="cl">  <span class="kr">private</span> <span class="nx">isValidSimpleProperty</span><span class="p">(</span><span class="nx">prop</span>: <span class="kt">Property</span><span class="p">)</span><span class="o">:</span> <span class="kr">boolean</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// 1. A propriedade deve ser do tipo &#39;Property&#39; e &#39;kind: init&#39; (simplificação)
+</span></span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="nx">prop</span><span class="p">.</span><span class="kr">type</span> <span class="o">!==</span> <span class="s1">&#39;Property&#39;</span> <span class="o">||</span> <span class="nx">prop</span><span class="p">.</span><span class="nx">kind</span> <span class="o">!==</span> <span class="s1">&#39;init&#39;</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// 2. A chave (key) deve ser um &#39;Identifier&#39; (nome simples)
+</span></span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="nx">prop</span><span class="p">.</span><span class="nx">key</span><span class="p">.</span><span class="kr">type</span> <span class="o">!==</span> <span class="s1">&#39;Identifier&#39;</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// 3. O valor (value) deve ser um &#39;Literal&#39; simples
+</span></span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="k">this</span><span class="p">.</span><span class="nx">isSimpleLiteralValue</span><span class="p">(</span><span class="nx">prop</span><span class="p">.</span><span class="nx">value</span><span class="p">))</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">      <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Se passou por todas as verificações, é válida
+</span></span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kc">true</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="c1">// Método privado auxiliar para checar se o valor é um Literal simples
+</span></span></span><span class="line"><span class="cl">  <span class="kr">private</span> <span class="nx">isSimpleLiteralValue</span><span class="p">(</span><span class="nx">valueNode</span>: <span class="kt">Node</span><span class="p">)</span><span class="o">:</span> <span class="nx">valueNode</span> <span class="k">is</span> <span class="nx">Literal</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">valueNode</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="s1">&#39;Literal&#39;</span> <span class="o">&amp;&amp;</span>
+</span></span><span class="line"><span class="cl">           <span class="p">(</span><span class="k">typeof</span> <span class="nx">valueNode</span><span class="p">.</span><span class="nx">value</span> <span class="o">===</span> <span class="s1">&#39;string&#39;</span> <span class="o">||</span>
+</span></span><span class="line"><span class="cl">            <span class="k">typeof</span> <span class="nx">valueNode</span><span class="p">.</span><span class="nx">value</span> <span class="o">===</span> <span class="s1">&#39;number&#39;</span> <span class="o">||</span>
+</span></span><span class="line"><span class="cl">            <span class="k">typeof</span> <span class="nx">valueNode</span><span class="p">.</span><span class="nx">value</span> <span class="o">===</span> <span class="s1">&#39;boolean&#39;</span> <span class="o">||</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">valueNode</span><span class="p">.</span><span class="nx">value</span> <span class="o">===</span> <span class="kc">null</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// --- Uso da Abordagem OO ---
+</span></span></span><span class="line"><span class="cl"><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;--- Abordagem OO ---&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">ooExtractor</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">SimpleSettingsExtractor</span><span class="p">();</span> <span class="c1">// Instanciação necessária
+</span></span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">ooResult</span> <span class="o">=</span> <span class="nx">ooExtractor</span><span class="p">.</span><span class="nx">extractFrom</span><span class="p">(</span><span class="nx">settingsObjectAST</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;Resultado OO:&#34;</span><span class="p">,</span> <span class="nx">ooResult</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// Esperado: Resultado OO: { apiKey: &#39;xyz123abc&#39;, timeout: 5000, isEnabled: true, retryCount: null }
+</span></span></span></code></pre></div>
+</div>
+<p>
+<em>Análise Didática da Abordagem OO:</em></p>
+<p>
+/   <em>Encapsulamento:* A lógica está organizada dentro de uma classe (<code>SimpleSettingsExtractor</code>). Métodos privados (<code>processProperties</code>, <code>isValidSimpleProperty</code>, <code>isSimpleLiteralValue</code>) escondem os detalhes da implementação. Isso é bom para organização.
+/   /Estado:</em> A classe <em>mantém estado</em> (<code>this.extractedSettings</code>). Embora seja resetado a cada chamada <code>extractFrom</code>, a <em>existência* de estado interno é uma característica fundamental da OO. Para operações mais complexas (ex: coletar informações em várias passagens pela AST), esse estado poderia se tornar mais significativo (e potencialmente mais complexo de gerenciar).
+/   /Estilo Imperativo:</em> O código dentro de <code>processProperties</code> usa um loop <code>for...of</code> e condicionais <code>if</code> para controlar o fluxo. Dizemos ao computador /como* fazer a extração passo a passo: &#34;pegue a lista&#34;, &#34;para cada item&#34;, &#34;se a chave for X&#34;, &#34;se o valor for Y&#34;, &#34;então adicione ao resultado&#34;.
+/   /Boilerplate:* Requer a definição da classe, construtor (mesmo que simples) e a instanciação (<code>new SimpleSettingsExtractor()</code>) antes de poder ser usada.</p>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-4">
+<h4 id="headline-14">
+Abordagem 2: Programação Funcional (FP)
+</h4>
+<div id="outline-text-headline-14" class="outline-text-4">
+<p>
+Usamos funções puras e combinamos operações de coleções (como <code>filter</code> e <code>reduce</code> ou <code>map</code>).</p>
+<div class="src src-typescript">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-typescript" data-lang="typescript"><span class="line"><span class="cl"><span class="c1">// --- Abordagem FP ---
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Interface para o resultado (a mesma de OO)
+</span></span></span><span class="line"><span class="cl"><span class="kr">interface</span> <span class="nx">SimpleSettings</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="p">[</span><span class="nx">key</span>: <span class="kt">string</span><span class="p">]</span><span class="o">:</span> <span class="kt">string</span> <span class="o">|</span> <span class="kt">number</span> <span class="o">|</span> <span class="kr">boolean</span> <span class="o">|</span> <span class="kc">null</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// --- Funções Auxiliares Puras (Type Guards) ---
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Verifica se um nó é um Identifier (chave simples)
+</span></span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">isIdentifierKey</span> <span class="o">=</span> <span class="p">(</span><span class="nx">node</span>: <span class="kt">Node</span><span class="p">)</span><span class="o">:</span> <span class="nx">node</span> <span class="k">is</span> <span class="nx">Identifier</span> <span class="o">=&gt;</span> <span class="nx">node</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="s1">&#39;Identifier&#39;</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Verifica se um nó é um Literal com valor simples (string, number, boolean, null)
+</span></span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">isSimpleLiteralValue</span> <span class="o">=</span> <span class="p">(</span><span class="nx">node</span>: <span class="kt">Node</span><span class="p">)</span><span class="o">:</span> <span class="nx">node</span> <span class="k">is</span> <span class="nx">Literal</span> <span class="o">=&gt;</span>
+</span></span><span class="line"><span class="cl">  <span class="nx">node</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="s1">&#39;Literal&#39;</span> <span class="o">&amp;&amp;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">(</span><span class="k">typeof</span> <span class="nx">node</span><span class="p">.</span><span class="nx">value</span> <span class="o">===</span> <span class="s1">&#39;string&#39;</span> <span class="o">||</span>
+</span></span><span class="line"><span class="cl">   <span class="k">typeof</span> <span class="nx">node</span><span class="p">.</span><span class="nx">value</span> <span class="o">===</span> <span class="s1">&#39;number&#39;</span> <span class="o">||</span>
+</span></span><span class="line"><span class="cl">   <span class="k">typeof</span> <span class="nx">node</span><span class="p">.</span><span class="nx">value</span> <span class="o">===</span> <span class="s1">&#39;boolean&#39;</span> <span class="o">||</span>
+</span></span><span class="line"><span class="cl">   <span class="nx">node</span><span class="p">.</span><span class="nx">value</span> <span class="o">===</span> <span class="kc">null</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Verifica se um nó de Propriedade representa uma configuração simples desejada
+</span></span></span><span class="line"><span class="cl"><span class="c1">// Recebe um nó qualquer, retorna `true` se for uma Property válida, `false` caso contrário.
+</span></span></span><span class="line"><span class="cl"><span class="c1">// Usa type guards para refinar o tipo de `prop` dentro do if.
+</span></span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">isSimpleConfigProperty</span> <span class="o">=</span> <span class="p">(</span><span class="nx">node</span>: <span class="kt">Node</span><span class="p">)</span><span class="o">:</span> <span class="nx">node</span> <span class="k">is</span> <span class="nx">Property</span> <span class="o">&amp;</span> <span class="p">{</span> <span class="nx">key</span>: <span class="kt">Identifier</span><span class="p">;</span> <span class="nx">value</span>: <span class="kt">Literal</span> <span class="p">}</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Usamos &#39;&amp;&amp;&#39; para garantir que todas as condições sejam verdadeiras
+</span></span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">node</span><span class="p">.</span><span class="kr">type</span> <span class="o">===</span> <span class="s1">&#39;Property&#39;</span> <span class="o">&amp;&amp;</span>          <span class="c1">// É uma propriedade?
+</span></span></span><span class="line"><span class="cl">           <span class="nx">node</span><span class="p">.</span><span class="nx">kind</span> <span class="o">===</span> <span class="s1">&#39;init&#39;</span> <span class="o">&amp;&amp;</span>              <span class="c1">// É uma inicialização normal?
+</span></span></span><span class="line"><span class="cl">           <span class="nx">isIdentifierKey</span><span class="p">(</span><span class="nx">node</span><span class="p">.</span><span class="nx">key</span><span class="p">)</span> <span class="o">&amp;&amp;</span>       <span class="c1">// A chave é um identificador simples?
+</span></span></span><span class="line"><span class="cl">           <span class="nx">isSimpleLiteralValue</span><span class="p">(</span><span class="nx">node</span><span class="p">.</span><span class="nx">value</span><span class="p">);</span> <span class="c1">// O valor é um literal simples?
+</span></span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// --- Função Principal (Usando filter + reduce) ---
+</span></span></span><span class="line"><span class="cl"><span class="c1">// Recebe a AST do objeto e retorna o objeto de configurações simples.
+</span></span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">extractSimpleSettingsFP_FilterReduce</span> <span class="o">=</span> <span class="p">(</span><span class="nx">node</span>: <span class="kt">Node</span><span class="p">)</span><span class="o">:</span> <span class="nx">SimpleSettings</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">  <span class="c1">// 1. Validação inicial do nó de entrada
+</span></span></span><span class="line"><span class="cl">  <span class="k">if</span> <span class="p">(</span><span class="nx">node</span><span class="p">.</span><span class="kr">type</span> <span class="o">!==</span> <span class="s1">&#39;ObjectExpression&#39;</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">console</span><span class="p">.</span><span class="nx">warn</span><span class="p">(</span><span class="s2">&#34;Nó inicial não é um ObjectExpression.&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="p">{};</span>
+</span></span><span class="line"><span class="cl">  <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="c1">// 2. Filtrar: Seleciona apenas as propriedades que atendem aos critérios.
+</span></span></span><span class="line"><span class="cl">  <span class="c1">//    `node.properties.filter(isSimpleConfigProperty)` retorna um *novo array*
+</span></span></span><span class="line"><span class="cl">  <span class="c1">//    contendo apenas as propriedades que fizeram `isSimpleConfigProperty` retornar `true`.
+</span></span></span><span class="line"><span class="cl">  <span class="kr">const</span> <span class="nx">validProperties</span><span class="o">:</span> <span class="p">(</span><span class="nx">Property</span> <span class="o">&amp;</span> <span class="p">{</span> <span class="nx">key</span>: <span class="kt">Identifier</span><span class="p">;</span> <span class="nx">value</span>: <span class="kt">Literal</span> <span class="p">})[]</span> <span class="o">=</span> <span class="nx">node</span><span class="p">.</span><span class="nx">properties</span><span class="p">.</span><span class="nx">filter</span><span class="p">(</span><span class="nx">isSimpleConfigProperty</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="c1">// 3. Reduzir: Transforma o array de propriedades válidas no objeto final.
+</span></span></span><span class="line"><span class="cl">  <span class="c1">//    `reduce` itera sobre `validProperties`.
+</span></span></span><span class="line"><span class="cl">  <span class="c1">//    `acc` (acumulador) começa como `{}` (o objeto resultado).
+</span></span></span><span class="line"><span class="cl">  <span class="c1">//    Para cada `prop` válida, adicionamos a chave/valor ao `acc`.
+</span></span></span><span class="line"><span class="cl">  <span class="c1">//    Retornamos o `acc` modificado para a próxima iteração.
+</span></span></span><span class="line"><span class="cl">  <span class="c1">//    IMPORTANTE: Por performance, `reduce` frequentemente MUTA o acumulador.
+</span></span></span><span class="line"><span class="cl">  <span class="c1">//               Para imutabilidade estrita, criaríamos um novo objeto a cada passo:
+</span></span></span><span class="line"><span class="cl">  <span class="c1">//               `return { ...acc, [prop.key.name]: prop.value.value };`
+</span></span></span><span class="line"><span class="cl">  <span class="c1">//               Mas para este caso, mutar o `acc` interno é comum e aceitável.
+</span></span></span><span class="line"><span class="cl">  <span class="kr">const</span> <span class="nx">result</span> <span class="o">=</span> <span class="nx">validProperties</span><span class="p">.</span><span class="nx">reduce</span><span class="p">((</span><span class="nx">acc</span><span class="p">,</span> <span class="nx">prop</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">acc</span><span class="p">[</span><span class="nx">prop</span><span class="p">.</span><span class="nx">key</span><span class="p">.</span><span class="nx">name</span><span class="p">]</span> <span class="o">=</span> <span class="nx">prop</span><span class="p">.</span><span class="nx">value</span><span class="p">.</span><span class="nx">value</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="nx">acc</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl">  <span class="p">},</span> <span class="p">{}</span> <span class="kr">as</span> <span class="nx">SimpleSettings</span><span class="p">);</span> <span class="c1">// `{}` é o valor inicial do acumulador `acc`
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">  <span class="k">return</span> <span class="nx">result</span><span class="p">;</span>
+</span></span><span class="line"><span class="cl"><span class="p">};</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// --- Função Principal Alternativa (Usando filter + map + Object.fromEntries) ---
+</span></span></span><span class="line"><span class="cl"><span class="c1">// Muitas vezes considerada mais declarativa ainda.
+</span></span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">extractSimpleSettingsFP_FilterMap</span> <span class="o">=</span> <span class="p">(</span><span class="nx">node</span>: <span class="kt">Node</span><span class="p">)</span><span class="o">:</span> <span class="nx">SimpleSettings</span> <span class="o">=&gt;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">   <span class="k">if</span> <span class="p">(</span><span class="nx">node</span><span class="p">.</span><span class="kr">type</span> <span class="o">!==</span> <span class="s1">&#39;ObjectExpression&#39;</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">console</span><span class="p">.</span><span class="nx">warn</span><span class="p">(</span><span class="s2">&#34;Nó inicial não é um ObjectExpression.&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="p">{};</span>
+</span></span><span class="line"><span class="cl">   <span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">   <span class="c1">// 1. Filtrar (igual ao anterior): Pega só as propriedades válidas.
+</span></span></span><span class="line"><span class="cl">   <span class="kr">const</span> <span class="nx">validProperties</span> <span class="o">=</span> <span class="nx">node</span><span class="p">.</span><span class="nx">properties</span><span class="p">.</span><span class="nx">filter</span><span class="p">(</span><span class="nx">isSimpleConfigProperty</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">   <span class="c1">// 2. Mapear: Transforma cada propriedade válida em um par [chave, valor].
+</span></span></span><span class="line"><span class="cl">   <span class="c1">//    `map` cria um *novo array* onde cada item é o resultado da função aplicada.
+</span></span></span><span class="line"><span class="cl">   <span class="kr">const</span> <span class="nx">keyValuePairs</span> <span class="o">=</span> <span class="nx">validProperties</span><span class="p">.</span><span class="nx">map</span><span class="p">(</span><span class="nx">prop</span> <span class="o">=&gt;</span>
+</span></span><span class="line"><span class="cl">       <span class="p">[</span><span class="nx">prop</span><span class="p">.</span><span class="nx">key</span><span class="p">.</span><span class="nx">name</span><span class="p">,</span> <span class="nx">prop</span><span class="p">.</span><span class="nx">value</span><span class="p">.</span><span class="nx">value</span><span class="p">]</span> <span class="kr">as</span> <span class="p">[</span><span class="kt">string</span><span class="p">,</span> <span class="kt">string</span> <span class="o">|</span> <span class="kt">number</span> <span class="o">|</span> <span class="kr">boolean</span> <span class="o">|</span> <span class="kc">null</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">   <span class="p">);</span>
+</span></span><span class="line"><span class="cl">   <span class="c1">// Exemplo de resultado de keyValuePairs:
+</span></span></span><span class="line"><span class="cl">   <span class="c1">// [
+</span></span></span><span class="line"><span class="cl">   <span class="c1">//   [&#34;apiKey&#34;, &#34;xyz123abc&#34;],
+</span></span></span><span class="line"><span class="cl">   <span class="c1">//   [&#34;timeout&#34;, 5000],
+</span></span></span><span class="line"><span class="cl">   <span class="c1">//   [&#34;isEnabled&#34;, true],
+</span></span></span><span class="line"><span class="cl">   <span class="c1">//   [&#34;retryCount&#34;, null]
+</span></span></span><span class="line"><span class="cl">   <span class="c1">// ]
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">   <span class="c1">// 3. Construir Objeto: Converte o array de pares [chave, valor] no objeto final.
+</span></span></span><span class="line"><span class="cl">   <span class="c1">//    `Object.fromEntries` é perfeito para isso.
+</span></span></span><span class="line"><span class="cl">   <span class="k">return</span> <span class="nb">Object</span><span class="p">.</span><span class="nx">fromEntries</span><span class="p">(</span><span class="nx">keyValuePairs</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// --- Uso da Abordagem FP ---
+</span></span></span><span class="line"><span class="cl"><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;--- Abordagem FP ---&#34;</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">fpResultFilterReduce</span> <span class="o">=</span> <span class="nx">extractSimpleSettingsFP_FilterReduce</span><span class="p">(</span><span class="nx">settingsObjectAST</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="kr">const</span> <span class="nx">fpResultFilterMap</span> <span class="o">=</span> <span class="nx">extractSimpleSettingsFP_FilterMap</span><span class="p">(</span><span class="nx">settingsObjectAST</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;Resultado FP (Filter/Reduce):&#34;</span><span class="p">,</span> <span class="nx">fpResultFilterReduce</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// Esperado: Resultado FP (Filter/Reduce): { apiKey: &#39;xyz123abc&#39;, timeout: 5000, isEnabled: true, retryCount: null }
+</span></span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&#34;Resultado FP (Filter/Map):&#34;</span><span class="p">,</span> <span class="nx">fpResultFilterMap</span><span class="p">);</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// Esperado: Resultado FP (Filter/Map): { apiKey: &#39;xyz123abc&#39;, timeout: 5000, isEnabled: true, retryCount: null }
+</span></span></span></code></pre></div>
+</div>
+<p>
+<em>Análise Didática da Abordagem FP:</em></p>
+<p>
+/   <em>Funções Puras:</em> As funções auxiliares (<code>isIdentifierKey</code>, <code>isSimpleLiteralValue</code>, <code>isSimpleConfigProperty</code>) são (ou deveriam ser) puras: seu resultado depende <em>apenas* das suas entradas e elas não causam efeitos colaterais (não modificam nada fora delas). Isso as torna fáceis de testar e raciocinar sobre.
+/   /Imutabilidade:</em> As operações (<code>filter</code>, <code>map</code>, <code>reduce</code>, <code>Object.fromEntries</code>) não modificam a AST original (<code>settingsObjectAST</code>). Elas operam sobre os dados e produzem <em>novos* resultados (novos arrays, novo objeto final). Isso é mais seguro, especialmente se a AST fosse usada em outros lugares.
+/   /Estilo Declarativo:</em> Funções como <code>filter</code>, <code>map</code>, <code>reduce</code> descrevem <em>o que</em> você quer fazer (&#34;filtrar os itens que atendem a <code>isSimpleConfigProperty</code>&#34;, &#34;mapear cada item para um par <code>[chave, valor]</code>&#34;, &#34;reduzir a lista a um único objeto&#34;), em vez de detalhar /como* fazer com loops e ifs explícitos. Isso pode tornar a intenção do código mais clara.
+/   /Composição:* A lógica é construída combinando (compondo) funções menores (<code>isSimpleConfigProperty</code> é usada dentro de <code>filter</code>). Se a lógica ficasse mais complexa, poderíamos criar mais funções pequenas e compô-las.
+/   /Menos Boilerplate:* Não há necessidade de definir uma classe ou instanciá-la. As funções podem ser importadas e usadas diretamente.
+/   /Sem Estado:* As funções de extração não dependem de nenhum estado externo ou <code>this</code>. O resultado é determinado unicamente pela AST de entrada.</p>
+<hr>
+<p>
+<em>Comparação Pragmática: Por que FP Brilha Aqui?</em></p>
+<ol>
+<li><em>Natureza dos Dados vs. Comportamento:</em> A AST é fundamentalmente uma <em>estrutura de dados</em> que representa código. Ela não tem &#34;comportamento&#34; inerente como um objeto <code>User</code> que &#34;faz login&#34;. A tarefa é <em>transformar</em> esses dados. FP é otimizada para transformação de dados. OO é otimizada para modelar entidades com estado e comportamento. Aplicar OO aqui pode parecer um pouco forçado – estamos criando uma classe (<code>SimpleSettingsExtractor</code>) cujo único propósito é executar uma transformação de dados, sem realmente precisar do encapsulamento de estado e comportamento que a OO oferece.</li>
+<li><em>Fluxo de Dados Claro:</em> A abordagem FP, especialmente com <code>filter~/~map</code>, torna o fluxo de dados muito explícito: pegue as propriedades -&gt; filtre as válidas -&gt; transforme-as em pares -&gt; construa o objeto final. É um pipeline de transformações. Na OO, o fluxo está dentro dos métodos e pode envolver a modificação do estado interno (<code>this.extractedSettings</code>).</li>
+<li><em>Menos Cerimônia:</em> Para uma tarefa focada como esta, a FP evita a &#34;cerimônia&#34; de criar uma classe, instanciar, gerenciar <code>this</code>, etc. O código é mais direto ao ponto.</li>
+<li><em>Segurança com Imutabilidade:</em> Ao não modificar a AST original e sempre retornar novos dados, a FP reduz o risco de erros sutis causados por mutações inesperadas, o que é uma vantagem ao lidar com estruturas potencialmente complexas como ASTs.</li>
+<li><em>Reutilização e Testabilidade:</em> As pequenas funções puras da FP (<code>isIdentifierKey</code>, etc.) são trivialmente testáveis e podem ser reutilizadas em outras tarefas de análise de AST. Testar métodos privados de uma classe OO pode ser um pouco mais complicado.</li>
+</ol>
+<p>
+Neste cenário específico de analisar uma estrutura de dados (AST) e extrair/transformar informações dela, a abordagem funcional (FP) tende a ser mais <em>direta</em>, <em>declarativa</em>, <em>segura (devido à imutabilidade)</em> e <em>concisa</em> do que a abordagem Orientada a Objetos (OO). Isso ocorre porque a natureza do problema (transformação de dados) se alinha melhor com os pontos fortes da FP.</p>
+<p>
+A OO ainda é poderosa para muitos outros problemas, especialmente aqueles que envolvem modelar entidades complexas do mundo real com estado e comportamento interligados. No entanto, para a manipulação de ASTs, a FP frequentemente oferece uma solução mais elegante e pragmática.</p>
+</div>
+</div>
+</div>
+</div>
+
+  </div>
+</article>
+
+    </main>
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Petzold03 - Dos nossos dez dedos aos Bits e Bytes — lobovit</title>
+  <link rel="stylesheet" href="/css/main.css?v=3">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
+    <main>
+      
+<article>
+  <header>
+    <h1>Petzold03 - Dos nossos dez dedos aos Bits e Bytes</h1>
+    <p class="meta"><time>2026-05-12</time> · <span class="tag">numeração</span><span class="tag">binário</span><span class="tag">hexadecimal</span><span class="tag">bits</span><span class="tag">história</span><span class="tag">computação</span></p>
+  </header>
+  <div class="content">
+    
+<p>
+A ideia de que a linguagem é apenas um código é facilmente aceitável para a maioria de nós. Sabemos que o animal que chamamos de &#34;gato&#34; pode ser <em>cat</em>, <em>chat</em>, <em>Katze</em>, <em>кошка</em> ou <em>γάτα</em> dependendo do idioma. Os números, no entanto, parecem menos maleáveis culturalmente. A matemática é frequentemente chamada de &#34;linguagem universal&#34; porque, independentemente de como pronunciamos, escrevemos nossos algarismos da mesma forma em quase todo o planeta: <em>0, 1, 2, 3, 4, 5, 6, 7, 8, 9</em>.</p>
+<p>
+Mas será que o nosso sistema numérico tem algo de intrinsecamente mágico ou especial? A verdade é que a fundação de toda a computação moderna exige que abandonemos o nosso apego ao número dez.</p>
+<div id="outline-container-headline-1" class="outline-3">
+<h3 id="headline-1">
+1. A Ilusão da Base 10
+</h3>
+<div id="outline-text-headline-1" class="outline-text-3">
+<p>
+Os números são abstrações puras. Quando vemos o símbolo <em>3</em>, não precisamos relacioná-lo imediatamente a 3 maçãs. Pode ser um canal de televisão, um dia do mês ou o número de xícaras em uma receita.</p>
+<p>
+Historicamente, os números foram inventados para contar posses e transações. Se alguém tivesse quatro patos, desenhava quatro patos. Eventualmente, para simplificar, usaram-se marcas ou riscos. E quando alguém tinha 27 patos? Fazer 27 riscos era inviável. Foi assim que os sistemas numéricos evoluíram.</p>
+<p>
+A maioria dos sistemas antigos, como os numerais romanos, era péssima para matemática avançada. Experimente multiplicar <code>MCMLIII</code> por <code>XIV</code>. O sistema que usamos hoje, o <em><a href="https://pt.wikipedia.org/wiki/Sistema_de_numeração_hindu-arábico">Hindu-Arábico</a></em>, revolucionou a matemática por três motivos:</p>
+<ol>
+<li><em>Notação Posicional:</em> A posição do dígito altera seu valor. O &#34;1&#34; em 100 vale muito mais que o &#34;1&#34; em 10.</li>
+<li><em>Ausência de um Símbolo para Dez:</em> O dez é representado por dois dígitos (1 e 0), mudando a posição do 1.</li>
+<li><em>O Zero:</em> A invenção do zero é um dos maiores marcos da história. Ele serve como marcador de posição, permitindo distinguir instantaneamente 25, 205 e 250, facilitando imensamente a multiplicação e a divisão.</li>
+</ol>
+<p>A estrutura do nosso sistema decimal (base 10) é baseada em potências de dez. O número 4825, por exemplo, é lido e decomposto matematicamente como:</p>
+<p>
+<em>4825 = 4, 10³ + 8, 10² + 2, 10¹ + 5, 10⁰</em></p>
+<blockquote>
+<p><em>Curiosidade:</em> Usamos a base 10 puramente por um acidente anatômico: temos dez dedos nas mãos. Se fôssemos personagens de desenhos animados com apenas quatro dedos em cada mão, acharíamos perfeitamente natural usar um sistema de base 8.</p>
+</blockquote>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-2" class="outline-3">
+<h3 id="headline-2">
+2. Bases Alternativas: Octal e Quaternário
+</h3>
+<div id="outline-text-headline-2" class="outline-text-3">
+<p>
+Se fôssemos personagens de desenho animado e contássemos na base 8 (Sistema Octal), os símbolos <em>8</em> e <em>9</em> simplesmente não existiriam. A contagem seria: <code>0, 1, 2, 3, 4, 5, 6, 7...</code> e, ao esgotarmos os símbolos, passaríamos para o <em>10</em> (que equivaleria ao nosso 8 decimal).</p>
+<p>
+O sistema octal possui a mesma estrutura posicional, mas usa potências de 8:</p>
+<p>
+<em>3725₈ = 3, 8³ + 7, 8² + 2, 8¹ + 5, 8⁰</em></p>
+<p>
+Se fôssemos lagostas e usássemos apenas nossas duas pinças principais para contar, usaríamos a base 4 (Sistema Quaternário), contando com os dígitos <code>0, 1, 2, 3</code>. E se fôssemos golfinhos, contando apenas com duas nadadeiras? Chegaríamos à base da computação moderna.</p>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-3">
+<h3 id="headline-3">
+3. A Linguagem dos Computadores: O Sistema Binário
+</h3>
+<div id="outline-text-headline-3" class="outline-text-3">
+<p>
+O sistema binário (base 2) usa apenas dois dígitos: <em>0</em> e <em>1</em>. O maior problema do binário é que esgotamos os dígitos rapidamente. A contagem é assim: <code>0, 1, 10, 11, 100, 101, 110, 111, 1000...</code></p>
+<p>
+Os números binários ficam longos muito depressa, mas sua estrutura posicional segue as potências de 2:</p>
+<p>
+<em>1101₂ = 1, 2³ + 1, 2² + 0, 2¹ + 1, 2⁰ = 13₁₀</em></p>
+<div id="outline-container-headline-4" class="outline-4">
+<h4 id="headline-4">
+Convertendo Binário para Decimal e Vice-Versa
+</h4>
+<div id="outline-text-headline-4" class="outline-text-4">
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph LR
+  subgraph Binário para Decimal
+  direction TB
+  B1[10010110] --&gt; M[Multiplicar cada bit pela sua potência de 2 respectiva]
+  M --&gt; S[128 + 0 + 0 + 16 + 0 + 4 + 2 + 0]
+  S --&gt; R1[150]
+  end</code></pre>
+</div>
+<p>
+Para converter decimal para binário, fazemos divisões sucessivas pelo maior valor de potência de 2 possível, anotando os quocientes (que serão sempre 0 ou 1) e passando o resto adiante.</p>
+<hr>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-3">
+<h3 id="headline-5">
+4. O &#34;Bit&#34;: A Menor Unidade de Informação
+</h3>
+<div id="outline-text-headline-5" class="outline-text-3">
+<p>
+A palavra <em><a href="https://pt.wikipedia.org/wiki/Bit">bit</a></em> foi cunhada pelo matemático <a href="https://en.wikipedia.org/wiki/John_Tukey">John Tukey</a> na década de 1940 como uma contração de <em>binary digit</em> (dígito binário).</p>
+<p>
+Um bit é a menor quantidade possível de informação: uma escolha entre duas alternativas mutuamente exclusivas. Sim ou Não. Verdadeiro ou Falso. Luz acesa ou apagada. Quando Paul Revere precisou saber como os britânicos atacariam, usou lanternas:</p>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-2">
+<h2 id="headline-6">
+1 lanterna = por terra
+</h2>
+</div>
+<div id="outline-container-headline-7" class="outline-2">
+<h2 id="headline-7">
+2 lanternas = pelo mar
+</h2>
+</div>
+<div id="outline-container-headline-8" class="outline-2">
+<h2 id="headline-8">
+Nenhuma lanterna = sem ataque
+</h2>
+<div id="outline-text-headline-8" class="outline-text-2">
+<p>
+Com múltiplos bits, aumentamos exponencialmente a quantidade de possibilidades (2ⁿ).</p>
+<p>
+/ /1 bit:* 2 estados (0, 1)
+/ /2 bits:* 4 estados (00, 01, 10, 11)
+/ /3 bits:* 8 estados (000 a 111)
+/ /8 bits:* 256 estados</p>
+<div id="outline-container-headline-9" class="outline-4">
+<h4 id="headline-9">
+Decodificadores: Conectando Lógica e Hardware
+</h4>
+<div id="outline-text-headline-9" class="outline-text-4">
+<p>
+Na eletrônica, agrupamentos de bits controlam circuitos físicos através de portas lógicas (AND, OR, NOT). Um decodificador <em>3-to-8</em> lê 3 interruptores (bits) e ilumina 1 de 8 lâmpadas (estados).</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">flowchart LR
+  A[Switch 2: Bit Mais Significativo] --&gt; D{Decodificador Lógico}
+  B[Switch 1: Bit Intermediário] --&gt; D
+  C[Switch 0: Bit Menos Significativo] --&gt; D
+  
+  D --&gt;|000| O0(Saída 0 Ativa)
+  D --&gt;|001| O1(Saída 1 Ativa)
+  D --&gt;|111| O7(Saída 7 Ativa)
+  
+  style D fill:#333,stroke:#f66,stroke-width:2px,color:#fff</code></pre>
+</div>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-10" class="outline-3">
+<h3 id="headline-10">
+5. Bits São Apenas Bits: O Contexto é Tudo
+</h3>
+<div id="outline-text-headline-10" class="outline-text-3">
+<p>
+Um bit, isoladamente, significa absolutamente nada. É apenas 0 ou 1, um pulso elétrico baixo ou alto, uma marca magnética numa direção ou noutra. O significado surge quando <em>interpretamos</em> grupos de bits dentro de um contexto.</p>
+<p>
+A mesma sequência de 8 bits <code>01000001</code> pode representar:</p>
+<p>
+/ O número /65* (se interpretada como inteiro sem sinal)
+/ O caractere /&#39;A&#39;* (se interpretada como ASCII)</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-11" class="outline-2">
+<h2 id="headline-11">
+Uma cor específica (se interpretada como canal de um pixel RGB)
+</h2>
+</div>
+<div id="outline-container-headline-12" class="outline-2">
+<h2 id="headline-12">
+Uma instrução de máquina que move dados (se interpretada como código)
+</h2>
+<div id="outline-text-headline-12" class="outline-text-2">
+<p>
+O hardware não sabe qual dessas interpretações é a &#34;correta&#34;. Quem decide é o <em>programa</em>, através do tipo de dado que ele declara e das instruções que ele usa para manipular aquela posição de memória.</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph TD
+  BITS[&#34;Sequência de 8 bits&lt;br&gt;01000001&#34;] --&gt; CONTEXTO{Contexto de interpretação}
+  CONTEXTO --&gt;|&#34;Inteiro sem sinal&#34;| N[&#34;Valor: 65&#34;]
+  CONTEXTO --&gt;|&#34;Caractere ASCII&#34;| C[&#34;Letra: &#39;A&#39;&#34;]
+  CONTEXTO --&gt;|&#34;Canal de cor RGB&#34;| COR[&#34;Intensidade: 0.25&lt;br&gt;(numa escala de 0 a 255)&#34;]
+  CONTEXTO --&gt;|&#34;Instrução IA32&#34;| I[&#34;mov %al, ...&#34;]</code></pre>
+</div>
+<p>
+Isso explica um fenômeno que confunde iniciantes: por que <code>200 / 300 / 400 / 500</code> num computador 32 bits resulta num número /negativo* (<code>−884.901.888</code>). A CPU executou a multiplicação corretamente em termos de bits, mas a interpretação como inteiro com sinal (two&#39;s complement) transformou um resultado que estourou a capacidade de 32 bits num número negativo. O hardware não errou; a interpretação é que gerou a surpresa.</p>
+<div id="outline-container-headline-13" class="outline-4">
+<h4 id="headline-13">
+Representações Comuns de Bits no Computador
+</h4>
+<div id="outline-text-headline-13" class="outline-text-4">
+<table>
+<thead>
+<tr>
+<th>Tipo de dado</th>
+<th class="align-right">Bits usados</th>
+<th>Exemplo</th>
+<th>Interpretação</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Inteiro sem sinal</td>
+<td class="align-right">32</td>
+<td><code>00000000 00000000 00000000 00001010</code></td>
+<td>10</td>
+</tr>
+<tr>
+<td>Inteiro com sinal</td>
+<td class="align-right">32</td>
+<td><code>11111111 11111111 11111111 11110110</code></td>
+<td>−10</td>
+</tr>
+<tr>
+<td>Caractere ASCII</td>
+<td class="align-right">8</td>
+<td><code>01000001</code></td>
+<td>&#39;A&#39;</td>
+</tr>
+<tr>
+<td>Float (IEEE 754)</td>
+<td class="align-right">32</td>
+<td><code>01000001001000000000000000000000</code></td>
+<td>10.0</td>
+</tr>
+<tr>
+<td>Instrução IA32</td>
+<td class="align-right">8</td>
+<td><code>11101000</code></td>
+<td><code>call</code> (chamar função)</td>
+</tr>
+<tr>
+<td>Cor RGB (um pixel)</td>
+<td class="align-right">24</td>
+<td><code>11111111 00000000 00000000</code></td>
+<td>Vermelho puro</td>
+</tr>
+</tbody>
+</table>
+<p>
+A tabela acima ilustra o ponto central: <em>o mesmo hardware, os mesmos fios, os mesmos bits, o que muda é o contrato de interpretação</em>. Quando você declara uma variável como <code>int</code> em vez de <code>float</code>, você está dizendo ao compilador: &#34;trate estes 32 bits como um inteiro, não como um número de ponto flutuante&#34;. A CPU não sabe nem se importa; ela apenas executa as instruções que o compilador gerou.</p>
+<hr>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-3">
+<h3 id="headline-14">
+6. Bytes e Hexadecimal
+</h3>
+<div id="outline-text-headline-14" class="outline-text-3">
+<p>
+À medida que os computadores evoluíram, organizar os bits individualmente tornou-se caótico. A indústria começou a agrupar bits no que chamamos de <em>Word</em> (Palavra). O tamanho ideal estabelecido para a computação geral foi o agrupamento de 8 bits: o <em><a href="https://pt.wikipedia.org/wiki/Byte">Byte</a></em>.</p>
+<p>
+Um Byte pode representar 2⁸ (256) valores diferentes, indo de <code>00000000</code> a <code>11111111</code> (0 a 255 em decimal). É o tamanho perfeito para codificar caracteres de texto ocidentais (ASCII) e intensidades de cores em uma tela (onde RGB = 3 bytes).</p>
+<div id="outline-container-headline-15" class="outline-4">
+<h4 id="headline-15">
+O Sistema Hexadecimal (Base 16)
+</h4>
+<div id="outline-text-headline-15" class="outline-text-4">
+<p>
+Ler grandes cadeias de bits (<code>1011011001010111</code>) é insano para humanos. O sistema Octal (agrupamento de 3 bits) foi tentado, mas existe uma incompatibilidade estrutural: 8 bits não dividem igualmente por 3.</p>
+<p>
+A solução? O <em><a href="https://pt.wikipedia.org/wiki/Sistema_hexadecimal">Hexadecimal</a></em> (base 16). Cada dígito hexadecimal mapeia perfeitamente um grupo de 4 bits (um <em><a href="https://en.wikipedia.org/wiki/Nibble">nibble</a></em>). Dois dígitos hexadecimais formam exatamente 1 Byte.</p>
+<p>
+Como nosso alfabeto decimal acaba no 9, o hexadecimal empresta as seis primeiras letras do alfabeto latino:</p>
+<table>
+<tbody>
+<tr>
+<td class="align-right">Decimal</td>
+<td class="align-right">Binário</td>
+<td>Hex</td>
+<td></td>
+<td class="align-right">Decimal</td>
+<td class="align-right">Binário</td>
+<td>Hex</td>
+</tr>
+<tr>
+<td class="align-right">—</td>
+<td class="align-right">—</td>
+<td>—</td>
+<td>—</td>
+<td class="align-right">—</td>
+<td class="align-right">—</td>
+<td>—</td>
+</tr>
+<tr>
+<td class="align-right">0</td>
+<td class="align-right">0000</td>
+<td><em>0</em></td>
+<td></td>
+<td class="align-right">8</td>
+<td class="align-right">1000</td>
+<td><em>8</em></td>
+</tr>
+<tr>
+<td class="align-right">1</td>
+<td class="align-right">0001</td>
+<td><em>1</em></td>
+<td></td>
+<td class="align-right">9</td>
+<td class="align-right">1001</td>
+<td><em>9</em></td>
+</tr>
+<tr>
+<td class="align-right">2</td>
+<td class="align-right">0010</td>
+<td><em>2</em></td>
+<td></td>
+<td class="align-right">10</td>
+<td class="align-right">1010</td>
+<td><em>A</em></td>
+</tr>
+<tr>
+<td class="align-right">3</td>
+<td class="align-right">0011</td>
+<td><em>3</em></td>
+<td></td>
+<td class="align-right">11</td>
+<td class="align-right">1011</td>
+<td><em>B</em></td>
+</tr>
+<tr>
+<td class="align-right">4</td>
+<td class="align-right">0100</td>
+<td><em>4</em></td>
+<td></td>
+<td class="align-right">12</td>
+<td class="align-right">1100</td>
+<td><em>C</em></td>
+</tr>
+<tr>
+<td class="align-right">5</td>
+<td class="align-right">0101</td>
+<td><em>5</em></td>
+<td></td>
+<td class="align-right">13</td>
+<td class="align-right">1101</td>
+<td><em>D</em></td>
+</tr>
+<tr>
+<td class="align-right">6</td>
+<td class="align-right">0110</td>
+<td><em>6</em></td>
+<td></td>
+<td class="align-right">14</td>
+<td class="align-right">1110</td>
+<td><em>E</em></td>
+</tr>
+<tr>
+<td class="align-right">7</td>
+<td class="align-right">0111</td>
+<td><em>7</em></td>
+<td></td>
+<td class="align-right">15</td>
+<td class="align-right">1111</td>
+<td><em>F</em></td>
+</tr>
+</tbody>
+</table>
+<p>
+Assim, a longa string binária <code>0010010001101000101011001110</code> pode ser separada em blocos de 4 e traduzida instantaneamente:
+<code>0010</code> <code>0100</code> <code>0110</code> <code>1000</code> <code>1010</code> <code>1100</code> <code>1110</code></p>
+<p>
+<em>2</em>           <em>4</em>          <em>6</em>         <em>8</em>          <em>A</em>         <em>C</em>         <em>E</em></p>
+<p>
+O número é <code>2468ACEh</code> (o &#39;h&#39; é um sufixo comum para identificar hexadecimais, assim como o <code>#</code> no HTML, ex: <code>#E74536</code>).</p>
+<p>
+A matemática posicional do Hexadecimal funciona igual a todas as outras bases:</p>
+<p>
+<em>9A48C₁₆ = 9, 16⁴ + 10, 16³ + 4, 16² + 8, 16¹ + 12, 16⁰ = 631948₁₀</em></p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-16" class="outline-3">
+<h3 id="headline-16">
+7. Words, Endianness e a Ordem dos Bytes
+</h3>
+<div id="outline-text-headline-16" class="outline-text-3">
+<p>
+Byte a byte, já chegamos longe. Mas um único byte só representa até 255, insuficiente para endereçar os milhões de posições de memória que um computador moderno possui. A solução está no próprio nome &#34;byte&#34;: ele é um <em>pedaço</em> de algo maior. Esse algo maior é a <em>Word</em> (Palavra).</p>
+<p>
+O tamanho da <em>word</em> é o parâmetro mais fundamental de um processador. Uma CPU de 32 bits manipula naturalmente palavras de 4 bytes; uma de 64 bits, palavras de 8 bytes. Esse número define diretamente o limite de memória endereçável: 32 bits alcançam no máximo 4 GB; 64 bits alcançam 18,4 exabytes, tão grande que nenhum chip de memória atual chega perto.</p>
+<div id="outline-container-headline-17" class="outline-4">
+<h4 id="headline-17">
+A Guerra dos Bytes: Big-Endian vs. Little-Endian
+</h4>
+<div id="outline-text-headline-17" class="outline-text-4">
+<p>
+Quando armazenamos um número maior que um byte na memória, surge uma pergunta sutil: em que ordem colocamos os bytes? Tome o valor hexadecimal <code>0x01234567</code>. Ele ocupa quatro endereços consecutivos (digamos, 0x100, 0x101, 0x102 e 0x103). Mas qual byte vai em cada um?</p>
+<p>
+Existem duas convenções, e os fabricantes se dividem entre elas:</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph LR
+  subgraph &#34;Big-Endian (IBM, Sun, Redes)&#34;
+    direction LR
+    B1[&#34;0x100: 01&#34;] --&gt; B2[&#34;0x101: 23&#34;]
+    B2 --&gt; B3[&#34;0x102: 45&#34;]
+    B3 --&gt; B4[&#34;0x103: 67&#34;]
+  end
+  subgraph &#34;Little-Endian (Intel x86)&#34;
+    direction LR
+    L1[&#34;0x100: 67&#34;] --&gt; L2[&#34;0x101: 45&#34;]
+    L2 --&gt; L3[&#34;0x102: 23&#34;]
+    L3 --&gt; L4[&#34;0x103: 01&#34;]
+  end</code></pre>
+</div>
+<p>
+Os nomes vêm d&#39;<em>As Viagens de Gulliver</em>, de Jonathan Swift, onde dois reinos guerreiam sobre se os ovos devem ser quebrados pela ponta maior (<em>big end</em>) ou pela menor (<em>little end</em>). O cientista Danny Cohen importou os termos para a computação nos anos 80, e, como na sátira, não há razão técnica definitiva para escolher um ou outro. O importante é ser consistente.</p>
+<p>
+A distinção se torna prática em dois cenários:</p>
+<p>
+/ <em>Comunicação em rede:</em> Protocolos como o TCP/IP adotam big-endian como padrão (/network byte order*). Programas que enviam inteiros pela rede devem usar funções como <code>htonl()</code> para converter antes de transmitir.</p>
+<p>
+/ /Engenharia reversa:* Ao examinar um dump hexadecimal de código de máquina num sistema Intel, os números aparecem &#34;de trás para frente&#34;. A sequência <code>64 94 04 08</code> representa, na verdade, o endereço <code>0x08049464</code>, um lembrete de que a ordem que vemos na tela nem sempre é a ordem que a máquina enxerga.</p>
+</div>
+</div>
+<div id="outline-container-headline-18" class="outline-4">
+<h4 id="headline-18">
+🔧 Exercícios
+</h4>
+<div id="outline-text-headline-18" class="outline-text-4">
+<p>
+<em>1. Binário para decimal:</em> Converta <code>1101101₂</code> para decimal.</p>
+<p>
+<em>2. Decimal para binário:</em> Converta <code>156₁₀</code> para binário.</p>
+<p>
+<em>3. Hexadecimal para decimal:</em> Converta <code>3F2A₁₆</code> para decimal.</p>
+<p>
+<em>4. Identificando Endianness:</em> Você recebeu um dump de memória de 4 bytes: <code>78 56 34 12</code>. Sabendo que o processador é <em>little-endian</em> (Intel), qual é o valor hexadecimal de 32 bits armazenado? E se fosse <em>big-endian</em>?</p>
+<p>
+<em>5. Bits na prática:</em> Quantos bytes são necessários para armazenar a string &#34;Olá, mundo!&#34; em UTF-8? (Lembre-se que cada caractere ASCII ocupa 1 byte, e caracteres acentuados como &#34;á&#34; ocupam 2 bytes.)</p>
+<p>
+&lt;details&gt;
+&lt;summary&gt;&lt;b&gt;Respostas&lt;/b&gt;&lt;/summary&gt;</p>
+<ol>
+<li>1101101₂ = 64 + 32 + 0 + 8 + 4 + 0 + 1 = <em>109₁₀</em>.</li>
+<li>156 ÷ 2 = 78 (resto 0), 78 ÷ 2 = 39 (resto 0), 39 ÷ 2 = 19 (resto 1), 19 ÷ 2 = 9 (resto 1), 9 ÷ 2 = 4 (resto 1), 4 ÷ 2 = 2 (resto 0), 2 ÷ 2 = 1 (resto 0), 1 ÷ 2 = 0 (resto 1). Lendo de baixo para cima: <em>10011100₂</em>.</li>
+<li>3F2A₁₆ = 3,16³ + 15,16² + 2,16¹ + 10,16⁰ = 12288 + 3840 + 32 + 10 = <em>16170₁₀</em>.</li>
+<li>Little-endian: o primeiro byte é o menos significativo. Valor lido: <em>0x12345678</em>. Big-endian: o primeiro byte é o mais significativo. Valor lido: <em>0x78563412</em>.</li>
+<li>A string tem 12 caracteres. &#39;O&#39;, &#39;l&#39;, &#39;á&#39; (2 bytes), &#39;,&#39;, &#39; &#39;, &#39;m&#39;, &#39;u&#39;, &#39;n&#39;, &#39;d&#39;, &#39;o&#39;, &#39;!&#39;, &#39;\n&#39;? Na verdade &#34;Olá, mundo!&#34; tem 12 caracteres: O(1) + l(1) + á(2) +,(1) + (1) + m(1) + u(1) + n(1) + d(1) + o(1) + !(1) = <em>13 bytes</em>.</li>
+</ol>
+<p>&lt;/details&gt;</p>
+<hr>
+<p>
+Nossa familiaridade com os números baseados em &#34;dez&#34; nos cega para a elegância abstrata da matemática posicional. Ao dominarmos a maleabilidade das bases numéricas, compreendemos o segredo fundamental por trás de todos os sistemas computacionais já criados. Com os números representados em bits, os bits agrupados em bytes e estes organizados em palavras, surge o próximo desafio: como usar esses bytes para representar não apenas números, mas letras, símbolos e todo o texto que lemos na tela?</p>
+<hr>
+<p>
+<em>Fonte:</em> <a href="https://a.co/d/0a3DsSsn">Code: The Hidden Language of Computer Hardware and Software</a>, 2ª ed., Charles Petzold</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+  </div>
+</article>
+
+    </main>
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
+</body>
+</html>

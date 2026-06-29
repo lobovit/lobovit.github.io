@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Audio on lobovit</title>
+    <link>https://lobovit.github.io/tags/audio/</link>
+    <description>Recent content in Audio on lobovit</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Wed, 27 May 2026 14:00:00 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/audio/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>06 - AI Engineering from scratch: do microfone ao assistente de voz</title>
+      <link>https://lobovit.github.io/ai-speech-and-audio/</link>
+      <pubDate>Wed, 27 May 2026 14:00:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/ai-speech-and-audio/</guid>
+      <description>&lt;p&gt;&#xA;Som é vibração no ar. Um microfone converte vibração em voltagem. Um conversor analógico-digital amostra essa voltagem 16 mil vezes por segundo. Cada amostra é um float32. Um segundo de áudio são 16 mil floats. Cinco minutos, 4.8 milhões. E em cima dessa montanha de números a gente constrói modelos que transcrevem reuniões, clonam vozes, geram música e conduzem conversas em tempo real.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Processamento de fala e áudio é o campo que fecha o ciclo da comunicação humano-máquina. Texto vai pra voz (TTS). Voz vai pra texto (ASR). E o ciclo inteiro roda em 200 milissegundos pra simular uma conversa natural. Este artigo percorre 17 tópicos, dos fundamentos de áudio digital até assistentes de voz com interrupção em tempo real. A stack é Python pra experimentação e Go pra servir modelos em produção.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

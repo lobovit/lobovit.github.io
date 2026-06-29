@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-<head>
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="data:,">
-  <title>A Batalha dos Milissegundos — scovl</title>
+  <title>A Batalha dos Milissegundos — lobovit</title>
   <link rel="stylesheet" href="/css/main.css?v=3">
   <link rel="stylesheet" href="/vendor/fonts/fonts.css">
   <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
@@ -13,7 +13,7 @@
   <div class="frame">
     <header>
       <nav>
-        <a class="site-title" href="https://scovl.github.io/">scovl</a>
+        <a class="site-title" href="http://localhost:1313/">lobovit</a>
         <span class="nav-links">
           <a href="/page/about/">about</a>
           <a href="/page/contact/">contact</a>
@@ -36,8 +36,8 @@ Como reduzi 62 consultas ao banco para 4 e ganhei 8× de throughput
 </h2>
 <div id="outline-text-headline-1" class="outline-text-2">
 <p>
-Quando você atinge dezenas de milhares de transações por segundo, a pergunta mais perigosa que você pode fazer é <span style="text-decoration: underline;">&#34;qual formato de serialização devo usar?&#34;</span>. Não porque a resposta seja irrelevante, mas porque ela quase nunca é o gargalo real. Esta é a história de como, durante o desenvolvimento do <em><a href="https://github.com/scovl/Ollanta">Ollanta</a></em>, uma plataforma de análise estática multilinguagem escrita em Go, eu quase caí na armadilha de otimizar o problema errado.</p>
-<img src="https://github.com/scovl/Ollanta/raw/main/docs/imgs/logo-dark.png" alt="ollanta" title="https://github.com/scovl/Ollanta/raw/main/docs/imgs/logo-dark.png" width="250" style="display:block;margin:1em auto;"/>
+Quando você atinge dezenas de milhares de transações por segundo, a pergunta mais perigosa que você pode fazer é <span style="text-decoration: underline;">&#34;qual formato de serialização devo usar?&#34;</span>. Não porque a resposta seja irrelevante, mas porque ela quase nunca é o gargalo real. Esta é a história de como, durante o desenvolvimento do <em><a href="https://github.com/lobovit/Ollanta">Ollanta</a></em>, uma plataforma de análise estática multilinguagem escrita em Go, eu quase caí na armadilha de otimizar o problema errado.</p>
+<img src="https://github.com/lobovit/Ollanta/raw/main/docs/imgs/logo-dark.png" alt="ollanta" title="https://github.com/lobovit/Ollanta/raw/main/docs/imgs/logo-dark.png" width="250" style="display:block;margin:1em auto;"/>
 <p>
 O cenário: milhares de scanners enviando relatórios de análise para um servidor central. Cada relatório contém métricas, issues e snapshots de código. O servidor precisa ingerir, avaliar quality gates, persistir e indexar — tudo em segundos, com centenas de milhares de projetos acumulados ao longo do tempo. A primeira reação de qualquer engenheiro diante de &#34;payloads JSON de 8 MB chegando via HTTP&#34; é: <em>&#34;preciso comprimir isso&#34;</em>. E está certo. Mas essa é a porta de entrada para a armadilha.</p>
 </div>
@@ -356,7 +356,7 @@ Referências
 <li><a href="https://www.postgresql.org/docs/current/sql-copy.html">PostgreSQL COPY Protocol</a> — bulk insert 50× mais rápido</li>
 <li><a href="https://github.com/jackc/pgx">pgx CopyFrom</a> — driver Go com suporte nativo a COPY</li>
 <li><a href="https://www.postgresql.org/docs/current/sql-select.html#SQL-FOR-UPDATE-SHARE">PostgreSQL FOR UPDATE SKIP LOCKED</a> — claim atômico para workers paralelos</li>
-<li><a href="https://github.com/scovl/Ollanta">Ollanta no GitHub</a> — plataforma de análise estática open source</li>
+<li><a href="https://github.com/lobovit/Ollanta">Ollanta no GitHub</a> — plataforma de análise estática open source</li>
 <li><a href="https://docs.sonarsource.com/sonarqube/latest/architecture/">SonarQube Architecture</a> — referência de comparação arquitetural</li>
 </ul>
 </div>

@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>Petzold02 - A Linguagem Oculta do Hardware — lobovit</title>
+  <link rel="stylesheet" href="/css/main.css?v=3">
+  <link rel="stylesheet" href="/vendor/fonts/fonts.css">
+  <link rel="stylesheet" href="/vendor/prism/prism-mocha.min.css">
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <nav>
+        <a class="site-title" href="https://lobovit.github.io/">lobovit</a>
+        <span class="nav-links">
+          <a href="/page/about/">about</a>
+          <a href="/page/contact/">contact</a>
+        </span>
+      </nav>
+      <hr>
+    </header>
+    <main>
+      
+<article>
+  <header>
+    <h1>Petzold02 - A Linguagem Oculta do Hardware</h1>
+    <p class="meta"><time>2026-05-12</time> · <span class="tag">hardware</span><span class="tag">portas lógicas</span><span class="tag">álgebra booleana</span><span class="tag">história</span><span class="tag">computação</span></p>
+  </header>
+  <div class="content">
+    
+<p>
+No <a href="/post/histcomp01">artigo anterior</a> vimos que informação pode ser codificada em padrões binários — pontos e traços no Morse, pontos em relevo no Braille, bits 0 e 1 no ASCII. Mas codificar é só metade da história. A pergunta agora é: como construir uma máquina que <em>processa</em> fisicamente esses 0s e 1s?</p>
+<p>
+A resposta começa com uma lanterna.</p>
+<div id="outline-container-headline-1" class="outline-3">
+<h3 id="headline-1">
+A Anatomia de uma Lanterna e a Dança dos Elétrons
+</h3>
+<div id="outline-text-headline-1" class="outline-text-3">
+<p>
+Uma lanterna comum é um dos aparelhos elétricos mais simples que existem. Desmonte-a e você encontrará baterias, uma lâmpada, algumas peças de metal e, o mais importante, um <em>interruptor</em>.</p>
+<div id="outline-container-headline-2" class="outline-4">
+<h4 id="headline-2">
+O que é Eletricidade, de Fato?
+</h4>
+<div id="outline-text-headline-2" class="outline-text-4">
+<p>
+Toda matéria é feita de <a href="https://pt.wikipedia.org/wiki/Átomo">átomos</a>, e cada átomo é como um sistema solar em miniatura: um núcleo de <em><a href="https://pt.wikipedia.org/wiki/Nêutron">nêutrons</a></em> (sem carga) e <em><a href="https://pt.wikipedia.org/wiki/Próton">prótons</a></em> (carga positiva), orbitado por <em><a href="https://pt.wikipedia.org/wiki/Elétron">elétrons</a></em> (carga negativa). Todos os elétrons do universo são idênticos e indistinguíveis entre si.</p>
+<p>
+Em condições normais, cada átomo tem o mesmo número de prótons e elétrons, mantendo-se eletricamente neutro. Mas se um átomo perde um elétron, ele fica positivamente carregado e tentará roubar um elétron de um átomo vizinho. Este, por sua vez, roubará de outro, e assim por diante. Uma <em>corrente elétrica</em> é exatamente isso: um efeito cascata de elétrons sendo passados de átomo em átomo através de um material condutor. Os elétrons não percorrem o fio inteiro como bolas de gude num cano, eles empurram seus vizinhos, que empurram os próximos, num efeito dominó quase instantâneo.</p>
+<p>
+Há uma diferença crucial entre dois tipos de eletricidade:</p>
+<p>
+/ /Eletricidade estática:* Um desequilíbrio momentâneo de elétrons tentando se corrigir. É o choque ao tocar uma maçaneta, ou um raio durante uma tempestade. A carga se acumula e se descarrega de uma vez.
+/ /Eletricidade em circuito:* Um fluxo contínuo e controlado de elétrons através de um caminho fechado (fios e componentes). É o que alimenta sua lanterna e seu computador.</p>
+<p>
+No circuito, os elétrons viajam do terminal <em>negativo</em> da bateria para o terminal <em>positivo</em> (sentido anti-horário no diagrama). Por convenção histórica, a engenharia desenha a corrente no sentido oposto (do positivo para o negativo), mas a realidade física é que os elétrons vão do negativo para o positivo.</p>
+</div>
+</div>
+<div id="outline-container-headline-3" class="outline-4">
+<h4 id="headline-3">
+Tensão, Corrente e Resistência
+</h4>
+<div id="outline-text-headline-3" class="outline-text-4">
+<p>
+!<a href="/post/images/hist/corrente01.png">corrente01</a></p>
+<p>
+Para entender esse fluxo, usamos a analogia clássica da água encanada:</p>
+<p>
+/ /<a href="https://pt.wikipedia.org/wiki/Tensão_elétrica">Tensão</a> (Volts - E):* É a &#34;pressão&#34; da água. Uma bateria tem o potencial de realizar trabalho, como uma caixa d&#39;água no alto de um prédio.
+/ /<a href="https://pt.wikipedia.org/wiki/Corrente_elétrica">Corrente</a> (Amperes - I):* É a quantidade de água (elétrons) fluindo pelo cano.
+/ /<a href="https://pt.wikipedia.org/wiki/Resistência_elétrica">Resistência</a> (Ohms - R):* É o &#34;estreitamento&#34; do cano. Quanto mais fino ou mais longo o cano, maior a resistência, menos água passa.</p>
+<p>
+A famosa <a href="https://pt.wikipedia.org/wiki/Lei_de_Ohm">Lei de Ohm</a> conecta essas grandezas:</p>
+<p>
+<em>I = E / R</em></p>
+<p>
+Quanto maior a resistência, menor a corrente. É por isso que fios muito longos não conseguem acender uma lâmpada no outro extremo.</p>
+</div>
+</div>
+<div id="outline-container-headline-4" class="outline-4">
+<h4 id="headline-4">
+A Lâmpada Incandescente
+</h4>
+<div id="outline-text-headline-4" class="outline-text-4">
+<p>
+Embora <a href="https://pt.wikipedia.org/wiki/Thomas_Edison">Thomas Edison</a> costume levar o crédito, foi o britânico <a href="https://pt.wikipedia.org/wiki/Joseph_Swan">Joseph Swan</a> quem de fato inventou a lâmpada incandescente prática. Dentro do bulbo de vidro há um fino <em><a href="https://pt.wikipedia.org/wiki/Tungstênio">filamento de tungstênio</a></em> que brilha quando aquecido pela passagem de corrente elétrica. O bulbo é preenchido com um <em>gás inerte</em> (<a href="https://pt.wikipedia.org/wiki/Árgon">argônio</a> ou <a href="https://pt.wikipedia.org/wiki/Nitrogénio">nitrogênio</a>) para evitar que o filamento entre em combustão e queime instantaneamente ao entrar em contato com o oxigênio.</p>
+<p>
+O filamento de uma lâmpada comum tem uma resistência de aproximadamente <em>4 ohms</em> quando frio (a resistência aumenta quando o filamento aquece). É essa resistência que transforma energia elétrica em luz e calor.</p>
+</div>
+</div>
+<div id="outline-container-headline-5" class="outline-4">
+<h4 id="headline-5">
+Potência, Baterias e Curto-Circuito
+</h4>
+<div id="outline-text-headline-5" class="outline-text-4">
+<p>
+A potência consumida por um componente é dada pela <em><a href="https://pt.wikipedia.org/wiki/James_Watt">Lei de Watt</a></em> (homenagem a <a href="https://pt.wikipedia.org/wiki/James_Watt">James Watt</a>, o inventor da <a href="https://pt.wikipedia.org/wiki/Máquina_a_vapor">máquina a vapor</a>):</p>
+<p>
+<em>P = R × I²</em></p>
+<p>
+Ou seja, a potência (em Watts) é a resistência multiplicada pelo quadrado da corrente. Um filamento de 4 ohms com 0,5 amperes dissipa 1 Watt.</p>
+<p>
+Quanto às baterias, a forma como você as conecta muda completamente o comportamento do circuito:</p>
+<p>
+/ <em>Em série:</em> As tensões se somam. Duas pilhas de 1,5V em série fornecem <em>3V*, com a mesma duração de uma só.
+/ /Em paralelo:</em> A tensão permanece <em>1,5V</em>, mas a duração /dobra*, pois cada pilha contribui com metade da corrente.</p>
+<p>
+Se você conectar o fio positivo diretamente ao negativo sem nenhuma resistência no caminho (resistência ≈ 0), a corrente dispara para valores altíssimos (I = E / R, e R é quase zero). Isso é um <em>curto-circuito</em>: o fio esquenta, pode brilhar e até derreter. É por isso que <em><a href="https://pt.wikipedia.org/wiki/Fusível">fusíveis</a></em> e <em><a href="https://pt.wikipedia.org/wiki/Disjuntor">disjuntores</a></em> existem, para interromper o circuito antes que o fio vire um incêndio.</p>
+</div>
+</div>
+<div id="outline-container-headline-6" class="outline-4">
+<h4 id="headline-6">
+O Interruptor: A Primeira Porta Lógica
+</h4>
+<div id="outline-text-headline-6" class="outline-text-4">
+<p>
+Com tudo conectado, para que a lâmpada brilhe, o caminho da bateria até a lâmpada e de volta à bateria deve ser contínuo. É um <em>circuito</em> (um círculo). O papel do interruptor é quebrar ou completar esse círculo.</p>
+<p>
+Aqui há uma pegadinha de terminologia que confunde iniciantes: em eletrônica, uma chave <em>fechada</em> (<em>closed</em>) permite o fluxo de eletricidade, enquanto uma chave <em>aberta</em> (<em>open</em>) impede o fluxo. É o oposto da intuição com portas físicas, onde uma porta fechada bloqueia a passagem e uma aberta permite.</p>
+<p>
+O interruptor é puramente <em>binário</em>: ligado ou desligado, 1 ou 0, sem meio-termo. Dentro de um chip moderno, bilhões de interruptores microscópicos (transistores) fazem exatamente a mesma coisa, apenas muito menores e muito mais rápidos.</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">flowchart LR
+    B[&#34;Bateria (3V)&#34;] --&gt;|&#34;Fluxo de elétrons&#34;| S{&#34;Interruptor&lt;br&gt;fechado? (1)&#34;}
+    S --&gt;|&#34;SIM (1)&#34;| L((&#34;Lâmpada&lt;br&gt;acesa&#34;))
+    S -.-&gt;|&#34;NÃO (0)&#34;| O(((&#34;Apagada&#34;)))
+    L --&gt; B_neg[&#34;Retorno&#34;]
+    
+    style S fill:#ff9999,stroke:#333,stroke-width:2px,color:#000
+    style L fill:#fff0a0,stroke:#333,stroke-width:2px
+    style B fill:#e0ffe0,stroke:#333</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-7" class="outline-3">
+<h3 id="headline-7">
+Telégrafos, Relés e a Comunicação a Distância
+</h3>
+<div id="outline-text-headline-7" class="outline-text-3">
+<p>
+Imagine que você queira usar lanternas para se comunicar em código Morse com um vizinho, mas as janelas de vocês não se alinham. A solução? Estender os fios da sua bateria até a lâmpada no quarto dele.</p>
+<p>
+Mas há um problema: fios longos têm resistência. Um fio de cobre de <a href="https://pt.wikipedia.org/wiki/American_wire_gauge">bitola 20 AWG</a> (típico de instalações elétricas) tem cerca de 10 ohms de resistência a cada 300 metros. Se a casa do vizinho estiver a 1,5 km, o fio terá mais de <em>100 ohms</em> de resistência. Pela Lei de Ohm (I = 3V / 100Ω = 0,03A), uma bateria de 3V mal conseguiria gerar corrente suficiente para fazer uma lâmpada de 4 ohms brilhar. Por isso o telégrafo não usava lâmpadas: em vez disso, usava <em><a href="https://pt.wikipedia.org/wiki/Eletroímã">eletroímãs</a></em> que emitiam &#34;cliques&#34; audíveis, dispositivos que exigem muito menos corrente para operar.</p>
+<div id="outline-container-headline-8" class="outline-4">
+<h4 id="headline-8">
+Reduzindo Custos: A Evolução da Fiação
+</h4>
+<div id="outline-text-headline-8" class="outline-text-4">
+<p>
+Entre duas casas, o sistema mais simples usa <em>4 fios</em>: dois circuitos completos e independentes (um para enviar, outro para receber). Mas engenheiros logo perceberam que os terminais negativos de ambas as baterias poderiam compartilhar um único fio <em>comum</em> (<em>common</em>), reduzindo o sistema para <em>3 fios</em>, uma economia de 25% em cobre.</p>
+<p>
+Pode-se reduzir ainda mais? Sim. O planeta Terra é um condutor massivo de eletricidade. Enterrando uma haste de cobre no solo em cada extremidade e conectando o fio comum a elas, o <em>solo</em> passa a completar o circuito. Agora bastam <em>2 fios</em> entre as casas.</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph LR
+    subgraph &#34;Evolução da Fiação&#34;
+        A[&#34;4 fios&#34;] --&gt; B[&#34;3 fios&lt;br&gt;(fio comum)&#34;]
+        B --&gt; C[&#34;2 fios&lt;br&gt;(terra como condutor)&#34;]
+    end</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-9" class="outline-4">
+<h4 id="headline-9">
+O Conceito de Terra (Ground)
+</h4>
+<div id="outline-text-headline-9" class="outline-text-4">
+<p>
+O <em><a href="https://pt.wikipedia.org/wiki/Terra_(eletricidade">aterramento</a>)</em> é um dos conceitos mais importantes da engenharia elétrica. A terra é considerada um ponto de <em>potencial zero</em> (0 volts), um oceano virtualmente infinito de elétrons onde a adição ou remoção de alguns não altera o nível total. É como despejar um balde d&#39;água no oceano: o volume do oceano não muda de forma mensurável.</p>
+<p>
+O símbolo clássico de aterramento são três linhas horizontais decrescentes:</p>
+<div class="src src-text">
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">───
+</span></span><span class="line"><span class="cl">──
+</span></span><span class="line"><span class="cl">─</span></span></code></pre></div>
+</div>
+<p>
+Quando o terminal negativo da bateria está conectado à terra, o terminal positivo pode ser representado simplesmente por um <em>V</em> (de <em>Voltage</em>), já que a referência de potencial zero está implícita.</p>
+</div>
+</div>
+<div id="outline-container-headline-10" class="outline-4">
+<h4 id="headline-10">
+O Relé: Amplificando o Sinal
+</h4>
+<div id="outline-text-headline-10" class="outline-text-4">
+<p>
+Mesmo com 2 fios, a resistência em longas distâncias continua sendo um problema. Foi exatamente esse o desafio enfrentado na criação do <a href="https://pt.wikipedia.org/wiki/Telégrafo">telégrafo</a>. A solução genial foi o <em><a href="https://pt.wikipedia.org/wiki/Relé">Relé</a></em> (Relay).</p>
+<p>
+!<a href="/post/images/hist/rele01.png">corrente01</a></p>
+<p>
+Um relé é um interruptor acionado pela própria <em>eletricidade</em>. Ele usa um <em>eletroímã</em>, uma bobina de fio que se comporta como um ímã quando a corrente passa por ela. Quando a corrente fraca do sinal original entra no eletroímã, ele magnetiza uma barra de ferro, que puxa um contato metálico, fechando um segundo circuito alimentado por uma bateria nova e forte.</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">graph LR
+  subgraph Relé: O Interruptor Automático
+  SinalFraco[Sinal de Entrada Fraco] --&gt;|Magnetiza| Eletroima[Eletroímã]
+  Eletroima -. Puxa .-&gt; Contato[Contato Metálico]
+  BateriaForte[Nova Bateria Forte] --&gt; Contato
+  Contato --&gt;|Sinal Renovado| Saida[Sinal de Saída Forte]
+  end</code></pre>
+</div>
+<p>
+O relé permitiu que o sinal do telégrafo cruzasse continentes, sendo &#34;amplificado&#34; (retransmitido) de estação em estação.</p>
+</div>
+</div>
+<div id="outline-container-headline-11" class="outline-4">
+<h4 id="headline-11">
+Comunicação Bidirecional
+</h4>
+<div id="outline-text-headline-11" class="outline-text-4">
+<p>
+Com este sistema de 2 fios e relés, ambas as casas podem <em>enviar e receber</em> mensagens simultaneamente pela mesma infraestrutura física compartilhada. Cada lado tem seu próprio eletroímã receptor que emite cliques quando a outra parte fecha seu interruptor. É o início da <em>comunicação bidirecional</em> (<a href="https://pt.wikipedia.org/wiki/Duplex_(telecomunicações"><em>full-duplex</em></a>)), o mesmo princípio que permite que você baixe um arquivo enquanto envia um email pelo mesmo cabo de rede.</p>
+<p>
+Mas a verdadeira revolução do relé ocorreu quando engenheiros perceberam que, se a eletricidade pode controlar interruptores, podemos construir máquinas que processam <em>lógica</em>.</p>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-12" class="outline-3">
+<h3 id="headline-12">
+A Álgebra de Boole
+</h3>
+<div id="outline-text-headline-12" class="outline-text-3">
+<p>
+Em 1854, o matemático inglês <a href="https://pt.wikipedia.org/wiki/George_Boole">George Boole</a> publicou <em>Uma Investigação das Leis do Pensamento</em>. Seu objetivo não tinha nada a ver com computadores ou circuitos elétricos — a eletricidade mal era utilizável na época. Boole queria capturar as <em>leis do raciocínio humano</em> em forma matemática.</p>
+<p>
+O insight de Boole foi tratar conceitos como <em>conjuntos</em>. Imagine que a variável <em>x</em> represente o conjunto de todos os gatos, e <em>y</em> represente o conjunto de todos os cães. Então:</p>
+<p>
+/ /x × y (interseção):* O conjunto do que é simultaneamente gato E cão. Resultado: conjunto vazio. Assim como 0 × 1 = 0 na multiplicação comum, a interseção de dois conjuntos sem sobreposição é vazia.
+/ /x + y (união):* O conjunto do que é gato OU cão. Resultado: todos os gatos e todos os cães. A união acumula membros, assim como a adição acumula quantidades.</p>
+<p>
+Boole percebeu que poderia aplicar essa lógica a <em>proposições</em> (afirmações que são verdadeiras ou falsas), criando uma álgebra completa com regras consistentes. Eis as três operações fundamentais:</p>
+<p>
+/ <em>AND (E)</em> equivale à interseção/multiplicação: 0·0=0, 0·1=0, 1·1=1. O resultado só é 1 quando <em>todos* os fatores são 1.
+/ /OR (OU)</em> equivale à união/adição, com uma diferença crucial: 1+1=1 (em vez de 2, porque a união de um conjunto consigo mesmo não cria membros novos). O resultado é 1 quando /qualquer* operando é 1.
+/ /NOT (NÃO)* é o complemento: 0 vira 1, 1 vira 0. O que está fora do conjunto.</p>
+<p>
+!<a href="/post/images/hist/portas-logicas.png">portas-logicas</a></p>
+<p>
+O brilho da engenharia veio em 1938, quando <a href="https://pt.wikipedia.org/wiki/Claude_Shannon">Claude Shannon</a>, então um estudante de mestrado no MIT, escreveu uma tese provando que a álgebra de Boole — aquela matemática obscura do século XIX sobre gatos, cães e proposições lógicas — mapeava perfeitamente para o comportamento de relés e circuitos elétricos. Foi Shannon quem percebeu que um relé energizado é 1, um relé desenergizado é 0, e que conectar relés em série e paralelo produz exatamente as operações AND e OR da álgebra booleana.</p>
+<p>
+Veja como dois interruptores podem implementar AND e OR:</p>
+<div id="outline-container-headline-13" class="outline-4">
+<h4 id="headline-13">
+Conexão em Série (A Porta AND)
+</h4>
+<div id="outline-text-headline-13" class="outline-text-4">
+<p>
+Se ligarmos dois interruptores um após o outro (em série), a lâmpada só acenderá se o Interruptor A <em>E</em> o Interruptor B estiverem fechados. Se qualquer um estiver aberto, o circuito se quebra e a lâmpada apaga. Isso é uma multiplicação booleana (A, B): o resultado só é 1 (aceso) quando ambos os fatores são 1.</p>
+</div>
+</div>
+<div id="outline-container-headline-14" class="outline-4">
+<h4 id="headline-14">
+Conexão em Paralelo (A Porta OR)
+</h4>
+<div id="outline-text-headline-14" class="outline-text-4">
+<p>
+Se ligarmos os interruptores lado a lado (em paralelo), a corrente terá dois caminhos possíveis. A lâmpada acenderá se o Interruptor A <em>OU</em> o Interruptor B estiver fechado (ou ambos). Isso é uma adição booleana (A + B): basta um dos operandos ser 1 para o resultado ser 1.</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">flowchart TD
+    subgraph AND[&#34;Porta AND (em série)&#34;]
+        direction LR
+        A1[&#34;🔋 Bateria&#34;] --&gt; S1[&#34;Chave A&#34;] --&gt; S2[&#34;Chave B&#34;] --&gt; L1((&#34;💡&#34;))
+    end
+
+    subgraph OR[&#34;Porta OR (em paralelo)&#34;]
+        direction LR
+        A2[&#34;🔋 Bateria&#34;] --&gt; S3[&#34;Chave A&#34;]
+        A2 --&gt; S4[&#34;Chave B&#34;]
+        S3 --&gt; L2((&#34;💡&#34;))
+        S4 --&gt; L2
+    end
+
+    style AND fill:#e3f2fd,stroke:#1565c0
+    style OR fill:#fff3e0,stroke:#e65100
+    style S1 fill:#bbdefb,stroke:#1565c0
+    style S2 fill:#bbdefb,stroke:#1565c0
+    style S3 fill:#ffe0b2,stroke:#e65100
+    style S4 fill:#ffe0b2,stroke:#e65100</code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-15" class="outline-3">
+<h3 id="headline-15">
+O Nascimento das Portas Lógicas
+</h3>
+<div id="outline-text-headline-15" class="outline-text-3">
+<p>
+Como os relés podem atuar como interruptores controlados por eletricidade, podemos substituir os interruptores manuais por relés em cascata. Isso cria o que chamamos de <em>Portas Lógicas</em> (Logic Gates), os blocos fundamentais de construção de qualquer computador.</p>
+<p>
+O diagrama abaixo mostra como dois relés ligados <em>em série</em> implementam a porta AND: a corrente só chega à saída se o Relé A <em>E</em> o Relé B estiverem energizados simultaneamente.</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">flowchart LR
+    B1[&#34;🔋 Bateria&lt;br&gt;de entrada&#34;] --&gt;|&#34;corrente&#34;| R1[&#34;Relé A&lt;br&gt;(entrada A)&#34;]
+    R1 --&gt;|&#34;se A=1&#34;| R2[&#34;Relé B&lt;br&gt;(entrada B)&#34;]
+    R2 --&gt;|&#34;se B=1&#34;| OUT[&#34;Circuito de&lt;br&gt;saída&#34;]
+    B2[&#34;🔋 Bateria&lt;br&gt;de saída&#34;] --&gt;|&#34;aguardando&#34;| OUT
+    
+    style B1 fill:#e8f5e9,stroke:#2e7d32
+    style B2 fill:#fff3e0,stroke:#e65100
+    style R1 fill:#bbdefb,stroke:#1565c0
+    style R2 fill:#bbdefb,stroke:#1565c0</code></pre>
+</div>
+<p>
+Antes de mergulharmos nas tabelas verdade com 0 e 1, vale a pena fazer uma <em>transição gradual</em>. A mesma porta lógica pode ser descrita em três níveis de abstração, do mais físico ao mais abstrato:</p>
+<table>
+<thead>
+<tr>
+<th>Chave A</th>
+<th>Chave B</th>
+<th>Circuito (AND)</th>
+<th>Lâmpada</th>
+<th class="align-right">Lógico (0/1)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Aberta</td>
+<td>Aberta</td>
+<td>Interrompido</td>
+<td>Apagada</td>
+<td class="align-right">0</td>
+</tr>
+<tr>
+<td>Aberta</td>
+<td>Fechada</td>
+<td>Interrompido</td>
+<td>Apagada</td>
+<td class="align-right">0</td>
+</tr>
+<tr>
+<td>Fechada</td>
+<td>Aberta</td>
+<td>Interrompido</td>
+<td>Apagada</td>
+<td class="align-right">0</td>
+</tr>
+<tr>
+<td>Fechada</td>
+<td>Fechada</td>
+<td>Completo</td>
+<td><em>Acesa</em></td>
+<td class="align-right"><em>1</em></td>
+</tr>
+</tbody>
+</table>
+<p>
+O que Shannon percebeu é que as três colunas da direita — Circuito, Lâmpada, e 0/1 — são intercambiáveis. O relé não &#34;sabe&#34; se está representando um bit, uma proposição lógica ou um conjunto; ele simplesmente conduz ou bloqueia corrente. A <em>interpretação</em> é nossa.</p>
+<p>
+Aqui estão as portas primárias com suas tabelas verdade:</p>
+<ol>
+<li><em>AND (E):</em> Dois relés em série. A saída só é 1 se <em>todas</em> as entradas forem 1.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th class="align-right">Entrada A</th>
+<th class="align-right">Entrada B</th>
+<th class="align-right">Saída (A AND B)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="align-right">0</td>
+<td class="align-right">0</td>
+<td class="align-right">0</td>
+</tr>
+<tr>
+<td class="align-right">0</td>
+<td class="align-right">1</td>
+<td class="align-right">0</td>
+</tr>
+<tr>
+<td class="align-right">1</td>
+<td class="align-right">0</td>
+<td class="align-right">0</td>
+</tr>
+<tr>
+<td class="align-right">1</td>
+<td class="align-right">1</td>
+<td class="align-right"><em>1</em></td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li><em>OR (OU):</em> Dois relés em paralelo. A saída é 1 se <em>qualquer</em> entrada for 1.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th class="align-right">Entrada A</th>
+<th class="align-right">Entrada B</th>
+<th>Saída (A OR B)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="align-right">0</td>
+<td class="align-right">0</td>
+<td>0</td>
+</tr>
+<tr>
+<td class="align-right">0</td>
+<td class="align-right">1</td>
+<td><em>1</em></td>
+</tr>
+<tr>
+<td class="align-right">1</td>
+<td class="align-right">0</td>
+<td><em>1</em></td>
+</tr>
+<tr>
+<td class="align-right">1</td>
+<td class="align-right">1</td>
+<td><em>1</em></td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li><em>NOT (Inversor):</em> Enquanto a AND e a OR usam contatos que fecham quando o eletroímã é ativado, a NOT usa um contato que <em>abre</em> quando ativado. Se a entrada tem corrente (1), o eletroímã puxa o contato e corta a corrente na saída, gerando 0. Ele simplesmente inverte o sinal.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th class="align-right">Entrada</th>
+<th>Saída (NOT A)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="align-right">0</td>
+<td><em>1</em></td>
+</tr>
+<tr>
+<td class="align-right">1</td>
+<td><em>0</em></td>
+</tr>
+</tbody>
+</table>
+<div id="outline-container-headline-16" class="outline-4">
+<h4 id="headline-16">
+Portas Universais: NAND e NOR
+</h4>
+<div id="outline-text-headline-16" class="outline-text-4">
+<p>
+Combinando um inversor (NOT) com uma porta AND ou OR, obtemos as portas <em>NAND</em> e <em>NOR</em>, regidas pelas <em><a href="https://pt.wikipedia.org/wiki/Leis_de_De_Morgan">Leis de Morgan</a></em>:</p>
+<p>
+<em>¬(A ∧ B) = ¬A ∨ ¬B</em> (Não ser A e B é o mesmo que Não A ou Não B)</p>
+<p>
+<em>¬(A ∨ B) = ¬A ∧ ¬B</em> (Não ser A ou B é o mesmo que Não A e Não B)</p>
+<p>
+Estas leis não são apenas curiosidade teórica, elas permitem <em>simplificar circuitos</em>. Por exemplo, suponha que você queira um circuito que acenda uma lâmpada quando A=1 e B=0. A expressão é S = A ∧ ¬B. Usando De Morgan, podemos reescrever ¬(A ∧ ¬B) = ¬A ∨ B, o que significa que S = ¬(¬A ∨ B), uma expressão que pode ser implementada com apenas portas NOR, que são mais baratas de fabricar que AND + NOT separados.</p>
+<p>
+Na prática, isso significa:</p>
+<table>
+<thead>
+<tr>
+<th class="align-right">Entrada A</th>
+<th class="align-right">Entrada B</th>
+<th>NAND (¬(A∧B))</th>
+<th class="align-right">NOR (¬(A∨B))</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="align-right">0</td>
+<td class="align-right">0</td>
+<td><em>1</em></td>
+<td class="align-right"><em>1</em></td>
+</tr>
+<tr>
+<td class="align-right">0</td>
+<td class="align-right">1</td>
+<td><em>1</em></td>
+<td class="align-right">0</td>
+</tr>
+<tr>
+<td class="align-right">1</td>
+<td class="align-right">0</td>
+<td><em>1</em></td>
+<td class="align-right">0</td>
+</tr>
+<tr>
+<td class="align-right">1</td>
+<td class="align-right">1</td>
+<td>0</td>
+<td class="align-right">0</td>
+</tr>
+</tbody>
+</table>
+<p>
+Isso não é só teoria, na engenharia, se você tiver apenas relés configurados como portas NAND (ou NOR), pode construir literalmente todas as outras portas combinando-as.</p>
+<div class="src src-mermaid">
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">flowchart LR
+    subgraph Portas[&#34;Portas Lógicas Fundamentais&#34;]
+        subgraph p_and[&#34;AND&#34;]
+            A1(A) --&gt; AND{&amp;}
+            B1(B) --&gt; AND
+            AND --&gt; O1(A·B)
+        end
+        subgraph p_or[&#34;OR&#34;]
+            A2(A) --&gt; OR{≥1}
+            B2(B) --&gt; OR
+            OR --&gt; O2(A+B)
+        end
+        subgraph p_not[&#34;NOT&#34;]
+            A3(A) --&gt; NOT{1}
+            NOT --&gt; O3(¬A)
+        end
+    end
+
+    style p_and fill:#e3f2fd,stroke:#1565c0
+    style p_or fill:#fff3e0,stroke:#e65100
+    style p_not fill:#fce4ec,stroke:#c62828</code></pre>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-17" class="outline-4">
+<h4 id="headline-17">
+🔧 Exercícios
+</h4>
+<div id="outline-text-headline-17" class="outline-text-4">
+<p>
+<em>1. Complete a tabela verdade</em> para a porta <em>NAND</em> (NOT AND) e <em>NOR</em> (NOT OR). Use as Leis de De Morgan para verificar suas respostas.</p>
+<table>
+<thead>
+<tr>
+<th class="align-right">A</th>
+<th class="align-right">B</th>
+<th>A NAND B</th>
+<th>A NOR B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="align-right">0</td>
+<td class="align-right">0</td>
+<td>?</td>
+<td>?</td>
+</tr>
+<tr>
+<td class="align-right">0</td>
+<td class="align-right">1</td>
+<td>?</td>
+<td>?</td>
+</tr>
+<tr>
+<td class="align-right">1</td>
+<td class="align-right">0</td>
+<td>?</td>
+<td>?</td>
+</tr>
+<tr>
+<td class="align-right">1</td>
+<td class="align-right">1</td>
+<td>?</td>
+<td>?</td>
+</tr>
+</tbody>
+</table>
+<p>
+<em>2. Aplicando De Morgan:</em> Simplifique a expressão ¬(A ∨ B) usando apenas portas AND e NOT. (Dica: por onde começar?)</p>
+<p>
+<em>3. Projetando lógica:</em> Você quer um circuito que acenda uma lâmpada apenas quando o interruptor A estiver ligado <em>E</em> o interruptor B estiver desligado. Escreva a expressão booleana e desenhe o circuito com portas AND, OR e NOT.</p>
+<p>
+<em>4. Portas universais:</em> Projetar um inversor (NOT) usando apenas portas NAND. <em>(Dica: o que acontece se você ligar as duas entradas de uma NAND juntas?)</em></p>
+<p>
+&lt;details&gt;
+&lt;summary&gt;&lt;b&gt;Respostas&lt;/b&gt;&lt;/summary&gt;</p>
+<ol>
+<li>NAND: 1, 1, 1, 0. NOR: 1, 0, 0, 0.</li>
+<li>¬(A ∨ B) = ¬A ∧ ¬B (segunda lei de De Morgan). Isto é: &#34;Não ser (A ou B) é o mesmo que (Não A) e (Não B)&#34;.</li>
+<li>Expressão: S = A ∧ ¬B. Implementação: use uma porta NOT para inverter B e uma porta AND para combinar A com ¬B.</li>
+<li>Ligue as duas entradas da NAND juntas: se A=0, NAND(0,0)=1; se A=1, NAND(1,1)=0. A NAND com entradas curto-circuitadas funciona exatamente como um inversor.</li>
+</ol>
+<p>&lt;/details&gt;</p>
+<hr>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-headline-18" class="outline-3">
+<h3 id="headline-18">
+Conclusão: Da Lanterna ao Computador
+</h3>
+<div id="outline-text-headline-18" class="outline-text-3">
+<p>
+No <a href="/post/histcomp01">primeiro artigo</a>, vimos que qualquer informação pode ser reduzida a sequências de 0s e 1s — Morse, Braille, ASCII, todos são códigos binários. A pergunta natural era: como uma máquina <em>processa</em> esses símbolos?</p>
+<p>
+A resposta: com interruptores. A lanterna nos ensinou que um circuito fechado (1) permite o fluxo de elétrons; um circuito aberto (0) o bloqueia. O telégrafo nos mostrou como estender esse princípio por quilômetros usando o relé — um interruptor controlado por eletricidade, não por dedos humanos. E ao organizar relés em série (AND) ou em paralelo (OR), materializamos a Álgebra de Boole em hardware físico.</p>
+<p>
+Agora sabemos duas coisas: informação pode ser codificada como bits; e bits podem ser processados por portas lógicas feitas de interruptores. Mas nossos circuitos até aqui só manipulam <em>um único bit</em> — ligado ou desligado, 1 ou 0. Como representar o número 5? E o 42? E um bilhão?</p>
+<p>
+No próximo artigo abandonaremos nossos dez dedos e mergulharemos nos sistemas de numeração que os computadores realmente usam: binário, hexadecimal, e a organização de bits em bytes e palavras. A álgebra de Boole já está pronta para processar os sinais; agora precisamos de números para alimentá-la.</p>
+<hr>
+<p>
+<em>Fonte:</em> <a href="https://a.co/d/0a3DsSsn">Code: The Hidden Language of Computer Hardware and Software</a>, 2ª ed., Charles Petzold</p>
+</div>
+</div>
+
+  </div>
+</article>
+
+    </main>
+    <hr>
+    <footer>
+    </footer>
+  </div>
+<script>window.Prism = window.Prism || {}; Prism.manual = true;</script>
+<script src="/vendor/prism/prism-core.min.js"></script>
+<script src="/vendor/prism/prism-clike.min.js"></script>
+<script src="/vendor/prism/prism-bash.min.js"></script>
+<script src="/vendor/prism/prism-c.min.js"></script>
+<script src="/vendor/prism/prism-cpp.min.js"></script>
+<script src="/vendor/prism/prism-rust.min.js"></script>
+<script src="/vendor/prism/prism-go.min.js"></script>
+<script src="/vendor/prism/prism-javascript.min.js"></script>
+<script src="/vendor/prism/prism-typescript.min.js"></script>
+<script src="/vendor/prism/prism-clojure.min.js"></script>
+<script src="/vendor/prism/prism-lisp.min.js"></script>
+<script src="/vendor/prism/prism-swift.min.js"></script>
+<script src="/vendor/prism/prism-zig.min.js"></script>
+<script src="/vendor/prism/prism-sql.min.js"></script>
+<script src="/vendor/prism/prism-autoloader.min.js"></script>
+  <script src="/vendor/mermaid/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '14px', primaryColor: '#cba6f7', primaryTextColor: '#cdd6f4', primaryBorderColor: '#7f849c', lineColor: '#89b4fa', secondaryColor: '#313244', tertiaryColor: '#45475a' } });
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('code.language-mermaid').forEach(function(el) {
+        var mDiv = document.createElement('div');
+        mDiv.className = 'mermaid';
+        mDiv.textContent = el.textContent;
+        var wrap = el.closest('.src-mermaid') || el.closest('.src') || el.closest('.highlight') || el.parentElement;
+        if (wrap) wrap.replaceWith(mDiv);
+      });
+      mermaid.run();
+    });
+  </script>
+  <button class="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">^ top</button>
+  <script>
+    document.querySelectorAll('.content table').forEach(function(t) {
+      if (t.closest('.table-wrapper')) return;
+      var w = document.createElement('div');
+      w.className = 'table-wrapper';
+      t.parentNode.insertBefore(w, t);
+      w.appendChild(t);
+    });
+  </script>
+  <script>
+    var btn = document.querySelector('.back-to-top');
+    window.addEventListener('scroll', function() {
+      btn.classList.toggle('visible', window.scrollY > 400);
+    });
+  </script>
+</body>
+</html>

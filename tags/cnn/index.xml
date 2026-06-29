@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Cnn on lobovit</title>
+    <link>https://lobovit.github.io/tags/cnn/</link>
+    <description>Recent content in Cnn on lobovit</description>
+    <generator>Hugo</generator>
+    <language>pt-br</language>
+    <lastBuildDate>Mon, 25 May 2026 20:00:00 -0300</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/cnn/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>04 - AI Engineering from scratch: do pixel ao modelo de mundo</title>
+      <link>https://lobovit.github.io/ai-cv/</link>
+      <pubDate>Mon, 25 May 2026 20:00:00 -0300</pubDate>
+      <guid>https://lobovit.github.io/ai-cv/</guid>
+      <description>&lt;p&gt;&#xA;Uma imagem digital é uma matriz de números. Um pixel é um valor entre 0 e 255. Três canais (RGB) por pixel, 224 linhas, 224 colunas. Isso dá 150 mil números. E em cima desses 150 mil números a gente constrói modelos que reconhecem rostos, dirigem carros, geram arte e simulam física.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;Visão computacional é o campo que ensina máquinas a extrair significado de pixels. Este artigo percorre 28 tópicos, dos fundamentos de imagem até modelos de mundo que preveem o futuro em vídeo. A stack é Python (PyTorch) pra treino e experimentação, Go pra inferência em produção.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

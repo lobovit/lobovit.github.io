@@ -1,19 +1,40 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Clojure on scovl</title>
-    <link>https://scovl.github.io/tags/clojure/</link>
-    <description>Recent content in Clojure on scovl</description>
+    <title>Clojure on lobovit</title>
+    <link>https://lobovit.github.io/tags/clojure/</link>
+    <description>Recent content in Clojure on lobovit</description>
     <generator>Hugo</generator>
     <language>pt-br</language>
-    <lastBuildDate>Fri, 23 May 2025 19:41:45 -0300</lastBuildDate>
-    <atom:link href="https://scovl.github.io/tags/clojure/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Fri, 08 Aug 2025 19:00:00 +0000</lastBuildDate>
+    <atom:link href="https://lobovit.github.io/tags/clojure/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>GNU Emacs</title>
+      <link>https://lobovit.github.io/emacs/</link>
+      <pubDate>Fri, 08 Aug 2025 19:00:00 +0000</pubDate>
+      <guid>https://lobovit.github.io/emacs/</guid>
+      <description>&lt;p&gt;&#xA;Após anos experimentando diversos editores de texto para escrita e programação, comecei a me frustrar com a dependência excessiva de plugins que tornavam a experiência cada vez mais pesada, instável e lenta. &lt;/p&gt;&#xA;&lt;blockquote&gt;&#xA;&lt;p&gt;O que deveria ser uma ferramenta simples de escrita se transformava em um ambiente sobrecarregado e pouco confiável.&lt;/p&gt;&#xA;&lt;/blockquote&gt;&#xA;&lt;p&gt;&#xA;A migração dessas configurações complexas entre diferentes ambientes — especialmente ao alternar entre sistemas operacionais — tornou-se um obstáculo significativo que me levou a questionar fundamentalmente minha abordagem na escolha de editores. Se você enfrenta desafios similares, este artigo oferece uma perspectiva alternativa.&lt;/p&gt;</description>
+    </item>
     <item>
       <title>Try/Catch: Origem, Propósito e o Erro de Usá-lo como Fluxo Lógico</title>
-      <link>https://scovl.github.io/trycatch/</link>
+      <link>https://lobovit.github.io/trycatch/</link>
       <pubDate>Fri, 23 May 2025 19:41:45 -0300</pubDate>
-      <guid>https://scovl.github.io/trycatch/</guid>
-      <description>&lt;p&gt;&#xA;O tratamento de exceções surgiu para separar o fluxo normal do programa do tratamento de situações inesperadas, como falhas de hardware ou erros de entrada/saída. Inicialmente, programas usavam códigos de retorno para lidar com erros, mas isso era propenso a falhas e difícil de manter. &lt;/p&gt;&#xA;&lt;p&gt;&#xA;O modelo de tratamento estruturado de exceções evoluiu desde os anos 60, ganhando formas mais concretas em linguagens como &lt;a href=&#34;https://en.wikipedia.org/wiki/PL/I&#34;&gt;PL/I&lt;/a&gt;, &lt;a href=&#34;https://en.wikipedia.org/wiki/Ada_(programming_language)&#34;&gt;Ada&lt;/a&gt;), &lt;a href=&#34;https://en.wikipedia.org/wiki/C%2B%2B&#34;&gt;C++&lt;/a&gt; e &lt;a href=&#34;https://en.wikipedia.org/wiki/Java_(programming_language)&#34;&gt;Java&lt;/a&gt;), e depois sendo adotado por outras como &lt;a href=&#34;https://en.wikipedia.org/wiki/JavaScript&#34;&gt;JavaScript&lt;/a&gt;. &lt;/p&gt;</description>
+      <guid>https://lobovit.github.io/trycatch/</guid>
+      <description>&lt;p&gt;&#xA;O tratamento de exceções surgiu para separar o fluxo normal do programa do tratamento de situações inesperadas, como falhas de hardware ou erros de entrada/saída. Inicialmente, programas usavam códigos de retorno para lidar com erros, mas isso era propenso a falhas e difícil de manter.&lt;/p&gt;&#xA;&lt;p&gt;&#xA;O modelo de tratamento estruturado de exceções evoluiu desde os anos 60, ganhando formas mais concretas em linguagens como &lt;a href=&#34;https://en.wikipedia.org/wiki/PL/I&#34;&gt;PL/I&lt;/a&gt;, &lt;a href=&#34;https://en.wikipedia.org/wiki/Ada_(programming_language)&#34;&gt;Ada&lt;/a&gt;), &lt;a href=&#34;https://en.wikipedia.org/wiki/C%2B%2B&#34;&gt;C++&lt;/a&gt; e &lt;a href=&#34;https://en.wikipedia.org/wiki/Java_(programming_language)&#34;&gt;Java&lt;/a&gt;), e depois sendo adotado por outras como &lt;a href=&#34;https://en.wikipedia.org/wiki/JavaScript&#34;&gt;JavaScript&lt;/a&gt;.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>01 - RAG Simples com Clojure e Ollama</title>
+      <link>https://lobovit.github.io/rag/</link>
+      <pubDate>Sun, 23 Mar 2025 19:00:00 +0000</pubDate>
+      <guid>https://lobovit.github.io/rag/</guid>
+      <description>&lt;div id=&#34;outline-container-headline-1&#34; class=&#34;outline-3&#34;&gt;&#xA;&lt;h3 id=&#34;headline-1&#34;&gt;&#xA;Introdução&#xA;&lt;/h3&gt;&#xA;&lt;div id=&#34;outline-text-headline-1&#34; class=&#34;outline-text-3&#34;&gt;&#xA;&lt;p&gt;&#xA;Olá, pessoal! 👋 &lt;/p&gt;&#xA;&lt;p&gt;&#xA;Neste artigo, vamos explorar como construir uma aplicação &lt;a href=&#34;https://pt.wikipedia.org/wiki/Geração_aumentada_por_recuperação&#34;&gt;RAG (Retrieval-Augmented Generation)&lt;/a&gt; completa do zero usando &lt;a href=&#34;https://clojure.org/&#34;&gt;Clojure&lt;/a&gt;. Vamos mergulhar em uma implementação prática que combina processamento de texto, busca semântica e geração de respostas com LLMs locais. Se você está interessado em melhorar a precisão e relevância das respostas dos seus modelos de linguagem com informações atualizadas, este guia é para você!&lt;/p&gt;&#xA;&lt;/div&gt;&#xA;&lt;/div&gt;&#xA;&lt;div id=&#34;outline-container-headline-2&#34; class=&#34;outline-3&#34;&gt;&#xA;&lt;h3 id=&#34;headline-2&#34;&gt;&#xA;Fundamentos do RAG&#xA;&lt;/h3&gt;&#xA;&lt;div id=&#34;outline-text-headline-2&#34; class=&#34;outline-text-3&#34;&gt;&#xA;&lt;div id=&#34;outline-container-headline-3&#34; class=&#34;outline-4&#34;&gt;&#xA;&lt;h4 id=&#34;headline-3&#34;&gt;&#xA;O que é RAG?&#xA;&lt;/h4&gt;&#xA;&lt;div id=&#34;outline-text-headline-3&#34; class=&#34;outline-text-4&#34;&gt;&#xA;&lt;p&gt;&#xA;Os Modelos de Linguagem de Grande Escala (&lt;a href=&#34;https://en.wikipedia.org/wiki/Large_language_model&#34;&gt;LLMs&lt;/a&gt;), como o &lt;a href=&#34;https://openai.com/api/&#34;&gt;GPT&lt;/a&gt;, &lt;a href=&#34;https://openai.com/api/&#34;&gt;ChatGPT&lt;/a&gt; e outros, revolucionaram a forma como interagimos com a inteligência artificial. Eles são capazes de gerar textos coerentes, responder perguntas complexas e até mesmo criar conteúdo criativo. No entanto, esses modelos possuem uma limitação fundamental: seu conhecimento é &amp;#34;congelado&amp;#34; no tempo.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Análise de código estático</title>
+      <link>https://lobovit.github.io/dd01/</link>
+      <pubDate>Sun, 23 Mar 2025 19:00:00 +0000</pubDate>
+      <guid>https://lobovit.github.io/dd01/</guid>
+      <description>&lt;div id=&#34;outline-container-headline-1&#34; class=&#34;outline-2&#34;&gt;&#xA;&lt;h2 id=&#34;headline-1&#34;&gt;&#xA;Análise Estática de Código: Entendendo seu Programa sem Executá-lo&#xA;&lt;/h2&gt;&#xA;&lt;div id=&#34;outline-text-headline-1&#34; class=&#34;outline-text-2&#34;&gt;&#xA;&lt;p&gt;&#xA;Muitos mecanismos que ocorrem naturalmente em nosso dia-a-dia no desenvolvimento de software, muitas vezes, não são devidamente apreciados e nem mesmo conhecidos. Ações das quais parecem mágicas, mas que na verdade são resultado de um grande esforço de muitas pessoas ao longo de décadas. &lt;/p&gt;&#xA;&lt;p&gt;&#xA;Como quando você abre uma IDE e tem à sua disposição ferramentas que parecem mágicas como &lt;a href=&#34;https://en.wikipedia.org/wiki/Intelligent_code_completion&#34;&gt;intelisense&lt;/a&gt;, &lt;a href=&#34;https://en.wikipedia.org/wiki/Autocompletion&#34;&gt;autocompletion&lt;/a&gt;, &lt;a href=&#34;https://en.wikipedia.org/wiki/Variable_dumping&#34;&gt;dumping de variáveis&lt;/a&gt; e &lt;a href=&#34;https://en.wikipedia.org/wiki/Reserved_word&#34;&gt;palavras reservadas&lt;/a&gt; de cada linguagem de programação, entre outras. Neste artigo, vou compartilhar um pouco do que eu aprendi e ainda estou aprendendo sobre análise estática de código com o intuito de ajudar você a entender um pouco mais sobre como esses mecanismos funcionam.&lt;/p&gt;</description>
     </item>
   </channel>
 </rss>
