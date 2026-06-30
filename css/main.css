@@ -58,7 +58,7 @@ header nav {
 .nav-links a {
   color: var(--link);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 15px;
   padding: 4px 0;
 }
 
@@ -432,7 +432,7 @@ footer a { color: var(--link); }
 
   .nav-links { margin-left: auto; margin-top: 0; gap: 0; }
 
-  .nav-links a { margin-left: 12px; padding: 0; }
+  .nav-links a { margin-left: 16px; padding: 0; font-size: 16px; }
 
   h1 { font-size: 24px; }
 
